@@ -13,3 +13,8 @@ model: MRI-CGCM3
 
 Please adhere to the following naming convention for wget scripts:
 wget_PROJECT_MODEL_EXPERIMENT_TIMEFREQ_REALM_VARS_ENSEMBLE_VERSIONDATE.sh
+
+To run the scripts, you will need to register with earth systems grid (you should have already done this to generate the wget script).  to execute:
+$ sh [script name].sh -i
+
+The -i is necessary to ignore some trusted certificate stuff that pops up
