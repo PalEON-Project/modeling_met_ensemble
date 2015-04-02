@@ -10,6 +10,7 @@ experiment: past1000, historical
 realm: atmos
 time frequency: day, 6 hrly, 3 hrly
 model: MRI-CGCM3
+variables: tas, tasmin (day only), tasmax (day only), ps (or psll if necessary), huss, pr, ps, reds, reds, sfcWind (or uas & vas if necessary)
 
 Please adhere to the following naming convention for wget scripts:
 wget_PROJECT_MODEL_EXPERIMENT_TIMEFREQ_REALM_VARS_ENSEMBLE_VERSIONDATE.sh
@@ -18,3 +19,6 @@ To run the scripts, you will need to register with earth systems grid (you shoul
 $ sh [script name].sh -i
 
 The -i is necessary to ignore some trusted certificate stuff that pops up
+
+
+NOTE:  Sometimes random things happen and not all the files are downloaded.  After downloading through the wget script, scan through for files sizes of 0.  If there’s only a handful, you can go to the cmip5 website, select the variable you need (select “filter over text”) and then click the http link to download the file.  Note that you cannot use Safari for this download because of their built-in security settings (similar to how you have to run the wget script with -i).  Firefox works fine
