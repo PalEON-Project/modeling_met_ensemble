@@ -10,7 +10,7 @@ experiment: past1000, historical
 realm: atmos
 time frequency: day, 6 hrly, 3 hrly
 model: MRI-CGCM3
-variables: tas, tasmin (day only), tasmax (day only), ps (or psll if necessary), huss, pr, ps, reds, reds, sfcWind (or uas & vas if necessary)
+variables: tas, tasmin (day only), tasmax (day only), ps (or psl if necessary), huss, pr, ps, rlds, rsds, sfcWind (or uas & vas if necessary)
 
 Please adhere to the following naming convention for wget scripts:
 wget_PROJECT_MODEL_EXPERIMENT_TIMEFREQ_REALM_VARS_ENSEMBLE_VERSIONDATE.sh
