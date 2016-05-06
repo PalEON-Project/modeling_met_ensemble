@@ -46,10 +46,10 @@ out_base=/projectnb/dietzelab/paleon/met_ensemble/data/full_raw/MIROC-ESM/
 # Past 1000 Experiment: 850-1849
 # --------------------------
    # Make sure we have our base directory
-   outdir=${out_base}p1000
+   outdir=${out_base}p1000/
    if [ ! -d ${outdir} ]
    then
-      mdkdir -p ${outdir}
+      mkdir -p ${outdir}
    fi
 
    # -----------
@@ -63,7 +63,7 @@ out_base=/projectnb/dietzelab/paleon/met_ensemble/data/full_raw/MIROC-ESM/
       # Make a directory for the daily data so we can keep things separate
       if [ ! -d ${outdir}day/ ]
       then
-         mdkdir -p ${outdir}day/
+         mkdir -p ${outdir}day/
       fi
 
       # Change to the daily p1000 working directory
@@ -90,7 +90,7 @@ out_base=/projectnb/dietzelab/paleon/met_ensemble/data/full_raw/MIROC-ESM/
       # Make a directory for the monthly data so we can keep things separate
       if [ ! -d ${outdir}month/ ]
       then
-         mdkdir -p ${outdir}month/
+         mkdir -p ${outdir}month/
       fi
 
       # Change to the monthly p1000 working directory
@@ -112,10 +112,10 @@ out_base=/projectnb/dietzelab/paleon/met_ensemble/data/full_raw/MIROC-ESM/
 # NOTE: only have daily for the key 1850-1900 period!
 # --------------------------
    # Make sure we have our base directory
-   outdir=${out_base}historical
+   outdir=${out_base}historical/
    if [ ! -d ${outdir} ]
    then
-      mdkdir -p ${outdir}
+      mkdir -p ${outdir}
    fi
 
    # -----------
@@ -129,7 +129,7 @@ out_base=/projectnb/dietzelab/paleon/met_ensemble/data/full_raw/MIROC-ESM/
       # Make a directory for the daily data so we can keep things separate
       if [ ! -d ${outdir}day/ ]
       then
-         mdkdir -p ${outdir}day/
+         mkdir -p ${outdir}day/
       fi
 
       # Change to the daily p1000 working directory
