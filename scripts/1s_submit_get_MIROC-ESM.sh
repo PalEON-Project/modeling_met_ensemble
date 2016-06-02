@@ -1,4 +1,4 @@
-#!bin/sh
+#!/bin/sh
 #$ -wd /projectnb/dietzelab/paleon/met_ensemble/scripts/
 #$ -j y
 #$ -S /bin/bash
