@@ -25,7 +25,7 @@ download.GLDAS <- function(outfolder, start_date, end_date, site_id, lat.in, lon
   start_year <- year(start_date)
   end_year   <- year(end_date)
   site_id = as.numeric(site_id)
-  outfolder = paste0(outfolder,"/", site_id, "_")
+  outfolder = paste0(outfolder,"/", site_id)
   
   
   lat.in = as.numeric(lat.in)

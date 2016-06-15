@@ -24,7 +24,7 @@ download.NLDAS <- function(outfolder, start_date, end_date, site_id, lat.in, lon
   end_date <- as.POSIXlt(end_date, tz = "GMT")
   start_year <- year(start_date)
   end_year   <- year(end_date)
-  outfolder = paste0(outfolder,"/", site_id, "_")
+  outfolder = paste0(outfolder,"/", site_id)
   
   lat.in = as.numeric(lat.in)
   lon.in = as.numeric(lon.in)
