@@ -60,7 +60,7 @@ out_base=/projectnb/dietzelab/paleon/met_ensemble/data/full_raw/MIROC-ESM/
 # #       echo "---------- Loop 1: p1000 daily ----------"
 # #       Define file path & variables of interest
 # #       path_p1000_day=/badc/cmip5/data/cmip5/output1/MIROC/MIROC-ESM/past1000/day/atmos/day/r1i1p1/latest
-# #       var_p1000_day=(tas tasmax tasmin pr psl huss sfcwind)
+# #       var_p1000_day=(tas tasmax tasmin pr psl huss sfcWind)
 # # 
 # #       Make a directory for the daily data so we can keep things separate
 # #       if [ ! -d ${outdir}day/ ]
@@ -152,7 +152,7 @@ out_base=/projectnb/dietzelab/paleon/met_ensemble/data/full_raw/MIROC-ESM/
       echo "---------- Loop 4: historical sub-daily ----------"
       # Define file path & variables of interest
       path_hist_3h=/badc/cmip5/data/cmip5/output1/MIROC/MIROC-ESM/historical/3hr/atmos/3hr/r1i1p1/latest
-      var_hist_3h=(tas pr ps huss rlds rsds)
+      var_hist_3h=(tas pr ps huss rlds rsds uas vas)
 
       # Make a directory for the daily data so we can keep things separate
       if [ ! -d ${outdir}3h/ ]
