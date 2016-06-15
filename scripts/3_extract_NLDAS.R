@@ -1,11 +1,5 @@
 # Script to extract NLDAS data for one site
 source("download.NLDAS.R")
-# source("download.NLDAS_raster.R")
 
-start.time=Sys.time()
-dat.pha <- download.NLDAS(outfolder="~/Desktop/", start_date="1986-05-16", end_date="1986-05-17", site_id=5, lat.in=42.54, lon.in=-72.18)
-end.time=Sys.time()
-
-
-start.time
-end.time
+dir.PHA <- "/projectnb/dietzelab/paleon/met_ensemble/data/paleon_sites/Harvard"
+download.NLDAS(outfolder=dir.PHA, start_date="1980-01-01", end_date="2015-12-31", site_id="Harvard", lat.in=42.54, lon.in=-72.18)
