@@ -1,14 +1,15 @@
-##' Download and conver to CF CRUNCEP single grid point from MSTIMIP server using OPENDAP interface
+##' Download and convert single grid point NLDAS to CF single grid point from hydro1.sci.gsfc.nasa.gov using OPENDAP interface
 ##' @name download.NLDAS
 ##' @title download.NLDAS
 ##' @export
 ##' @param outfolder
 ##' @param start_date
 ##' @param end_date
+##' @param site_id
 ##' @param lat
 ##' @param lon
 ##'
-##' @author Christy Rollinson (based on downlad.CRUNCEP)
+##' @author Christy Rollinson (with help from Ankur Desai)
 
 download.NLDAS <- function(outfolder, start_date, end_date, site_id, lat.in, lon.in, overwrite=FALSE, verbose=FALSE, ...){  
   # require(PEcAn.utils)
@@ -17,32 +18,17 @@ download.NLDAS <- function(outfolder, start_date, end_date, site_id, lat.in, lon
   require(stringr)
   require(abind)
 
-  # Because the format is grib1, the handy lat/lon extraction of grib2 doesn't work
-  # To get a single point, it looks like we're going to have to hard-code the indices
-  nlds.lon <- seq(-124.938000, -67.063000, by=0.125)
-  nlds.lat <- seq(  25.063000,  52.938000, by=0.125)
-  lon.vec <- rep(nlds.lon, times=length(nlds.lat))
-  lat.vec <- rep(nlds.lat, length.out=length(lon.vec), each=length(nlds.lon))
-  
-  lon.lim <- data.frame(min=lon.vec-0.125/2, max=lon.vec+0.125/2)
-  lat.lim <- data.frame(min=lat.vec-0.125/2, max=lat.vec+0.125/2)
-  
-  # Find the cells we want
-  ind.rec <- which(lon.lim$min<=lon.in & lon.lim$max>=lon.in & lat.lim$min<=lat.in & lat.lim$max>=lat.in)
-  
   # Date stuff
   start_date <- as.POSIXlt(start_date, tz = "GMT")
   end_date <- as.POSIXlt(end_date, tz = "GMT")
   start_year <- year(start_date)
   end_year   <- year(end_date)
   # site_id = as.numeric(site_id)
-  outfolder = paste0(outfolder,"_site_",paste0(site_id %/% 1000000000, "-", site_id %% 1000000000))
+  outfolder = paste0(outfolder,"/site_",paste0(site_id %/% 1000000000, "-", site_id %% 1000000000))
   
   lat.in = as.numeric(lat.in)
   lon.in = as.numeric(lon.in)
-#   lat_trunc = floor(2*(90-as.numeric(lat.in))) # Rounds to nearest degree
-#   lon_trunc = floor(2*(as.numeric(lon.in)+180)) # Rounds to nearest degree, adds 180; not sure why
-  dap_base="http://hydro1.sci.gsfc.nasa.gov/data/s4pa/NLDAS/NLDAS_FORA0125_H.002"
+  dap_base="http://hydro1.sci.gsfc.nasa.gov/thredds/dodsC/NLDAS_FORA0125_H.002"
   dir.create(outfolder, showWarnings=FALSE, recursive=TRUE)
   
   ylist <- seq(start_year,end_year,by=1)
@@ -53,7 +39,8 @@ download.NLDAS <- function(outfolder, start_date, end_date, site_id, lat.in, lon
                         dbfile.name = "NLDAS",
                         stringsAsFactors = FALSE)
   
-  var = data.frame(DAP.name = c("TMP","DLWRF","PRES","DSWRF","UGRD","VGRD","SPFH","APCP"),
+  var = data.frame(DAP.name = c("N2-m_above_ground_Temperature","LW_radiation_flux_downwards_surface","Pressure","SW_radiation_flux_downwards_surface","N10-m_above_ground_Zonal_wind_speed","N10-m_above_ground_Meridional_wind_speed","N2-m_above_ground_Specific_humidity","Precipitation_hourly_total"),
+                   DAP.dim = c(2,1,1,1,2,2,2,1),
                    CF.name = c("air_temperature","surface_downwelling_longwave_flux_in_air","air_pressure","surface_downwelling_shortwave_flux_in_air","eastward_wind","northward_wind","specific_humidity","precipitation_flux"),
                    units = c('Kelvin',"W/m2","Pascal","W/m2","m/s","m/s","g/g","kg/m2/s")
   )
@@ -112,31 +99,49 @@ download.NLDAS <- function(outfolder, start_date, end_date, site_id, lat.in, lon
       doy <- str_pad(j, 3, pad="0")
       for(h in seq(0000, 2300, by=100)){
         hr <- str_pad(h,4,pad="0")
-        dap_file = paste0(dap_base, "/",year, "/", doy, "/","NLDAS_FORA0125_H.A",year,mo.now,day.mo, ".",hr, ".002.grb")
+        dap_file = paste0(dap_base, "/",year, "/", doy, "/","NLDAS_FORA0125_H.A",year,mo.now,day.mo, ".",hr, ".002.grb.ascii?")
         
-        # Temporarily download the file using curl
-        system(paste0("curl -f -v -s ", dap_file, " -o tmp.grb"), ignore.stderr=T)
-        for (v in unique(var$DAP.name)) {
-          # create the wgrib command
-          wg.str <- paste0("wgrib -s tmp.grb | grep \":", 
-                           v, ":\" | wgrib -V -i -text tmp.grb -o var_out.txt")
-          system(wg.str, ignore.stderr = TRUE) # execute the wgrib command, creating a temporary text file
-          vals <- scan("var_out.txt", skip = 1,quiet = TRUE)[ind.rec] # grab the cells we want
-          vals <- array(vals, dim=c(length(lat.in), length(lon.in), length(vals)))
-          if(v %in% names(dat.list)){
+        # Query lat/lon
+        latlon <- getURL(paste0(dap_file,"lat[0:1:223],lon[0:1:463]"))
+        lat.ind <- gregexpr("lat", latlon)
+        lon.ind <- gregexpr("lon", latlon)
+        lats <- as.vector(read.table(con <- textConnection(substr(latlon, lat.ind[[1]][3], lon.ind[[1]][3]-1)), sep=",", fileEncoding="\n", skip=1))
+        lons <- as.vector(read.table(con <- textConnection(substr(latlon, lon.ind[[1]][3], nchar(latlon))), sep=",", fileEncoding="\n", skip=1))
+        
+        lat.use <- which(lats-0.125/2<=lat.in & lats+0.125/2>=lat.in)
+        lon.use <- which(lons-0.125/2<=lon.in & lons+0.125/2>=lon.in)
+        
+        # Set up the query for all of the met variables
+        dap_query=""
+        for(v in 1:nrow(var)){
+          time.string <- ""
+          for(i in 1:var$DAP.dim[v]){
+            time.string <- paste0(time.string,"[0:1:0]")
+          }
+          dap_query <- paste(dap_query, paste0(var$DAP.name[v], time.string, "[",lat.use,"][",lon.use,"]"), sep=",")  
+        }
+        dap_query=substr(dap_query,2,nchar(dap_query))
+        
+        dap.out <- getURL(paste0(dap_file,dap_query))
+        for (v in 1:nrow(var)) {
+          var.out <- paste(var$CF.name[v])
+          var.now <- var$DAP.name[v]
+          ind.1 <- gregexpr(paste(var.now,var.now, sep="."), dap.out)
+          end.1 <- gregexpr(paste(var.now,"time", sep="."), dap.out)
+          val.now <- read.delim(con <- textConnection(substr(dap.out, ind.1[[1]][1], end.1[[1]][2])), sep=",", fileEncoding="\n" )[1,1]
+          vals <- array(val.now, dim=c(length(lat.in), length(lon.in), length(val.now)))
+          if(var.out %in% names(dat.list)){
             # If the variable allready exists, use abind to add the new data
-            dat.list[[v]] <- abind(dat.list[[v]], vals, along=3)
+            dat.list[[var.out]] <- abind(dat.list[[var.out]], vals, along=3)
           } else {
             # If this is the first time through, make a new 3-D array for that variable
-            dat.list[[v]] <- vals
+            dat.list[[var.out]] <- vals
           }
-          system("rm -f var_out.txt", ignore.stderr=T) # clean up after ourselves!
         } # end variable loop
-        system("rm -f tmp.grb", ignore.stderr=T) # clean up after ourselves!
       } # end hour
     } # end day
     ## change units of precip to kg/m2/s instead of hour accumulated precip
-    dat.list[["APCP"]] = dat.list[["APCP"]]/360
+    dat.list[["precipitation_flux"]] = dat.list[["precipitation_flux"]]/360
     
     ## put data in new file
     loc <- nc_create(filename=loc.file, vars=var.list, verbose=verbose)
