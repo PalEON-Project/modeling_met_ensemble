@@ -1,6 +1,6 @@
-##' Download and convert single grid point GLDAS to CF single grid point from hydro1.sci.gsfc.nasa.gov using OPENDAP interface
-##' @name download.GLDAS
-##' @title download.GLDAS
+##' Download and convert single grid point NLDAS to CF single grid point from hydro1.sci.gsfc.nasa.gov using OPENDAP interface
+##' @name download.NLDAS
+##' @title download.NLDAS
 ##' @export
 ##' @param outfolder
 ##' @param start_date
@@ -9,9 +9,9 @@
 ##' @param lat
 ##' @param lon
 ##'
-##' @author Christy Rollinson
+##' @author Christy Rollinson (with help from Ankur Desai)
 
-download.GLDAS <- function(outfolder, start_date, end_date, site_id, lat.in, lon.in, overwrite=FALSE, verbose=FALSE, ...){  
+download.NLDAS <- function(outfolder, start_date, end_date, site_id, lat.in, lon.in, overwrite=FALSE, verbose=FALSE, ...){  
   # require(PEcAn.utils)
   require(RCurl)
   require(lubridate)
@@ -24,13 +24,11 @@ download.GLDAS <- function(outfolder, start_date, end_date, site_id, lat.in, lon
   end_date <- as.POSIXlt(end_date, tz = "GMT")
   start_year <- year(start_date)
   end_year   <- year(end_date)
-  site_id = as.numeric(site_id)
   outfolder = paste0(outfolder,"/", site_id)
-  
   
   lat.in = as.numeric(lat.in)
   lon.in = as.numeric(lon.in)
-  dap_base="http://hydro1.sci.gsfc.nasa.gov/thredds/dodsC/GLDAS_NOAH025SUBP_3H"
+  dap_base="http://hydro1.sci.gsfc.nasa.gov/thredds/dodsC/NLDAS_FORA0125_H.002"
   dir.create(outfolder, showWarnings=FALSE, recursive=TRUE)
   
   ylist <- seq(start_year,end_year,by=1)
@@ -41,11 +39,13 @@ download.GLDAS <- function(outfolder, start_date, end_date, site_id, lat.in, lon
                         dbfile.name = "NLDAS",
                         stringsAsFactors = FALSE
                         )
-  var = data.frame(DAP.name = c("Near_surface_air_temperature","Surface_incident_longwave_radiation","Surface_pressure","Surface_incident_shortwave_radiation","Near_surface_wind_magnitude","Near_surface_specific_humidity","Rainfall_rate"),
-                   CF.name = c("air_temperature","surface_downwelling_longwave_flux_in_air","air_pressure","surface_downwelling_shortwave_flux_in_air","wind","specific_humidity","precipitation_flux"),
-                   units = c('Kelvin',"W/m2","Pascal","W/m2","m/s","g/g","kg/m2/s") 
-                   )
   
+  var = data.frame(DAP.name = c("N2-m_above_ground_Temperature","LW_radiation_flux_downwards_surface","Pressure","SW_radiation_flux_downwards_surface","N10-m_above_ground_Zonal_wind_speed","N10-m_above_ground_Meridional_wind_speed","N2-m_above_ground_Specific_humidity","Precipitation_hourly_total"),
+                   DAP.dim = c(2,1,1,1,2,2,2,1),
+                   CF.name = c("air_temperature","surface_downwelling_longwave_flux_in_air","air_pressure","surface_downwelling_shortwave_flux_in_air","eastward_wind","northward_wind","specific_humidity","precipitation_flux"),
+                   units = c('Kelvin',"W/m2","Pascal","W/m2","m/s","m/s","g/g","kg/m2/s") 
+                   )
+  time.stamps = seq(0000, 2300, by=100)
   for (i in 1:rows){
     year = ylist[i]    
     
@@ -74,14 +74,14 @@ download.GLDAS <- function(outfolder, start_date, end_date, site_id, lat.in, lon
       days.use = 1:day2
       nday=length(days.use) # Update nday
     }
-    ntime = nday*8 # leap year or not*time slice (3-hourly)
+    ntime = nday*24 # leap year or not;time slice (hourly)
 
-    loc.file = file.path(outfolder,paste("GLDAS",year,"nc",sep="."))
+    loc.file = file.path(outfolder,paste("NLDAS",year,"nc",sep="."))
     
     ## Create dimensions
     lat <- ncdim_def(name='latitude', units='degree_north', vals=lat.in, create_dimvar=TRUE)
     lon <- ncdim_def(name='longitude', units='degree_east', vals=lon.in, create_dimvar=TRUE)
-    time <- ncdim_def(name='time', units="sec", vals=seq((min(days.use)*24*360), (max(days.use)+1-1/8)*24*360, length.out=ntime), create_dimvar=TRUE, unlim=TRUE)
+    time <- ncdim_def(name='time', units="sec", vals=seq((min(days.use)*24*360), (max(days.use)+1-1/24)*24*360, length.out=ntime), create_dimvar=TRUE, unlim=TRUE)
     dim=list(lat,lon,time)
     
     var.list = list()
@@ -100,42 +100,43 @@ download.GLDAS <- function(outfolder, start_date, end_date, site_id, lat.in, lon
       mo.now <- str_pad(month(date.now), 2, pad="0")
       day.mo <- str_pad(day(date.now), 2, pad="0")
       doy <- str_pad(days.use[j], 3, pad="0")
-      
-      # Because the suffixes are really different for these files, lets get a list and go through each day
-      dap.log <- data.frame(readHTMLTable(paste0(dap_base, "/",year, "/", doy, "/catalog.html")))
-      dap.log <- dap.log[order(dap.log[,1],decreasing=F),] # Sort them so that we go from 0 to 21
-      
-      for(h in 2:nrow(dap.log)){
-        dap_file = paste0(dap_base, "/",year, "/", doy, "/",dap.log[h,1],".ascii?")
-
+      for(h in 1:length(time.stamps)){
+        hr <- str_pad(time.stamps[h],4,pad="0")
+        dap_file = paste0(dap_base, "/",year, "/", doy, "/","NLDAS_FORA0125_H.A",year,mo.now,day.mo, ".",hr, ".002.grb.ascii?")
+        
         # Query lat/lon
-        latlon <- getURL(paste0(dap_file,"lat[0:1:599],lon[0:1:1439]"))
+        latlon <- getURL(paste0(dap_file,"lat[0:1:223],lon[0:1:463]"))
         lat.ind <- gregexpr("lat", latlon)
         lon.ind <- gregexpr("lon", latlon)
         lats <- as.vector(read.table(con <- textConnection(substr(latlon, lat.ind[[1]][3], lon.ind[[1]][3]-1)), sep=",", fileEncoding="\n", skip=1))
         lons <- as.vector(read.table(con <- textConnection(substr(latlon, lon.ind[[1]][3], nchar(latlon))), sep=",", fileEncoding="\n", skip=1))
         
-        lat.use <- which(lats-0.25/2<=lat.in & lats+0.25/2>=lat.in)
-        lon.use <- which(lons-0.25/2<=lon.in & lons+0.25/2>=lon.in)
+        lat.use <- which(lats-0.125/2<=lat.in & lats+0.125/2>=lat.in)
+        lon.use <- which(lons-0.125/2<=lon.in & lons+0.125/2>=lon.in)
         
         # Set up the query for all of the met variables
         dap_query=""
         for(v in 1:nrow(var)){
-          dap_query <- paste(dap_query, paste0(var$DAP.name[v], "[0:1:0]", "[",lat.use,"][",lon.use,"]"), sep=",")  
+          time.string <- ""
+          for(i in 1:var$DAP.dim[v]){
+            time.string <- paste0(time.string,"[0:1:0]")
+          }
+          dap_query <- paste(dap_query, paste0(var$DAP.name[v], time.string, "[",lat.use,"][",lon.use,"]"), sep=",")  
         }
         dap_query=substr(dap_query,2,nchar(dap_query))
         
+        start.time <- Sys.time()
         dap.out <- getURL(paste0(dap_file,dap_query))
         for (v in 1:nrow(var)) {
           var.now <- var$DAP.name[v]
           ind.1 <- gregexpr(paste(var.now,var.now, sep="."), dap.out)
           end.1 <- gregexpr(paste(var.now,"time", sep="."), dap.out)
-          dat.list[[v]][,,(j*8)-8+h-1] <- read.delim(con <- textConnection(substr(dap.out, ind.1[[1]][1], end.1[[1]][2])), sep=",", fileEncoding="\n" )[1,1]
+          dat.list[[v]][,,j*24-24+h] <- read.delim(con <- textConnection(substr(dap.out, ind.1[[1]][1], end.1[[1]][2])), sep=",", fileEncoding="\n" )[1,1]
         } # end variable loop
       } # end hour
     } # end day
     ## change units of precip to kg/m2/s instead of hour accumulated precip
-    # dat.list[["precipitation_flux"]] = dat.list[["precipitation_flux"]]/360
+    dat.list[["precipitation_flux"]] = dat.list[["precipitation_flux"]]/360
     
     ## put data in new file
     loc <- nc_create(filename=loc.file, vars=var.list, verbose=verbose)
