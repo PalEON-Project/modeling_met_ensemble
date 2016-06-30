@@ -30,7 +30,8 @@ fi
 
 
 # Variables we need for PalEON 
-variables=(tair precipf swdown lwdown qair psurf wind)
+# variables=(tair precipf swdown lwdown qair psurf uwind vwind)
+variables=(uwind vwind)
 
 # Some constants from a file that Bjorn made (but still holds true)
 YR_BEG_CNCP=1901
@@ -80,32 +81,32 @@ for (( yr=${YR_BEG_CNCP}; yr<=${YR_END_CNCP}; yr++ )); do
      gunzip -f cruncep_rain_${yr}.nc.gz
      mv cruncep_rain_${yr}.nc cruncep_precipf_${yr}.nc
      ncrename -v rain,precipf cruncep_${VAR}_${yr}.nc
-   elif [[ ${VAR} == "wind" ]]; then
-     cp ${dir_raw}/uwind/cruncep_uwind_${yr}.nc.gz .
-     gunzip -f cruncep_uwind_${yr}.nc.gz
-     cp ${dir_raw}/vwind/cruncep_vwind_${yr}.nc.gz .
-     gunzip -f cruncep_vwind_${yr}.nc.gz     
-
-     echo "Calculating wind speed from u,v components"
-     # Copy uwind file here
-     cp cruncep_uwind_${yr}.nc.gz cruncep_${variable}_${year}.nc
-     # Add vwind to uwind file 
-     ncks -A cruncep_vwind_${yr}.nc.gz cruncep_${variable}_${year}.nc
-
-     # Calculate wind from u and v components
-     ncap -O -s 'Wind=abs(vwind)/sin(atan(abs(vwind/uwind)))' \
-     cruncep_${variable}_${yr}.nc cruncep_${variable}_${yr}.nc
-
-     # Exclude undesired variables
-     ncks -O -x -v uwind,vwind cruncep_${variable}_${yr}.nc \
-     cruncep_${variable}_${yr}.nc
-
-     # Update annotations
-     ncatted -a units,Wind,o,c,'m s-1' \
-     -a long_name,Wind,o,c,'Wind speed at the lowest atmosphere level' \
-     -a standard_name,Wind,o,c,Wind \
-     -a description,Wind,o,c,'Wind=abs(V)/sin(atan(abs(V/U)))' \
-     cruncep_${variable}_${yr}.nc
+#    elif [[ ${VAR} == "wind" ]]; then
+#      cp ${dir_raw}/uwind/cruncep_uwind_${yr}.nc.gz .
+#      gunzip -f cruncep_uwind_${yr}.nc.gz
+#      cp ${dir_raw}/vwind/cruncep_vwind_${yr}.nc.gz .
+#      gunzip -f cruncep_vwind_${yr}.nc.gz     
+# 
+#      echo "Calculating wind speed from u,v components"
+#      # Copy uwind file here
+#      cp cruncep_uwind_${yr}.nc.gz cruncep_${variable}_${year}.nc
+#      # Add vwind to uwind file 
+#      ncks -A cruncep_vwind_${yr}.nc.gz cruncep_${variable}_${year}.nc
+# 
+#      # Calculate wind from u and v components
+#      ncap -O -s 'Wind=abs(vwind)/sin(atan(abs(vwind/uwind)))' \
+#      cruncep_${variable}_${yr}.nc cruncep_${variable}_${yr}.nc
+# 
+#      # Exclude undesired variables
+#      ncks -O -x -v uwind,vwind cruncep_${variable}_${yr}.nc \
+#      cruncep_${variable}_${yr}.nc
+# 
+#      # Update annotations
+#      ncatted -a units,Wind,o,c,'m s-1' \
+#      -a long_name,Wind,o,c,'Wind speed at the lowest atmosphere level' \
+#      -a standard_name,Wind,o,c,Wind \
+#      -a description,Wind,o,c,'Wind=abs(V)/sin(atan(abs(V/U)))' \
+#      cruncep_${variable}_${yr}.nc
    else
      cp ${dir_raw}/${VAR}/cruncep_${VAR}_${yr}.nc.gz .
      gunzip -f cruncep_${VAR}_${yr}.nc.gz
@@ -204,33 +205,32 @@ for (( yr=${YR_BEG_CNCP}; yr<=${YR_END_CNCP}; yr++ )); do
      gunzip -f cruncep_rain_${yr}.nc.gz
      mv cruncep_rain_${yr}.nc cruncep_precipf_${yr}.nc
      ncrename -v rain,precipf cruncep_${VAR}_${yr}.nc
-   elif [[ ${VAR} == "wind" ]]; then
-     cp ${dir_raw}/uwind/cruncep_uwind_${yr}.nc.gz .
-     gunzip -f cruncep_uwind_${yr}.nc.gz
-     cp ${dir_raw}/vwind/cruncep_vwind_${yr}.nc.gz .
-     gunzip -f cruncep_vwind_${yr}.nc.gz     
-
-     echo "Calculating wind speed from u,v components"
-     # Copy uwind file here
-     cp cruncep_uwind_${yr}.nc.gz cruncep_${variable}_${year}.nc
-     # Add vwind to uwind file 
-     ncks -A cruncep_vwind_${yr}.nc.gz cruncep_${variable}_${year}.nc
-
-     # Calculate wind from u and v components
-     ncap -O -s 'Wind=abs(vwind)/sin(atan(abs(vwind/uwind)))' \
-     cruncep_${variable}_${yr}.nc cruncep_${variable}_${yr}.nc
-
-     # Exclude undesired variables
-     ncks -O -x -v uwind,vwind cruncep_${variable}_${yr}.nc \
-     cruncep_${variable}_${yr}.nc
-
-     # Update annotations
-     ncatted -a units,Wind,o,c,'m s-1' \
-     -a long_name,Wind,o,c,'Wind speed at the lowest atmosphere level' \
-     -a standard_name,Wind,o,c,Wind \
-     -a description,Wind,o,c,'Wind=abs(V)/sin(atan(abs(V/U)))' \
-     cruncep_${variable}_${yr}.nc
-
+#    elif [[ ${VAR} == "wind" ]]; then
+#      cp ${dir_raw}/uwind/cruncep_uwind_${yr}.nc.gz .
+#      gunzip -f cruncep_uwind_${yr}.nc.gz
+#      cp ${dir_raw}/vwind/cruncep_vwind_${yr}.nc.gz .
+#      gunzip -f cruncep_vwind_${yr}.nc.gz     
+# 
+#      echo "Calculating wind speed from u,v components"
+#      # Copy uwind file here
+#      cp cruncep_uwind_${yr}.nc.gz cruncep_${variable}_${year}.nc
+#      # Add vwind to uwind file 
+#      ncks -A cruncep_vwind_${yr}.nc.gz cruncep_${variable}_${year}.nc
+# 
+#      # Calculate wind from u and v components
+#      ncap -O -s 'Wind=abs(vwind)/sin(atan(abs(vwind/uwind)))' \
+#      cruncep_${variable}_${yr}.nc cruncep_${variable}_${yr}.nc
+# 
+#      # Exclude undesired variables
+#      ncks -O -x -v uwind,vwind cruncep_${variable}_${yr}.nc \
+#      cruncep_${variable}_${yr}.nc
+# 
+#      # Update annotations
+#      ncatted -a units,Wind,o,c,'m s-1' \
+#      -a long_name,Wind,o,c,'Wind speed at the lowest atmosphere level' \
+#      -a standard_name,Wind,o,c,Wind \
+#      -a description,Wind,o,c,'Wind=abs(V)/sin(atan(abs(V/U)))' \
+#      cruncep_${variable}_${yr}.nc
    else
      cp ${dir_raw}/${VAR}/cruncep_${VAR}_${yr}.nc.gz .
      gunzip -f cruncep_${VAR}_${yr}.nc.gz
