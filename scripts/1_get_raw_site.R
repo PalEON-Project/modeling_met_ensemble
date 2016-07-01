@@ -37,7 +37,7 @@
 #  -- Function will check to see if each type of data has been done yet before processing
 #  -- See get_point_raw.R for internal workflow & more details
 # -----------------------------------
-
+source("get_point_raw.R")
 
 
 # Downloading Harvard
