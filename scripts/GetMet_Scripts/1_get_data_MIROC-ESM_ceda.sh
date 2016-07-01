@@ -43,72 +43,72 @@ source /usr2/postdoc/crolli/ceda_creds.sh
 
 # Set the baseline working directory
 out_base=/projectnb/dietzelab/paleon/met_ensemble/data/full_raw/MIROC-ESM/
-# 
-# # --------------------------
-# # Past 1000 Experiment: 850-1849
-# # --------------------------
-# #    Make sure we have our base directory
-# #    outdir=${out_base}p1000/
-# #    if [ ! -d ${outdir} ]
-# #    then
-# #       mkdir -p ${outdir}
-# #    fi
-# # 
-# #    -----------
-# #    Getting daily data
-# #    -----------
-# #       echo "---------- Loop 1: p1000 daily ----------"
-# #       Define file path & variables of interest
-# #       path_p1000_day=/badc/cmip5/data/cmip5/output1/MIROC/MIROC-ESM/past1000/day/atmos/day/r1i1p1/latest
-# #       var_p1000_day=(tas tasmax tasmin pr psl huss sfcWind)
-# # 
-# #       Make a directory for the daily data so we can keep things separate
-# #       if [ ! -d ${outdir}day/ ]
-# #       then
-# #          mkdir -p ${outdir}day/
-# #       fi
-# # 
-# #       Change to the daily p1000 working directory
-# #       pushd ${outdir}day/
-# # 
-# #       loop through daily variables
-# #       for var in ${var_p1000_day[@]}
-# #       do
-# #          echo $var
-# #          wget -r -nH --cut-dirs=14 ftp://${ceda_user}:${cedapw}@ftp.ceda.ac.uk/${path_p1000_day}/${var}
-# #       done
-# #       popd # leave the daily directory
-# #    -----------
-# #    
-# #    
-# #    -----------
-# #    loop through monthly
-# #    -----------
-# #       echo "---------- Loop 2: p1000 monthly ----------"
-# #       Define the file path and variable list for monthly data
-# #       path_p1000_mo=/badc/cmip5/data/cmip5/output1/MIROC/MIROC-ESM/past1000/mon/atmos/Amon/r1i1p1/latest
-# #       var_p1000_mo=(ps rlds rsds)
-# # 
-# #       Make a directory for the monthly data so we can keep things separate
-# #       if [ ! -d ${outdir}month/ ]
-# #       then
-# #          mkdir -p ${outdir}month/
-# #       fi
-# # 
-# #       Change to the monthly p1000 working directory
-# #       pushd ${outdir}month/
-# # 
-# #       loop through daily variables
-# #       for var in ${var_p1000_mo[@]}
-# #       do
-# #          echo $var
-# #          wget -r -nH --cut-dirs=14 ftp://${ceda_user}:${cedapw}@ftp.ceda.ac.uk/${path_p1000_mo}/${var}
-# #       done
-# #       popd # leave the monthly directory
-# #    -----------
-# # --------------------------
-# # 
-# # 
+
+# --------------------------
+# Past 1000 Experiment: 850-1849
+# --------------------------
+   # Make sure we have our base directory
+   outdir=${out_base}p1000/
+   if [ ! -d ${outdir} ]
+   then
+      mkdir -p ${outdir}
+   fi
+
+   # -----------
+   # Getting daily data
+   # -----------
+      echo "---------- Loop 1: p1000 daily ----------"
+      # Define file path & variables of interest
+      path_p1000_day=/badc/cmip5/data/cmip5/output1/MIROC/MIROC-ESM/past1000/day/atmos/day/r1i1p1/latest
+      var_p1000_day=(tas tasmax tasmin pr psl huss sfcWind)
+
+      # Make a directory for the daily data so we can keep things separate
+      if [ ! -d ${outdir}day/ ]
+      then
+         mkdir -p ${outdir}day/
+      fi
+
+      # Change to the daily p1000 working directory
+      pushd ${outdir}day/
+
+      # loop through daily variables
+      for var in ${var_p1000_day[@]}
+      do
+         echo $var
+         wget -r -nH --cut-dirs=14 ftp://${ceda_user}:${cedapw}@ftp.ceda.ac.uk/${path_p1000_day}/${var}
+      done
+      popd # leave the daily directory
+   # -----------
+   
+   
+   # -----------
+   # loop through monthly
+   # -----------
+      echo "---------- Loop 2: p1000 monthly ----------"
+      # Define the file path and variable list for monthly data
+      path_p1000_mo=/badc/cmip5/data/cmip5/output1/MIROC/MIROC-ESM/past1000/mon/atmos/Amon/r1i1p1/latest
+      var_p1000_mo=(ps rlds rsds)
+
+      # Make a directory for the monthly data so we can keep things separate
+      if [ ! -d ${outdir}month/ ]
+      then
+         mkdir -p ${outdir}month/
+      fi
+
+      # Change to the monthly p1000 working directory
+      pushd ${outdir}month/
+
+      # loop through daily variables
+      for var in ${var_p1000_mo[@]}
+      do
+         echo $var
+         wget -r -nH --cut-dirs=14 ftp://${ceda_user}:${cedapw}@ftp.ceda.ac.uk/${path_p1000_mo}/${var}
+      done
+      popd # leave the monthly directory
+  # -----------
+# --------------------------
+
+
 # --------------------------
 # Historical experiment: 1850-2010
 # NOTE: only have daily for the key 1850-1900 period!
@@ -119,6 +119,32 @@ out_base=/projectnb/dietzelab/paleon/met_ensemble/data/full_raw/MIROC-ESM/
    then
       mkdir -p ${outdir}
    fi
+
+   # -----------
+   # Getting monthly data (radiation pre-1950)
+   # -----------
+      echo "---------- Loop 3: historical daily ----------"
+      Define file path & variables of interest
+      path_hist_mon=/badc/cmip5/data/cmip5/output1/MIROC/MIROC-ESM/historical/mon/atmos/Amon/r1i1p1/latest
+      var_hist_mon=(rlds rsds)
+
+      Make a directory for the daily data so we can keep things separate
+      if [ ! -d ${outdir}month/ ]
+      then
+         mkdir -p ${outdir}month/
+      fi
+
+      Change to the daily historical working directory
+      pushd ${outdir}month/
+
+      loop through daily variables
+      for var in ${var_hist_mon[@]}
+      do
+         echo $var
+         wget -r -nH --cut-dirs=14 ftp://${ceda_user}:${cedapw}@ftp.ceda.ac.uk/${path_hist_mon}/${var}
+      done
+      popd # leave the daily directory
+   # -----------
 
    # -----------
    # Getting daily data
@@ -134,7 +160,7 @@ out_base=/projectnb/dietzelab/paleon/met_ensemble/data/full_raw/MIROC-ESM/
          mkdir -p ${outdir}day/
       fi
 
-      Change to the daily p1000 working directory
+      Change to the daily historical working directory
       pushd ${outdir}day/
 
       loop through daily variables

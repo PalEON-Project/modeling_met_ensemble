@@ -93,7 +93,7 @@ sites <- data.frame(name = c("HARVARD"),
   cru.df$wind <- sqrt(cru.df$uas^2 + cru.df$vas^2)
   summary(cru.df)
   
-  write.csv(cru.df, file.path("data/paleon_sites", sites$name, "cruncep_1901-2010.csv"), row.names=F)
+  write.csv(cru.df, file.path("data/paleon_sites", toupper(sites$name), "cruncep_1901-2010.csv"), row.names=F)
   
 }
 # -----------------------------------
