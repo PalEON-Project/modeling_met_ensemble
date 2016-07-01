@@ -31,7 +31,7 @@ download.GLDAS <- function(outfolder, start_date, end_date, site_id, lat.in, lon
   
   lat.in = as.numeric(lat.in)
   lon.in = as.numeric(lon.in)
-  dap_base="http://hydro1.sci.gsfc.nasa.gov/thredds/dodsC/GLDAS_NOAH025SUBP_3H"
+  dap_base="http://hydro1.sci.gsfc.nasa.gov/thredds/dodsC/GLDAS_NOAH10SUBP_3H" # Right now changed to 1-degree because it gets us back further
   dir.create(outfolder, showWarnings=FALSE, recursive=TRUE)
   
   ylist <- seq(start_year,end_year,by=1)

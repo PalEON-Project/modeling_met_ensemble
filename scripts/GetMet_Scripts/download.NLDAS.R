@@ -67,7 +67,7 @@ download.NLDAS <- function(outfolder, start_date, end_date, site_id, lat.in, lon
       day1 <- yday(start_date)
       days.use = day1:nday
       nday=length(days.use) # Update nday
-    } else if(i==1) {
+    } else if(i==rows) {
       # If this is the last of many years, we only need to worry about the start date
       nday  = ifelse(year%%4 == 0,366,365) # leap year or not; days per year
       day2 <- yday(end_date)
@@ -81,7 +81,7 @@ download.NLDAS <- function(outfolder, start_date, end_date, site_id, lat.in, lon
     ## Create dimensions
     lat <- ncdim_def(name='latitude', units='degree_north', vals=lat.in, create_dimvar=TRUE)
     lon <- ncdim_def(name='longitude', units='degree_east', vals=lon.in, create_dimvar=TRUE)
-    time <- ncdim_def(name='time', units="sec", vals=seq((min(days.use)*24*360), (max(days.use)+1-1/24)*24*360, length.out=ntime), create_dimvar=TRUE, unlim=TRUE)
+    time <- ncdim_def(name='time', units="sec", vals=seq((min(days.use)+1-1/24)*24*360, (max(days.use)+1-1/24)*24*360, length.out=ntime), create_dimvar=TRUE, unlim=TRUE)
     dim=list(lat,lon,time)
     
     var.list = list()
