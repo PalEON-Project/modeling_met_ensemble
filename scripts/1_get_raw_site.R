@@ -2,7 +2,7 @@
 # Script Information
 # -----------------------------------
 # Purpose: Extract raw met for an individual site
-# Creator: Christy Rollinson, 13 May 2016
+# Creator: Christy Rollinson, 1 July 2016
 # Contact: crollinson@gmail.com
 # -----------------------------------
 
@@ -47,3 +47,11 @@ get.raw(wd.base="/projectnb/dietzelab/paleon/met_ensemble/",
         ldas.type="NLDAS", 
         GCM="MIROC-ESM")
 
+
+# # Downloading UNDERC
+# get.raw(wd.base="~/Desktop/Research/PalEON_CR/met_ensemble", 
+#         site.name="UNDERC", 
+#         lat=46.22, lon=-89.53, 
+#         ldas.type="NLDAS", 
+#         GCM="MIROC-ESM")
+# 

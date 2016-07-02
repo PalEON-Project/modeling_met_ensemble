@@ -2,7 +2,7 @@
 # Script Information
 # -----------------------------------
 # Purpose: Extract raw met for an individual site
-# Creator: Christy Rollinson, 13 May 2016
+# Creator: Christy Rollinson, 1 July 2016
 # Contact: crollinson@gmail.com
 # -----------------------------------
 
@@ -130,7 +130,7 @@ if(!ldas.type %in% substr(met.done, 1, 5)) {
     time.step = 24/((nsteps)/nday)
     hours = seq(time.step, 24, by=time.step)-1 # Note: Hour marker at the END of the hour!!
   
-    time.df <- data.frame(year=year, doy=rep(1:nday, each=24/time.step), hour=rep(hours, nday))
+    time.df <- data.frame(year=year, doy=rep(0:(nday-1), each=24/time.step), hour=rep(hours, nday))
     if(is.null(ldas$time)){
       ldas[["time"]] <- time.df
     } else {
@@ -213,7 +213,7 @@ if(!"CRUNCEP" %in% substr(met.done, 1, 7)) {
     time.step = round(24/((nsteps)/nday),0)
     hours = seq(time.step, 24, by=time.step)-1 # Note: Hour marker at the END of the hour!!
     
-    time.df <- data.frame(year=year, doy=rep(1:nday, each=24/time.step), hour=rep(hours, nday))
+    time.df <- data.frame(year=year, doy=rep(0:(nday-1), each=24/time.step), hour=rep(hours, nday))
     if(is.null(cruncep$time)){
       cruncep[["time"]] <- time.df
     } else {
