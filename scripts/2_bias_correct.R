@@ -195,544 +195,79 @@ dev.off()
 # -----------------------------------
 # 2. Define training window for all datasets
 # -----------------------------------
-vars.met <- c("tair", "tmax", "tmin", "precipf", "press", "qair", "wind", "swdown", "lwdown")
+source("scripts/bias_correct_day.R")
 
-# Define the calibration window for each dataset
-#  right now this is hard-coded, but should probably be soft-coded eventually
-yrs.cal = data.frame(dataset=c("NLDAS", "CRUNCEP", "MIROC-ESM.hist", "MIROC-ESM.p1000"),
-                     yr.min =c(   1980,      1980,             1901,              1829),
-                     yr.max =c(   2010,      2010,             1921,              1849)
+# The met vars we need (in the order we want to do them)
+vars.met <- c("tmax", "tmin", "precipf", "swdown", "qair", "lwdown", "press", "wind")
+dat.cal = "NLDAS"
+
+# Note This dataframe is only for the datasets to be bias-corrected!
+yrs.cal = data.frame(dataset = c("CRUNCEP", "MIROC-ESM.hist", "MIROC-ESM.p1000"),
+                     cal.min = c(1980,             1901,              1829),
+                     cal.max = c(2010,             1921,              1849)
                      )
+
 # -----------------------------------
 
 # -----------------------------------
 # 3. Doing the DOY bias-corrections : 
 # -----------------------------------
-#     - Met.train ~ s(doy) + Met.Raw
-#     - I *think* this can be used to get monthly to daily data as well
-#     ** Don't forget to use the residuals to add in the "error" in the model
-#        -- assuming all goes well this will just be rnorm(mean=mean(resid), sd=sd(resid))
-# Sourcing my gam processing scripts
-source(file.path(path.gam, "Calculate_GAMM_Posteriors.R"))
-library(MASS)
-set.seed(321)
-# Number of simulations  
-n=10
+# bias.correct <- function(met.day, met.var, dat.train, yrs.cal, n){
+# yrs.cal = yrs.cal[1,]
 
-# Creating a new data frame for the bias-corrected met means
-met.bias <- met.day
-summary(met.bias)
+# Make precipf in total kg/m2/day rather than per s
+met.day$precipf <- met.day$precipf*60*60*24
+summary(met.day)
 
-# Setting the variable we're working with for right now
-var.now   = "tmax"
+source("scripts/bias_correct_day.R")
 
-# -------------
-# Creating the output list with LDAS as our base before we forget
-# -------------
-dat.train = "NLDAS"
-yr.min    = yrs.cal[yrs.cal$dataset==dat.train, "yr.min"]
-yr.max    = yrs.cal[yrs.cal$dataset==dat.train, "yr.max"]
-
-# Calculating the anomalies from the current means
-dat.temp <- met.bias[met.bias$dataset==dat.train & met.bias$year>=yr.min & met.bias$year<=yr.max, ]
-dat.temp$Y <- dat.temp[,var.now]
-lm.train <- lm(Y ~ as.factor(doy)-1, data=dat.temp)
-train.anom <- met.bias[met.bias$dataset=="NLDAS", var.now] - predict(lm.train, newdata=met.bias[met.bias$dataset=="NLDAS", c("year", "doy")])
-summary(train.anom)
-
-train.ci <- data.frame(dataset="NLDAS", met=var.now, met.bias[met.bias$dataset=="NLDAS", c("year", "doy")], 
-                       X=met.bias[met.bias$dataset=="NLDAS", var.now], 
-                       anomaly=train.anom,
-                       mean=met.bias[met.bias$dataset=="NLDAS", var.now], 
-                       lwr=met.bias[met.bias$dataset=="NLDAS", var.now], 
-                       upr=met.bias[met.bias$dataset=="NLDAS", var.now],
-                       time=as.Date(met.bias[met.bias$dataset=="NLDAS", "doy"], origin=as.Date(paste0(met.bias[met.bias$dataset=="NLDAS", "year"], "-01-01")))
-                       )
-train.sims <- data.frame(dataset="NLDAS", met=var.now, met.bias[met.bias$dataset=="NLDAS", c("year", "doy")], 
-                         time=as.Date(met.bias[met.bias$dataset=="NLDAS", "doy"], origin=as.Date(paste0(met.bias[met.bias$dataset=="NLDAS", "year"], "-01-01")))
-                         )
-train.sims[,paste0("X", 1:n)] <- met.bias[met.bias$dataset=="NLDAS", var.now]
-
-dat.out <- list()
-dat.out$ci <- train.ci
-dat.out$sims <- train.sims
-# -------------
-
-# --------------------
-# Working with CRUNCEP & tair first
-# --------------------
-# Define the training dataset
-dat.train = "NLDAS"
-dat.bias  = "CRUNCEP"
-yr.min    = yrs.cal[yrs.cal$dataset==dat.bias, "yr.min"]
-yr.max    = yrs.cal[yrs.cal$dataset==dat.bias, "yr.max"]
-
-# establish a generlized data frames that can be used with any variables
-# The calibration data
-dat.temp <- data.frame(year = met.bias[met.bias$dataset==dat.bias  & met.bias$year>=yr.min & met.bias$year<=yr.max, "year" ],
-                       doy  = met.bias[met.bias$dataset==dat.bias  & met.bias$year>=yr.min & met.bias$year<=yr.max, "doy"  ],
-                       Y    = met.bias[met.bias$dataset==dat.train & met.bias$year>=yr.min & met.bias$year<=yr.max, var.now],
-                       X    = met.bias[met.bias$dataset==dat.bias  & met.bias$year>=yr.min & met.bias$year<=yr.max, var.now]
-                       )
-# The prediction Data
-dat.pred <- data.frame(year = met.bias[met.bias$dataset==dat.bias, "year" ],
-                       doy  = met.bias[met.bias$dataset==dat.bias, "doy"  ],
-                       X    = met.bias[met.bias$dataset==dat.bias, var.now]
-                       )
-
-# Calculating the anomalies from the current means
-lm.anom <- lm(X ~ as.factor(doy)-1, data=dat.temp)
-dat.pred$anomaly <- dat.pred$X - predict(lm.anom, newdata=dat.pred)
-summary(dat.pred)
-
-# Plotting the correlation between dat.train & dat.bias
-plot(Y ~ X, data=dat.temp) 
-abline(a=0, b=1, col="red")
-abline(lm(Y ~ X, data=dat.temp), col="red", lty="dashed")
-
-ggplot(data=dat.temp) +
-  geom_point(aes(x=X, y=Y, color=doy), size=0.5)
-
-# Running a model
-mod.bias <- gam(Y ~ s(doy) + X, data=dat.temp)
-summary(mod.bias)
-plot(mod.bias)
-
-# Saving the mean predicted & residuals
-dat.temp$pred  <- predict(mod.bias)
-dat.temp$resid <- resid(mod.bias)
-summary(dat.temp)
-
-# Checkign the residuals to see if we can assume normality
-plot(resid ~ pred, data=dat.temp); abline(h=0, col="red")
-plot(resid ~ doy, data=dat.temp); abline(h=0, col="red")
-hist(dat.temp$resid)
-
-# Modeling the anomalies with a similar framework
-# Calculating the anomalies from the current means
-lm.anom <- lm(X ~ as.factor(doy)-1, data=dat.temp)
-dat.pred$anomaly <- dat.pred$X - predict(lm.anom, newdata=dat.pred)
-summary(dat.pred)
-
-dat.pred$pred <- predict(mod.bias, newdata=dat.pred)
-summary(dat.pred)
-
-mod.anom <- gam(anomaly ~ s(doy) + pred, data=dat.pred)
-summary(mod.anom)
-plot(mod.anom)
-
-dat.pred$resid2 <- resid(mod.anom)
-plot(resid2 ~ pred, data=dat.pred); abline(h=0, col="red")
-plot(resid2 ~ doy, data=dat.pred); abline(h=0, col="red")
-hist(dat.pred$resid)
-
-# --------
-# Predicting a bunch of potential posteriors over the full dataset
-# --------
-# Get the model coefficients
-coef.gam <- coef(mod.bias)
-coef.anom <- coef(mod.anom)
-
-# Generate a random distribution of betas using the covariance matrix
-Rbeta <- mvrnorm(n=n, coef(mod.bias), vcov(mod.bias))
-Rbeta.anom <- mvrnorm(n=n, coef(mod.anom), vcov(mod.anom))
-
-# Create the prediction matrix
-Xp <- predict(mod.bias, newdata=dat.pred, type="lpmatrix")
-Xp.anom <- predict(mod.anom, newdata=dat.pred, type="lpmatrix")
-
-# -----
-# Simulate predicted met variables
-# -----
-# Adding in some residual error 
-# ** QUESTION -- do I add a constant error per time series or random error to each day?
-# -----
-sim1 <- Xp %*% t(Rbeta) + Xp.anom %*% t(Rbeta.anom)
-
-# # Option 1: Adding a constant error per time series
-# res <- rnorm(n, mean(dat.temp$resid), sd(dat.temp$resid))
-# sim1 <- sweep(sim1, 2, res, FUN="+")
-
-# # Option 2: Adding a random error to each observation
-# sim1 <- sim1 + array(rnorm(length(sim1), mean(dat.temp$resid), sd(dat.temp$resid)), dim=dim(sim1))
-
-# # Option 3: Adding a day-specific error (although this should be part of the smoother)
-# -----
-
-# NOTE: Don't need to add in anomalies because training & fitting data are both observed annual deviations!
-dat.pred$mean <- apply(sim1, 1, mean)
-dat.pred$lwr  <- apply(sim1, 1, quantile, 0.025)
-dat.pred$upr  <- apply(sim1, 1, quantile, 0.975)
-
-# Doing som exploratory graphing
-dat.pred$time <- as.Date(dat.pred$doy, origin=as.Date(paste0(dat.pred$year, "-01-01")))
-
-# Plotting the observed and the bias-corrected 95% CI
-ggplot(data=dat.pred[dat.pred$year>=2005 & dat.pred$year<=2006,]) +
-  geom_ribbon(aes(x=time, ymin=lwr, ymax=upr), fill="red", alpha=0.5) +
-  geom_line(aes(x=time, y=mean), color="red", size=0.5) +
-  geom_line(aes(x=time, y=X), color='black', size=0.5) +
-  theme_bw()
-
-dat.yr <- aggregate(dat.pred[,c("X", "mean", "lwr", "upr")],
-                    by=list(dat.pred$year),
-                    FUN=mean)
-names(dat.yr)[1] <- "year"
-
-ggplot(data=dat.yr[,]) +
-  geom_ribbon(aes(x=year, ymin=lwr, ymax=upr), fill="red", alpha=0.5) +
-  geom_line(aes(x=year, y=mean), color="red", size=0.5) +
-  geom_line(aes(x=year, y=X), color='black', size=0.5) +
-  theme_bw()
-# --------
-
-# --------
-# Storing the output
-# --------
-dat.sims <- data.frame(dataset=dat.bias, met=var.now, dat.pred[,c("year", "doy", "time")])
-dat.sims <- cbind(dat.sims, sim1)
-
-dat.out$ci   <- rbind(dat.out$ci, data.frame(dataset=dat.bias, met=var.now, dat.pred[,names(dat.out$ci)[3:ncol(dat.out$ci)]]))
-dat.out$sims <- rbind(dat.out$sims, data.frame(dat.sims))
-# --------
+dat.out.full <- bias.correct(met.day=met.day, met.var="precipf", dat.train="NLDAS", yrs.cal=yrs.cal, n=10)
+dat.out <- dat.out.full[[met.var]]
 # --------------------
 
 
 # --------------------
-# Working with GCM historical
-# Trick: Propagating uncertainty from first correction!
-# --------------------
-# Define the training dataset
-dat.train = "CRUNCEP"
-dat.bias  = "MIROC-ESM.hist"
-var.now   = "tmax"
-yr.min    = yrs.cal[yrs.cal$dataset==dat.bias, "yr.min"]
-yr.max    = yrs.cal[yrs.cal$dataset==dat.bias, "yr.max"]
-
-# establish a dummy data frame
-dat.temp0 <- data.frame(year = dat.out$sims[dat.out$sims$dataset==dat.train  & dat.out$sims$year>=yr.min & dat.out$sims$year<=yr.max, "year" ],
-                        doy  = dat.out$sims[dat.out$sims$dataset==dat.train  & dat.out$sims$year>=yr.min & dat.out$sims$year<=yr.max, "doy"  ],
-                        stack(dat.out$sims[dat.out$sims$dataset==dat.train & dat.out$sims$year>=yr.min & dat.out$sims$year<=yr.max, paste0("X", 1:n)])
-                        )
-
-dat.temp <- aggregate(dat.temp0$values, by=dat.temp0[,c("doy", "ind")], FUN=mean)
-names(dat.temp)[3] <- "Y"
-summary(dat.temp)
-
-dat.temp2 <- aggregate(met.bias[met.bias$dataset==dat.bias  & met.bias$year>=yr.min & met.bias$year<=yr.max, var.now],
-                       by=list(met.bias[met.bias$dataset==dat.bias  & met.bias$year>=yr.min & met.bias$year<=yr.max, "doy"]),
-                       FUN=mean)
-names(dat.temp2) <- c("doy", "X")
-summary(dat.temp2)
-
-# merging together the two sets of daily means 
-# Note: working off of the climatological means rather than trying to pair years gets us borader CIs
-dat.temp <- merge(dat.temp[,], dat.temp2)
-summary(dat.temp)
-
-
-# The prediction Data
-dat.pred <- data.frame(year = met.bias[met.bias$dataset==dat.bias, "year" ],
-                       doy  = met.bias[met.bias$dataset==dat.bias, "doy"  ],
-                       X    = met.bias[met.bias$dataset==dat.bias, var.now]
-                       )
-
-
-# Plotting the correlation between dat.train & dat.bias
-plot(Y ~ X, data=dat.temp) 
-abline(a=0, b=1, col="red")
-abline(lm(Y ~ X, data=dat.temp), col="red", lty="dashed")
-
-# Running a model
-mod.bias <- gam(Y ~ s(doy) + X, data=dat.temp)
-summary(mod.bias)
-plot(mod.bias)
-
-# Saving the mean predicted & residuals
-dat.temp$pred  <- predict(mod.bias)
-dat.temp$resid <- resid(mod.bias)
-summary(dat.temp)
-
-# Checkign the residuals to see if we can assume normality
-plot(resid ~ pred, data=dat.temp); abline(h=0, col="red")
-plot(resid ~ doy, data=dat.temp); abline(h=0, col="red")
-hist(dat.temp$resid)
-
-# Modeling the anomalies with a similar framework
-# Calculating the anomalies from the current means
-lm.anom <- lm(X ~ as.factor(doy)-1, data=dat.temp)
-dat.pred$anomaly <- dat.pred$X - predict(lm.anom, newdata=dat.pred)
-summary(dat.pred)
-
-dat.pred$pred <- predict(mod.bias, newdata=dat.pred)
-summary(dat.pred)
-
-mod.anom <- gam(anomaly ~ s(doy) + pred, data=dat.pred)
-summary(mod.anom)
-plot(mod.anom)
-
-dat.pred$resid2 <- resid(mod.anom)
-plot(resid2 ~ pred, data=dat.pred); abline(h=0, col="red")
-plot(resid2 ~ doy, data=dat.pred); abline(h=0, col="red")
-hist(dat.pred$resid)
-# --------
-# Predicting a bunch of potential posteriors over the full dataset
-# --------
-# Get the model coefficients
-coef.gam <- coef(mod.bias)
-coef.anom <- coef(mod.anom)
-
-# Generate a random distribution of betas using the covariance matrix
-Rbeta <- mvrnorm(n=n, coef(mod.bias), vcov(mod.bias))
-Rbeta.anom <- mvrnorm(n=n, coef(mod.anom), vcov(mod.anom))
-
-# Create the prediction matrix
-Xp <- predict(mod.bias, newdata=dat.pred, type="lpmatrix")
-Xp.anom <- predict(mod.anom, newdata=dat.pred, type="lpmatrix")
-
-# -----
-# Simulate predicted met variables
-# -----
-# Adding in some residual error 
-# ** QUESTION -- do I add a constant error per time series or random error to each day?
-# -----
-sim1 <- Xp %*% t(Rbeta) + Xp.anom %*% t(Rbeta.anom)
-
-# # Option 1: Adding a constant error per time series
-# res <- rnorm(n, mean(dat.temp$resid), sd(dat.temp$resid))
-# sim1 <- sweep(sim1, 2, res, FUN="+")
-
-# # Option 2: Adding a random error to each observation
-# sim1 <- sim1 + array(rnorm(length(sim1), mean(dat.temp$resid), sd(dat.temp$resid)), dim=dim(sim1))
-
-# # Option 3: Adding a day-specific error (although this should be part of the smoother)
-# -----
-
-dat.pred$mean <- apply(sim1, 1, mean)
-dat.pred$lwr  <- apply(sim1, 1, quantile, 0.025)
-dat.pred$upr  <- apply(sim1, 1, quantile, 0.975)
-
-# Doing some exploratory graphing
-dat.pred$time <- as.Date(dat.pred$doy, origin=as.Date(paste0(dat.pred$year, "-01-01")))
-
-# Plotting the observed and the bias-corrected 95% CI
-ggplot(data=dat.pred[dat.pred$year>=1854 & dat.pred$year<=1856,]) +
-  geom_ribbon(aes(x=time, ymin=lwr, ymax=upr), fill="red", alpha=0.5) +
-  geom_line(aes(x=time, y=mean), color="red", size=0.5) +
-  geom_line(aes(x=time, y=X), color='black', size=0.5) +
-  theme_bw()
-
-dat.yr <- aggregate(dat.pred[,c("X", "mean", "lwr", "upr")],
-                    by=list(dat.pred$year),
-                    FUN=mean)
-names(dat.yr)[1] <- "year"
-
-ggplot(data=dat.yr[,]) +
-  geom_ribbon(aes(x=year, ymin=lwr, ymax=upr), fill="red", alpha=0.5) +
-  geom_line(aes(x=year, y=mean), color="red", size=0.5) +
-  geom_line(aes(x=year, y=X), color='black', size=0.5) +
-  theme_bw()
-# --------
-
-# --------
-# Storing the output
-# --------
-dat.sims <- data.frame(dataset=dat.bias, met=var.now, dat.pred[,c("year", "doy", "time")])
-dat.sims <- cbind(dat.sims, sim1)
-
-dat.out$ci   <- rbind(dat.out$ci, data.frame(dataset=dat.bias, met=var.now, dat.pred[,names(dat.out$ci)[3:ncol(dat.out$ci)]]))
-dat.out$sims <- rbind(dat.out$sims, data.frame(dat.sims))
-# --------
-# --------------------
-
-
-# --------------------
-# Working with GCM p1000
-# Trick: Propagating uncertainty from first correction!
-# NOTE: Need to match climatic means for to different periods
-# --------------------
-# Define the training dataset
-dat.train = "MIROC-ESM.hist"
-dat.bias  = "MIROC-ESM.p1000"
-var.now   = "tmax"
-yr.min    = yrs.cal[yrs.cal$dataset==dat.bias, "yr.min"]
-yr.max    = yrs.cal[yrs.cal$dataset==dat.bias, "yr.max"]
-
-# Need to specify a separate range for the training data -- use the same number of years!
-yr.min.train = min(dat.out$sims[dat.out$sims$dataset==dat.train, "year"])
-yr.max.train = yr.min.train + (yr.max - yr.min)
-
-# establish a dummy data frame
-dat.temp0 <- data.frame(year = dat.out$sims[dat.out$sims$dataset==dat.train  & dat.out$sims$year>=yr.min.train & dat.out$sims$year<=yr.max.train, "year" ],
-                        doy  = dat.out$sims[dat.out$sims$dataset==dat.train  & dat.out$sims$year>=yr.min.train & dat.out$sims$year<=yr.max.train, "doy"  ],
-                        stack(dat.out$sims[dat.out$sims$dataset==dat.train & dat.out$sims$year>=yr.min.train & dat.out$sims$year<=yr.max.train, paste0("X", 1:n)])
-                        )
-
-dat.temp <- aggregate(dat.temp0$values, by=dat.temp0[,c("doy", "ind")], FUN=mean)
-names(dat.temp)[3] <- "Y"
-summary(dat.temp)
-
-dat.temp2 <- aggregate(met.bias[met.bias$dataset==dat.bias  & met.bias$year>=yr.min & met.bias$year<=yr.max, var.now],
-                       by=list(met.bias[met.bias$dataset==dat.bias  & met.bias$year>=yr.min & met.bias$year<=yr.max, "doy"]),
-                       FUN=mean)
-names(dat.temp2) <- c("doy", "X")
-summary(dat.temp2)
-
-# merging together the two sets of daily means 
-# Note: working off of the climatological means rather than trying to pair years gets us borader CIs
-dat.temp <- merge(dat.temp[,], dat.temp2)
-summary(dat.temp)
-
-# The prediction Data
-dat.pred <- data.frame(year = met.bias[met.bias$dataset==dat.bias, "year" ],
-                       doy  = met.bias[met.bias$dataset==dat.bias, "doy"  ],
-                       X    = met.bias[met.bias$dataset==dat.bias, var.now]
-                       )
-
-
-# Plotting the correlation between dat.train & dat.bias
-plot(Y ~ X, data=dat.temp) 
-abline(a=0, b=1, col="red")
-abline(lm(Y ~ X, data=dat.temp), col="red", lty="dashed")
-
-# Running a model
-mod.bias <- gam(Y ~ s(doy) + X, data=dat.temp)
-summary(mod.bias)
-plot(mod.bias)
-
-# Saving the mean predicted & residuals
-dat.temp$pred  <- predict(mod.bias)
-dat.temp$resid <- resid(mod.bias)
-summary(dat.temp)
-
-# Checkign the residuals to see if we can assume normality
-plot(resid ~ pred, data=dat.temp); abline(h=0, col="red")
-plot(resid ~ doy, data=dat.temp); abline(h=0, col="red")
-hist(dat.temp$resid)
-
-# Modeling the anomalies with a similar framework
-# Calculating the anomalies from the current means
-lm.anom <- lm(X ~ as.factor(doy)-1, data=dat.temp)
-dat.pred$anomaly <- dat.pred$X - predict(lm.anom, newdata=dat.pred)
-summary(dat.pred)
-
-dat.pred$pred <- predict(mod.bias, newdata=dat.pred)
-summary(dat.pred)
-
-mod.anom <- gam(anomaly ~ s(doy) + pred, data=dat.pred)
-summary(mod.anom)
-plot(mod.anom)
-
-dat.pred$resid2 <- resid(mod.anom)
-plot(resid2 ~ pred, data=dat.pred); abline(h=0, col="red")
-plot(resid2 ~ doy, data=dat.pred); abline(h=0, col="red")
-hist(dat.pred$resid)
-# --------
-# Predicting a bunch of potential posteriors over the full dataset
-# --------
-# Get the model coefficients
-coef.gam <- coef(mod.bias)
-coef.anom <- coef(mod.anom)
-
-# Generate a random distribution of betas using the covariance matrix
-Rbeta <- mvrnorm(n=n, coef(mod.bias), vcov(mod.bias))
-Rbeta.anom <- mvrnorm(n=n, coef(mod.anom), vcov(mod.anom))
-
-# Create the prediction matrix
-Xp <- predict(mod.bias, newdata=dat.pred, type="lpmatrix")
-Xp.anom <- predict(mod.anom, newdata=dat.pred, type="lpmatrix")
-
-# -----
-# Simulate predicted met variables
-# -----
-# Adding in some residual error 
-# ** QUESTION -- do I add a constant error per time series or random error to each day?
-# -----
-sim1 <- Xp %*% t(Rbeta) + Xp.anom %*% t(Rbeta.anom)
-
-# # Option 1: Adding a constant error per time series
-# res <- rnorm(n, mean(dat.temp$resid), sd(dat.temp$resid))
-# sim1 <- sweep(sim1, 2, res, FUN="+")
-
-# # Option 2: Adding a random error to each observation
-# sim1 <- sim1 + array(rnorm(length(sim1), mean(dat.temp$resid), sd(dat.temp$resid)), dim=dim(sim1))
-
-# # Option 3: Adding a day-specific error (although this should be part of the smoother)
-# -----
-
-dat.pred$mean <- apply(sim1, 1, mean)
-dat.pred$lwr  <- apply(sim1, 1, quantile, 0.025)
-dat.pred$upr  <- apply(sim1, 1, quantile, 0.975)
-
-# Doing some exploratory graphing
-dat.pred$time <- as.Date(dat.pred$doy, origin=as.Date(paste0(dat.pred$year, "-01-01")))
-
-# Plotting the observed and the bias-corrected 95% CI
-ggplot(data=dat.pred[dat.pred$year>=1844 & dat.pred$year<=1846,]) +
-  geom_ribbon(aes(x=time, ymin=lwr, ymax=upr), fill="red", alpha=0.5) +
-  geom_line(aes(x=time, y=mean), color="red", size=0.5) +
-  geom_line(aes(x=time, y=X), color='black', size=0.5) +
-  theme_bw()
-
-dat.yr <- aggregate(dat.pred[,c("X", "mean", "lwr", "upr")],
-                    by=list(dat.pred$year),
-                    FUN=mean)
-names(dat.yr)[1] <- "year"
-
-ggplot(data=dat.yr[,]) +
-  geom_ribbon(aes(x=year, ymin=lwr, ymax=upr), fill="red", alpha=0.5) +
-  geom_line(aes(x=year, y=mean), color="red", size=0.5) +
-  geom_line(aes(x=year, y=X), color='black', size=0.5) +
-  theme_bw()
-# --------
-
-# --------
-# Storing the output
-# --------
-dat.sims <- data.frame(dataset=dat.bias, met=var.now, dat.pred[,c("year", "doy", "time")])
-dat.sims <- cbind(dat.sims, sim1)
-
-dat.out$ci   <- rbind(dat.out$ci, data.frame(dataset=dat.bias, met=var.now, dat.pred[,names(dat.out$ci)[3:ncol(dat.out$ci)]]))
-dat.out$sims <- rbind(dat.out$sims, data.frame(dat.sims))
-# --------
-# --------------------
-
 # Looking at the new bias-corrected time series! 
-dat.yr.bias <- aggregate(dat.out$ci[,c("X", "anomaly", "mean", "lwr", "upr")],
+# --------------------
+dat.yr.bias <- aggregate(dat.out$ci[,c("X", "anom.raw", "mean", "lwr", "upr")],
                          by=dat.out$ci[,c("dataset", "met", "year")],
                          FUN=mean)
 dat.yr.bias$dataset <- factor(dat.yr.bias$dataset, levels=c("MIROC-ESM.p1000", "MIROC-ESM.hist", "CRUNCEP", "NLDAS"))
 # dat.yr.bias$met     <- factor(dat.yr.bias$met,  levels=c("tair", "tmax", "tmin", "precipf", "swdown", "lwdown", "press", "qair", "wind"))
 summary(dat.yr.bias)
-summary(met.year[met.year$met==var.now,]) #raw annual data
-# ry.noresid <- dat.yr.bias
-
-ggplot(data=dat.yr.bias) +
-  facet_grid(met~., scales="free_y") +
-  #   geom_ribbon(aes(x=time, ymin=lwr, ymax=upr, fill=dataset)) +
-  geom_line(aes(x=year, y=mean, color=dataset)) +
-  scale_x_continuous(expand=c(0,0), name="Year") +
-  scale_y_continuous(name="Annual Mean Value") +
-  theme_bw() +
-  theme(legend.position="top",
-        legend.direction="horizontal")
+summary(met.year[met.year$met==met.var,]) #raw annual data
 
 LDAS.use.yr <- dat.yr.bias[dat.yr.bias$dataset=="NLDAS",]
-CRU.use.yr <- dat.yr.bias[dat.yr.bias$dataset=="CRUNCEP" & dat.yr.bias$year<min(LDAS.use$year),]
-GCM.hist.use.yr <- dat.yr.bias[dat.yr.bias$dataset=="MIROC-ESM.hist" & dat.yr.bias$year<min(CRU.use$year),]
-GCM.p1k.use.yr <- dat.yr.bias[dat.yr.bias$dataset=="MIROC-ESM.p1000" & dat.yr.bias$year<min(GCM.hist.use$year),]
+CRU.use.yr <- dat.yr.bias[dat.yr.bias$dataset=="CRUNCEP" & dat.yr.bias$year<min(LDAS.use.yr$year),]
+GCM.hist.use.yr <- dat.yr.bias[dat.yr.bias$dataset=="MIROC-ESM.hist" & dat.yr.bias$year<min(CRU.use.yr$year),]
+GCM.p1k.use.yr <- dat.yr.bias[dat.yr.bias$dataset=="MIROC-ESM.p1000" & dat.yr.bias$year<min(GCM.hist.use.yr$year),]
 met.final.yr <- rbind(LDAS.use.yr, CRU.use.yr, GCM.hist.use.yr, GCM.p1k.use.yr)
 
-ggplot(data=met.final.yr) +
+# Original 
+summary(met.year)
+png(file.path(path.out, paste0("Met_", met.var, "_original_year.png")), height=8.5, width=11, "in", res=180)
+ggplot(data=met.final.yr[met.final.yr$met==met.var,]) +
   facet_grid(met~., scales="free_y") +
-  #   geom_ribbon(aes(x=time, ymin=lwr, ymax=upr, fill=dataset)) +
+  geom_line(aes(x=year, y=X, color=dataset)) +
+  scale_x_continuous(expand=c(0,0), name="Year") +
+  scale_y_continuous(name="Annual Mean Value") +
+  theme_bw() +
+  theme(legend.position="top",
+        legend.direction="horizontal")
+dev.off()
+
+# Final bias-corrected time series
+png(file.path(path.out, paste0("Met_", met.var, "_bias-corrected_year.png")), height=8.5, width=11, "in", res=180)
+ggplot(data=met.final.yr[met.final.yr$met==met.var,]) +
+  facet_grid(met~., scales="free_y") +
+  geom_ribbon(aes(x=year, ymin=lwr, ymax=upr, fill=dataset), alpha=0.3) +
   geom_line(aes(x=year, y=mean, color=dataset)) +
   scale_x_continuous(expand=c(0,0), name="Year") +
   scale_y_continuous(name="Annual Mean Value") +
   theme_bw() +
   theme(legend.position="top",
         legend.direction="horizontal")
-
+dev.off()
 
 LDAS.use <- dat.out$ci[dat.out$ci$dataset=="NLDAS",]
 CRU.use <- dat.out$ci[dat.out$ci$dataset=="CRUNCEP" & dat.out$ci$year<min(LDAS.use$year),]
@@ -740,56 +275,24 @@ GCM.hist.use <- dat.out$ci[dat.out$ci$dataset=="MIROC-ESM.hist" & dat.out$ci$yea
 GCM.p1k.use <- dat.out$ci[dat.out$ci$dataset=="MIROC-ESM.p1000" & dat.out$ci$year<min(GCM.hist.use$year),]
 
 met.final.day <- rbind(LDAS.use, CRU.use, GCM.hist.use, GCM.p1k.use)
-times.spice <- data.frame(Splice=c("GCM.p1000-GCM.hist", "GCM.hist-CRUNCEP", "CRUNCEP-LDAS"),
-                          yr.start=c(1847, 1898, 1977),
-                          yr.end  =c(1852, 1903, 1982))
-
 met.final.day$splice <- NA
 met.final.day[met.final.day$year>=1847 & met.final.day$year<=1852,"splice"] <- "GCM.p1000-GCM.hist"
-met.final.day[met.final.day$year>=1899 & met.final.day$year<=1904,"splice"] <- "GCM.hist-CRUNCEP"
+met.final.day[met.final.day$year>=1898 & met.final.day$year<=1903,"splice"] <- "GCM.hist-CRUNCEP"
 met.final.day[met.final.day$year>=1977 & met.final.day$year<=1982,"splice"] <- "CRUNCEP-LDAS"
 met.final.day$splice <- as.factor(met.final.day$splice)
 met.final.day$year.frac <- met.final.day$year + met.final.day$doy/366
 summary(met.final.day)
 
+png(file.path(path.out, paste0("Met_", met.var, "_bias-corrected_splices.png")), height=8.5, width=11, "in", res=180)
 ggplot(data=met.final.day[!is.na(met.final.day$splice),]) +
   facet_wrap(~splice, scales="free_x", ncol=1) +
-  #   geom_ribbon(aes(x=time, ymin=lwr, ymax=upr, fill=dataset)) +
+  geom_ribbon(aes(x=year.frac, ymin=lwr, ymax=upr, fill=dataset), alpha=0.3) +
   geom_line(aes(x=year.frac, y=mean, color=dataset)) +
   scale_x_continuous(expand=c(0,0), name="Year") +
-  scale_y_continuous(name="Annual Mean Value") +
+  scale_y_continuous(expand=c(0,0), name="Annual Mean Value") +
   theme_bw() +
   theme(legend.position="top",
         legend.direction="horizontal")
+dev.off()
 
-
-# Original 
-summary(met.year)
-ggplot(data=met.year[met.year$met==var.now,]) +
-  facet_grid(met~., scales="free_y") +
-  geom_line(aes(x=year, y=value, color=dataset)) +
-  scale_x_continuous(expand=c(0,0), name="Year") +
-  scale_y_continuous(name="Annual Mean Value") +
-  theme_bw() +
-  theme(legend.position="top",
-        legend.direction="horizontal")
-# -----------------------------------
-
-# -----------------------------------
-# 4. Generate an ensemble of the predicted mean day of year
-# -----------------------------------
-#     - use covariance matrix and make array of n ensemble members & run raw data
-# -----------------------------------
-
-# -----------------------------------
-# 5. Add in anomaly
-# -----------------------------------
-#    - use anomaly from original climate mean rather than residual from predicted model
-# -----------------------------------
-
-# -----------------------------------
-# 6. Save an .Rdata file with an ensemble of bias-corrected daily data
-# -----------------------------------
-#    - this ensemble file can either be read into the temporal downscaling or fed into
-#      a script that writes to netcdf format for models that take daily drivers
 # -----------------------------------
