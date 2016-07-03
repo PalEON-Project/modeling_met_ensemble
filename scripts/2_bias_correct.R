@@ -220,79 +220,89 @@ met.day$precipf <- met.day$precipf*60*60*24
 summary(met.day)
 
 source("scripts/bias_correct_day.R")
-
-dat.out.full <- bias.correct(met.day=met.day, met.var="precipf", dat.train="NLDAS", yrs.cal=yrs.cal, n=10)
-dat.out <- dat.out.full[[met.var]]
+met.bias <- met.day
+dat.out.full <- bias.correct(met.bias=met.bias, vars.met=vars.met, dat.train="NLDAS", yrs.cal=yrs.cal, n=100)
 # --------------------
 
 
 # --------------------
 # Looking at the new bias-corrected time series! 
 # --------------------
-dat.yr.bias <- aggregate(dat.out$ci[,c("X", "anom.raw", "mean", "lwr", "upr")],
-                         by=dat.out$ci[,c("dataset", "met", "year")],
-                         FUN=mean)
-dat.yr.bias$dataset <- factor(dat.yr.bias$dataset, levels=c("MIROC-ESM.p1000", "MIROC-ESM.hist", "CRUNCEP", "NLDAS"))
-# dat.yr.bias$met     <- factor(dat.yr.bias$met,  levels=c("tair", "tmax", "tmin", "precipf", "swdown", "lwdown", "press", "qair", "wind"))
-summary(dat.yr.bias)
-summary(met.year[met.year$met==met.var,]) #raw annual data
-
-LDAS.use.yr <- dat.yr.bias[dat.yr.bias$dataset=="NLDAS",]
-CRU.use.yr <- dat.yr.bias[dat.yr.bias$dataset=="CRUNCEP" & dat.yr.bias$year<min(LDAS.use.yr$year),]
-GCM.hist.use.yr <- dat.yr.bias[dat.yr.bias$dataset=="MIROC-ESM.hist" & dat.yr.bias$year<min(CRU.use.yr$year),]
-GCM.p1k.use.yr <- dat.yr.bias[dat.yr.bias$dataset=="MIROC-ESM.p1000" & dat.yr.bias$year<min(GCM.hist.use.yr$year),]
-met.final.yr <- rbind(LDAS.use.yr, CRU.use.yr, GCM.hist.use.yr, GCM.p1k.use.yr)
-
-# Original 
-summary(met.year)
-png(file.path(path.out, paste0("Met_", met.var, "_original_year.png")), height=8.5, width=11, "in", res=180)
-ggplot(data=met.final.yr[met.final.yr$met==met.var,]) +
-  facet_grid(met~., scales="free_y") +
-  geom_line(aes(x=year, y=X, color=dataset)) +
-  scale_x_continuous(expand=c(0,0), name="Year") +
-  scale_y_continuous(name="Annual Mean Value") +
-  theme_bw() +
-  theme(legend.position="top",
-        legend.direction="horizontal")
-dev.off()
-
-# Final bias-corrected time series
-png(file.path(path.out, paste0("Met_", met.var, "_bias-corrected_year.png")), height=8.5, width=11, "in", res=180)
-ggplot(data=met.final.yr[met.final.yr$met==met.var,]) +
-  facet_grid(met~., scales="free_y") +
-  geom_ribbon(aes(x=year, ymin=lwr, ymax=upr, fill=dataset), alpha=0.3) +
-  geom_line(aes(x=year, y=mean, color=dataset)) +
-  scale_x_continuous(expand=c(0,0), name="Year") +
-  scale_y_continuous(name="Annual Mean Value") +
-  theme_bw() +
-  theme(legend.position="top",
-        legend.direction="horizontal")
-dev.off()
-
-LDAS.use <- dat.out$ci[dat.out$ci$dataset=="NLDAS",]
-CRU.use <- dat.out$ci[dat.out$ci$dataset=="CRUNCEP" & dat.out$ci$year<min(LDAS.use$year),]
-GCM.hist.use <- dat.out$ci[dat.out$ci$dataset=="MIROC-ESM.hist" & dat.out$ci$year<min(CRU.use$year),]
-GCM.p1k.use <- dat.out$ci[dat.out$ci$dataset=="MIROC-ESM.p1000" & dat.out$ci$year<min(GCM.hist.use$year),]
-
-met.final.day <- rbind(LDAS.use, CRU.use, GCM.hist.use, GCM.p1k.use)
-met.final.day$splice <- NA
-met.final.day[met.final.day$year>=1847 & met.final.day$year<=1852,"splice"] <- "GCM.p1000-GCM.hist"
-met.final.day[met.final.day$year>=1898 & met.final.day$year<=1903,"splice"] <- "GCM.hist-CRUNCEP"
-met.final.day[met.final.day$year>=1977 & met.final.day$year<=1982,"splice"] <- "CRUNCEP-LDAS"
-met.final.day$splice <- as.factor(met.final.day$splice)
-met.final.day$year.frac <- met.final.day$year + met.final.day$doy/366
-summary(met.final.day)
-
-png(file.path(path.out, paste0("Met_", met.var, "_bias-corrected_splices.png")), height=8.5, width=11, "in", res=180)
-ggplot(data=met.final.day[!is.na(met.final.day$splice),]) +
-  facet_wrap(~splice, scales="free_x", ncol=1) +
-  geom_ribbon(aes(x=year.frac, ymin=lwr, ymax=upr, fill=dataset), alpha=0.3) +
-  geom_line(aes(x=year.frac, y=mean, color=dataset)) +
-  scale_x_continuous(expand=c(0,0), name="Year") +
-  scale_y_continuous(expand=c(0,0), name="Annual Mean Value") +
-  theme_bw() +
-  theme(legend.position="top",
-        legend.direction="horizontal")
-dev.off()
-
+for(met.var in vars.met){
+  print(met.var)
+  dat.out <- dat.out.full[[met.var]]
+  dat.yr.bias <- aggregate(dat.out$ci[,c("X", "anom.raw", "mean", "lwr", "upr")],
+                           by=dat.out$ci[,c("dataset", "met", "year")],
+                           FUN=mean)
+  dat.yr.bias$dataset <- factor(dat.yr.bias$dataset, levels=c("MIROC-ESM.p1000", "MIROC-ESM.hist", "CRUNCEP", "NLDAS"))
+  # dat.yr.bias$met     <- factor(dat.yr.bias$met,  levels=c("tair", "tmax", "tmin", "precipf", "swdown", "lwdown", "press", "qair", "wind"))
+  summary(dat.yr.bias)
+  summary(met.year[met.year$met==met.var,]) #raw annual data
+  
+  LDAS.use.yr <- dat.yr.bias[dat.yr.bias$dataset=="NLDAS",]
+  CRU.use.yr <- dat.yr.bias[dat.yr.bias$dataset=="CRUNCEP" & dat.yr.bias$year<min(LDAS.use.yr$year),]
+  GCM.hist.use.yr <- dat.yr.bias[dat.yr.bias$dataset=="MIROC-ESM.hist" & dat.yr.bias$year<min(CRU.use.yr$year),]
+  GCM.p1k.use.yr <- dat.yr.bias[dat.yr.bias$dataset=="MIROC-ESM.p1000" & dat.yr.bias$year<min(GCM.hist.use.yr$year),]
+  met.final.yr <- rbind(LDAS.use.yr, CRU.use.yr, GCM.hist.use.yr, GCM.p1k.use.yr)
+  
+  # Original 
+  summary(met.year)
+  png(file.path(path.out, paste0("Met_", met.var, "_original_year.png")), height=8.5, width=11, "in", res=180)
+  print(
+  ggplot(data=met.final.yr[met.final.yr$met==met.var,]) +
+    facet_grid(met~., scales="free_y") +
+    geom_line(aes(x=year, y=X, color=dataset)) +
+    scale_x_continuous(expand=c(0,0), name="Year") +
+    scale_y_continuous(name="Annual Mean Value") +
+    theme_bw() +
+    theme(legend.position="top",
+          legend.direction="horizontal")
+  )
+  dev.off()
+  
+  # Final bias-corrected time series
+  png(file.path(path.out, paste0("Met_", met.var, "_bias-corrected_year.png")), height=8.5, width=11, "in", res=180)
+  print(
+  ggplot(data=met.final.yr[met.final.yr$met==met.var,]) +
+    facet_grid(met~., scales="free_y") +
+    geom_ribbon(aes(x=year, ymin=lwr, ymax=upr, fill=dataset), alpha=0.3) +
+    geom_line(aes(x=year, y=mean, color=dataset)) +
+    scale_x_continuous(expand=c(0,0), name="Year") +
+    scale_y_continuous(name="Annual Mean Value") +
+    theme_bw() +
+    theme(legend.position="top",
+          legend.direction="horizontal")
+  )
+  dev.off()
+  
+  LDAS.use <- dat.out$ci[dat.out$ci$dataset=="NLDAS",]
+  CRU.use <- dat.out$ci[dat.out$ci$dataset=="CRUNCEP" & dat.out$ci$year<min(LDAS.use$year),]
+  GCM.hist.use <- dat.out$ci[dat.out$ci$dataset=="MIROC-ESM.hist" & dat.out$ci$year<min(CRU.use$year),]
+  GCM.p1k.use <- dat.out$ci[dat.out$ci$dataset=="MIROC-ESM.p1000" & dat.out$ci$year<min(GCM.hist.use$year),]
+  
+  met.final.day <- rbind(LDAS.use, CRU.use, GCM.hist.use, GCM.p1k.use)
+  met.final.day$splice <- NA
+  met.final.day[met.final.day$year>=1847 & met.final.day$year<=1852,"splice"] <- "GCM.p1000-GCM.hist"
+  met.final.day[met.final.day$year>=1898 & met.final.day$year<=1903,"splice"] <- "GCM.hist-CRUNCEP"
+  met.final.day[met.final.day$year>=1977 & met.final.day$year<=1982,"splice"] <- "CRUNCEP-LDAS"
+  met.final.day$splice <- as.factor(met.final.day$splice)
+  met.final.day$year.frac <- met.final.day$year + met.final.day$doy/366
+  summary(met.final.day)
+  met.final.day$dataset <- factor(met.final.day$dataset, levels=c("MIROC-ESM.p1000", "MIROC-ESM.hist", "CRUNCEP", "NLDAS"))
+  
+  png(file.path(path.out, paste0("Met_", met.var, "_bias-corrected_splices.png")), height=8.5, width=11, "in", res=180)
+  print(
+  ggplot(data=met.final.day[!is.na(met.final.day$splice),]) +
+    facet_wrap(~splice, scales="free_x", ncol=1) +
+    geom_ribbon(aes(x=year.frac, ymin=lwr, ymax=upr, fill=dataset), alpha=0.3) +
+    geom_line(aes(x=year.frac, y=mean, color=dataset)) +
+    scale_x_continuous(expand=c(0,0), name="Year") +
+    scale_y_continuous(expand=c(0,0), name="Annual Mean Value") +
+    theme_bw() +
+    theme(legend.position="top",
+          legend.direction="horizontal"))
+  dev.off()
+}
 # -----------------------------------
+
+save(dat.out.full, file=file.path(path.out, "MetAll_Daily_Ensemble_MIROC-ESM.Rdata"))
