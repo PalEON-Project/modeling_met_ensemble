@@ -198,7 +198,7 @@ dev.off()
 source("scripts/bias_correct_day.R")
 
 # The met vars we need (in the order we want to do them)
-vars.met <- c("tmax", "tmin", "precipf", "swdown", "qair", "lwdown", "press", "wind")
+vars.met <- c("tmax", "tmin", "swdown", "lwdown", "precipf", "qair", "press", "wind")
 dat.cal = "NLDAS"
 
 # Note This dataframe is only for the datasets to be bias-corrected!
@@ -221,7 +221,7 @@ summary(met.day)
 
 source("scripts/bias_correct_day.R")
 met.bias <- met.day
-dat.out.full <- bias.correct(met.bias=met.bias, vars.met=vars.met, dat.train="NLDAS", yrs.cal=yrs.cal, n=100)
+dat.out.full <- bias.correct(met.bias=met.bias, vars.met=vars.met, dat.train="NLDAS", GCM="MIROC-ESM", yrs.cal=yrs.cal, n=5, path.out=path.out)
 # --------------------
 
 
@@ -305,4 +305,4 @@ for(met.var in vars.met){
 }
 # -----------------------------------
 
-save(dat.out.full, file=file.path(path.out, "MetAll_Daily_Ensemble_MIROC-ESM.Rdata"))
+# save(dat.out.full, file=file.path(path.out, "MetAll_Daily_Ensemble_MIROC-ESM.Rdata"))
