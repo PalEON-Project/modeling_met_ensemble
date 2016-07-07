@@ -54,8 +54,8 @@ rm(list=ls())
 library(mgcv); library(ggplot2)
 
 # Set the working directory
-wd.base <- "~/Desktop/Research/PalEON_CR/met_ensemble"
-# wd.base <- "~/Dropbox/PalEON_CR/met_ensemble"
+# wd.base <- "~/Desktop/Research/PalEON_CR/met_ensemble"
+wd.base <- "~/Dropbox/PalEON_CR/met_ensemble"
 # wd.base <- "/projectnb/dietzelab/paleon/met_ensemble"
 setwd(wd.base)
 
@@ -134,6 +134,12 @@ met.day[met.day$dataset %in% c("NLDAS", "CRUNCEP"), "tmin"] <- aggregate(met.all
                                                                          by=met.all[met.all$dataset %in% c("NLDAS", "CRUNCEP"),c("dataset", "year", "doy")], 
                                                                          FUN=min)[,4]
 summary(met.day)
+
+
+# Make precipf in total kg/m2/day rather than per s to make life easier
+met.day$precipf <- met.day$precipf*60*60*24
+summary(met.day)
+
 # ----------------
 
 # ----------------
@@ -193,9 +199,10 @@ dev.off()
 # -----------------------------------
 
 # -----------------------------------
-# 2. Define training window for all datasets
+# 3. Doing the DOY bias-corrections : 
 # -----------------------------------
-source("scripts/bias_correct_day.R")
+# bias.correct <- function(met.day, met.var, dat.train, yrs.cal, n){
+# yrs.cal = yrs.cal[1,]
 
 # The met vars we need (in the order we want to do them)
 vars.met <- c("tmax", "tmin", "swdown", "lwdown", "precipf", "qair", "press", "wind")
@@ -206,28 +213,16 @@ yrs.cal = data.frame(dataset = c("CRUNCEP", "MIROC-ESM.hist", "MIROC-ESM.p1000")
                      cal.min = c(1980,             1901,              1829),
                      cal.max = c(2010,             1921,              1849)
                      )
-
-# -----------------------------------
-
-# -----------------------------------
-# 3. Doing the DOY bias-corrections : 
-# -----------------------------------
-# bias.correct <- function(met.day, met.var, dat.train, yrs.cal, n){
-# yrs.cal = yrs.cal[1,]
-
-# Make precipf in total kg/m2/day rather than per s
-met.day$precipf <- met.day$precipf*60*60*24
-summary(met.day)
-
 source("scripts/bias_correct_day.R")
 met.bias <- met.day
-dat.out.full <- bias.correct(met.bias=met.bias, vars.met=vars.met, dat.train="NLDAS", GCM="MIROC-ESM", yrs.cal=yrs.cal, n=5, path.out=path.out)
+dat.out.full <- bias.correct(met.bias=met.bias, vars.met=vars.met, dat.train="NLDAS", GCM="MIROC-ESM", yrs.cal=yrs.cal, n=25, path.out=path.out)
 # --------------------
 
 
 # --------------------
 # Looking at the new bias-corrected time series! 
 # --------------------
+library(grid)
 for(met.var in vars.met){
   print(met.var)
   dat.out <- dat.out.full[[met.var]]
@@ -247,34 +242,27 @@ for(met.var in vars.met){
   
   # Original 
   summary(met.year)
-  png(file.path(path.out, paste0("Met_", met.var, "_original_year.png")), height=8.5, width=11, "in", res=180)
-  print(
-  ggplot(data=met.final.yr[met.final.yr$met==met.var,]) +
-    facet_grid(met~., scales="free_y") +
-    geom_line(aes(x=year, y=X, color=dataset)) +
-    scale_x_continuous(expand=c(0,0), name="Year") +
-    scale_y_continuous(name="Annual Mean Value") +
-    theme_bw() +
-    theme(legend.position="top",
-          legend.direction="horizontal")
-  )
-  dev.off()
+  plot.orig <-   ggplot(data=met.final.yr[met.final.yr$met==met.var,]) +
+                    facet_grid(met~., scales="free_y") +
+                    geom_line(aes(x=year, y=X, color=dataset)) +
+                    scale_x_continuous(expand=c(0,0), name="Year") +
+                    scale_y_continuous(expand=c(0,0), name="Annual Mean Value") +
+                    ggtitle("Raw (Annual)") +
+                    theme_bw() +
+                    theme(legend.position="top",
+                          legend.direction="horizontal")  
   
-  # Final bias-corrected time series
-  png(file.path(path.out, paste0("Met_", met.var, "_bias-corrected_year.png")), height=8.5, width=11, "in", res=180)
-  print(
-  ggplot(data=met.final.yr[met.final.yr$met==met.var,]) +
-    facet_grid(met~., scales="free_y") +
-    geom_ribbon(aes(x=year, ymin=lwr, ymax=upr, fill=dataset), alpha=0.3) +
-    geom_line(aes(x=year, y=mean, color=dataset)) +
-    scale_x_continuous(expand=c(0,0), name="Year") +
-    scale_y_continuous(name="Annual Mean Value") +
-    theme_bw() +
-    theme(legend.position="top",
-          legend.direction="horizontal")
-  )
-  dev.off()
-  
+  plot.bias <-   ggplot(data=met.final.yr[met.final.yr$met==met.var,]) +
+                    facet_grid(met~., scales="free_y") +
+                    geom_ribbon(aes(x=year, ymin=lwr, ymax=upr, fill=dataset), alpha=0.3) +
+                    geom_line(aes(x=year, y=mean, color=dataset)) +
+                    scale_x_continuous(expand=c(0,0), name="Year") +
+                    scale_y_continuous(expand=c(0,0), name="Annual Mean Value") +
+                    ggtitle("Bias-Corrected (Annual)") +
+                    theme_bw() +
+                    theme(legend.position="top",
+                          legend.direction="horizontal")  
+    
   LDAS.use <- dat.out$ci[dat.out$ci$dataset=="NLDAS",]
   CRU.use <- dat.out$ci[dat.out$ci$dataset=="CRUNCEP" & dat.out$ci$year<min(LDAS.use$year),]
   GCM.hist.use <- dat.out$ci[dat.out$ci$dataset=="MIROC-ESM.hist" & dat.out$ci$year<min(CRU.use$year),]
@@ -290,17 +278,23 @@ for(met.var in vars.met){
   summary(met.final.day)
   met.final.day$dataset <- factor(met.final.day$dataset, levels=c("MIROC-ESM.p1000", "MIROC-ESM.hist", "CRUNCEP", "NLDAS"))
   
-  png(file.path(path.out, paste0("Met_", met.var, "_bias-corrected_splices.png")), height=8.5, width=11, "in", res=180)
-  print(
-  ggplot(data=met.final.day[!is.na(met.final.day$splice),]) +
-    facet_wrap(~splice, scales="free_x", ncol=1) +
-    geom_ribbon(aes(x=year.frac, ymin=lwr, ymax=upr, fill=dataset), alpha=0.3) +
-    geom_line(aes(x=year.frac, y=mean, color=dataset)) +
-    scale_x_continuous(expand=c(0,0), name="Year") +
-    scale_y_continuous(expand=c(0,0), name="Annual Mean Value") +
-    theme_bw() +
-    theme(legend.position="top",
-          legend.direction="horizontal"))
+  plot.splice <- ggplot(data=met.final.day[!is.na(met.final.day$splice),]) +
+                    facet_wrap(~splice, scales="free_x", ncol=1) +
+                    geom_ribbon(aes(x=year.frac, ymin=lwr, ymax=upr, fill=dataset), alpha=0.3) +
+                    geom_line(aes(x=year.frac, y=mean, color=dataset)) +
+                    scale_x_continuous(expand=c(0,0), name="Year") +
+                    scale_y_continuous(expand=c(0,0), name="Daily Mean Value") +
+                    ggtitle("Bias-Corrected (Splices)") +
+                    theme_bw() +
+                    theme(legend.position="top",
+                          legend.direction="horizontal")
+
+  png(file.path(path.out, paste0("Met_", met.var, "_bias-correction.png")), height=8.5, width=14, "in", res=180)
+    grid.newpage()
+    pushViewport(viewport(layout=grid.layout(1,3)))
+    print(plot.orig  , vp = viewport(layout.pos.row = 1, layout.pos.col = 1))
+    print(plot.bias  , vp = viewport(layout.pos.row = 1, layout.pos.col = 2))
+    print(plot.splice, vp = viewport(layout.pos.row = 1, layout.pos.col = 3))
   dev.off()
 }
 # -----------------------------------
