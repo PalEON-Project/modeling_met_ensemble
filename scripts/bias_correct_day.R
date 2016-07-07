@@ -464,16 +464,34 @@ for(v in 1:length(vars.met)){
           n.now <- round(rnorm(1, mean(rainless), sd(rainless)), 0) 
           rows.yr <- which(dat.pred$year==y)
           cutoff <- quantile(sim1[rows.yr, j], n.now/366)
-          for(r in seq_along(1:(length(rows.yr)-1))){
-            # If we're below the threshold needed to create the right number of rainless days, dump it into the next day
-            if(sim1[rows.yr[r+1],j] < cutoff){ 
-              # Randomly pick where to throw it (note: only do days we haven't touched yet)
-              #  -- originally shoved it to the next day, but this caused some gradual build up or every-other-day rain 
-              #     situations and & I think we want it more random than that
-              row.new <- sample(r:length(rows.yr), 1, replace=T)
-              sim1[rows.yr[row.new],j] <- sim1[rows.yr[row.new],j] + sim1[rows.yr[r],j] 
-              sim1[rows.yr[r],j] <- 0
-              }
+          
+          # Figure out which days are currently below our cutoff and randomly distribute 
+          # their precip to days that are not below the cutoff (this causes a more bi-modal 
+          # distribution hwere dry days get drier), but other options ended up with either 
+          # too few rainless days because of only slight redistribution (r+1) or buildup 
+          # towards the end of the year (random day that hasn't happened)
+          dry <- rows.yr[which(sim1[rows.yr,j] < cutoff)]
+          
+          # Figure out where to put the extra rain; allow replacement for good measure
+          wet <- sample(rows.yr[!rows.yr %in% dry], length(dry), replace=T)
+          
+          # Go through and randomly redistribute the precipitation to days we're not designating as rainless
+          # Note, if we don't loop through, we might lose some of our precip
+          for(r in 1:length(dry)){
+            sim1[wet[r],j] <- sim1[wet[r],j] + sim1[dry[r],j]
+            sim1[dry[r],j] <- 0
+          }
+          
+          # for(r in seq_along(1:(length(rows.yr)-1))){
+          #   # If we're below the threshold needed to create the right number of rainless days, dump it into the next day
+          #   if(sim1[rows.yr[r+1],j] < cutoff){ 
+          #     # Shove rain from a day below our cutoff to create the right number of rainless days to the next
+          #     #  -- originally shoved it to the next day, but this caused some gradual build up or every-other-day rain 
+          #     #     situations and & I think we want it more random than that
+          #     # row.new <- sample(r:length(rows.yr), 1, replace=T)
+          #     sim1[rows.yr[r+1],j] <- sim1[rows.yr[r+1],j] + sim1[rows.yr[r],j] 
+          #     sim1[rows.yr[r],j] <- 0
+          #     }
           }
         }
         
