@@ -45,8 +45,10 @@ for(v in 1:length(vars.met)){
   #       of the issues inherent with precip, I don't want to distort too many variables by 
   #       including both it and a derivative as predictors
   #
-  if(v>1) vars.pred <- vars.met[1:(v-1)]as
-  vars.pred <- vars.pred[!vars.pred=="qair"] # excluding 
+  if(v>1) vars.pred <- vars.met[1:(v-1)]
+  vars.pred <- vars.pred[!vars.pred %in% c("qair")] 
+  # if we're not looking at humidity, also exlcude precip
+  if(met.var!="qair") vars.pred <- vars.pred[!vars.pred == "precipf"] 
   # -------------
   
   # -------------
@@ -154,6 +156,7 @@ for(v in 1:length(vars.met)){
     #     -- preserving the different simulations so we can look at a distribution of potential values
     #     -- This will get aggregated right off the bat so we so we're looking at the climatic means 
     #        for the first part of bias-correction
+    #    ** Problem: We're not propogating the uncertainty in the co-variates
     dat.temp0 <- data.frame(year = dat.out[[met.var]]$sims[dat.out[[met.var]]$sims$dataset==dat.train  & dat.out[[met.var]]$sims$year>=yr.min.train & dat.out[[met.var]]$sims$year<=yr.max.train, "year" ],
                             doy  = dat.out[[met.var]]$sims[dat.out[[met.var]]$sims$dataset==dat.train  & dat.out[[met.var]]$sims$year>=yr.min.train & dat.out[[met.var]]$sims$year<=yr.max.train, "doy"  ],
                             stack(dat.out[[met.var]]$sims[dat.out[[met.var]]$sims$dataset==dat.train & dat.out[[met.var]]$sims$year>=yr.min.train & dat.out[[met.var]]$sims$year<=yr.max.train, paste0("X", 1:n)])
@@ -296,6 +299,10 @@ for(v in 1:length(vars.met)){
     } else {
       # If this is NOT preciptiation, anomalies are pretty well distributed around climatic means or at least aren't nearly as messy
       # as preciptiation
+      raw.train$pred <- predict(mod.bias, newdata=raw.train)
+      raw.bias$pred <- predict(mod.bias, newdata=raw.bias)
+
+      # We don't want the anomaly from the bias-corrected mean, we want it form the original  
       anom.train <- gam(X ~ s(doy), data=raw.train)
       anom.bias  <- gam(X ~ s(doy), data=raw.bias)
       raw.train$anom.train <- resid(anom.train)
@@ -354,11 +361,11 @@ for(v in 1:length(vars.met)){
       # and the only way I've been able to fix it is to model the temporal pattern seen in the dataset based on 
       # its own anomalies (not ideal, but it works)
       if(met.var=="swdown"){
-        mod.anom <- gam(anom.raw ~ s(doy) + s(year, k=3) + tmax.anom + tmin.anom, data=dat.pred)
+        mod.anom <- gam(anom.raw ~ s(doy, k=4) + s(year, k=3) + tmax.anom + tmin.anom, data=dat.pred)
       } else if(met.var=="precipf"){
         # Precip is really only different from the other in that I deliberately chose a more rigid seasonal pattern and we need to force the intercept
         # through 0 so we can try and reduce the likelihood of evenly distributed precipitation events
-        mod.anom <- gam(anom.train ~ s(doy, k=4) + anom.raw + tmax.anom + tmin.anom + swdown.anom + lwdown.anom -1, data=dat.anom)
+        mod.anom <- gam(anom.train ~ s(doy) + anom.raw + tmax.anom + tmin.anom + swdown.anom + lwdown.anom -1, data=dat.anom)
       } else {
         # For the rest of our variables, anom.train and anom.raw should be hihgly correlated, we can use straightforward regression
         mod.anom <- gam(anom.train ~ s(doy) + anom.raw + tmax.anom + tmin.anom + precipf.anom + swdown.anom + qair.anom + lwdown.anom + press.anom + wind.anom, data=dat.anom)
@@ -379,7 +386,7 @@ for(v in 1:length(vars.met)){
         mod.anom <- gam(anom.train ~  s(doy, k=4) + tmax.anom + tmin.anom + swdown.anom + lwdown.anom - 1, data=raw.train)  
       } else if(max(raw.bias[,vars.met])>0){
         # See if we have some other anomaly that we can use to get the anomaly covariance & temporal trends right
-        mod.anom <- gam(anom.train ~ s(doy) + tmax.anom + tmin.anom + precipf.anom + swdown.anom + qair.anom + lwdown.anom + press.anom + wind.anom, data=raw.train)  
+        mod.anom <- gam(anom.train ~ s(doy, k=4) + tmax.anom + tmin.anom + precipf.anom + swdown.anom + qair.anom + lwdown.anom + press.anom + wind.anom, data=raw.train)  
       } else {
         # If we haven't already done another met product, our best shot is to just model the variance adding in as much of the low-frequency cylce as possible
         mod.anom <- gam(anom.raw ~ s(doy) + s(year, k=k) + pred, data=dat.pred)
@@ -435,11 +442,11 @@ for(v in 1:length(vars.met)){
 
     # # Option 1: Adding a constant error per time series
     # sim1a <- sweep(sim1a, 2, rnorm(n, mean(resid.bias), sd(resid.bias)), FUN="+")
-    if(met.var!="precipf") sim1a <- sweep(sim1a, 2, rnorm(n, mean(resid.bias), sd(resid.bias)), FUN="+") # Only apply if not working with precipf
+    #  if(met.var!="precipf") sim1a <- sweep(sim1a, 2, rnorm(n, mean(resid.bias), sd(resid.bias)), FUN="+") # Only apply if not working with precipf
     # sim1b <- sweep(sim1b, 2, rnorm(n, mean(resid.anom), sd(resid.anom)), FUN="+")
 
     # # Option 2: Adding a random error to each observation
-    # sim1a <- sim1a + rnorm(length(sim1a), mean(resid.bias), sd(resid.bias))
+    if(met.var!="precipf") sim1a <- sim1a + rnorm(length(sim1a), mean(resid.bias), sd(resid.bias))
     sim1b <- sim1b + rnorm(length(sim1b), mean(resid.anom), sd(resid.anom))
     
     # # Option 3: explicitly modeling the errors in some way
@@ -496,7 +503,7 @@ for(v in 1:length(vars.met)){
         }
         
       }
-    }
+
 
     # Aggregate the data to something that's easier to deal with in graphing etc.
     dat.pred$mean <- apply(sim1, 1, mean)
