@@ -45,7 +45,7 @@ get.raw(wd.base="/projectnb/dietzelab/paleon/met_ensemble/",
         site.name="HARVARD", 
         lat=42.54, lon=-72.18, 
         ldas.type="NLDAS", 
-        GCM="MIROC-ESM")
+        GCM.list=c("MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1", "IPSL-CM5A-LR", "CCSM4"))
 
 
 # # Downloading UNDERC

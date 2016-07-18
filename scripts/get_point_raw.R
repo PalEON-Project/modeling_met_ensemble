@@ -41,7 +41,7 @@
 # -----------------------------------
 
 # Making this into a function
-get.raw <- function(wd.base, site.name, lat, lon, ldas.type, GCM){
+get.raw <- function(wd.base, site.name, lat, lon, ldas.type, GCM.list){
   # Description of declared variables
   # wd.base   = the base directory for this github repository.  
   # site.name = character name of the site; preference for all caps
@@ -251,6 +251,7 @@ if(!"CRUNCEP" %in% substr(met.done, 1, 7)) {
 # -----------------------------------
 setwd(wd.base)
 
+for(GCM in GCM.list){
 # Right now haven't extracted the paleon domain & are going to work with just MIROC-ESM
 dir.gcm <- file.path("data/full_raw", GCM)
 
@@ -428,6 +429,6 @@ if(!paste0(GCM, "_historical") %in% substr(met.done, 1, nchar(GCM)+11)){
   write.csv(hist.df, file.path(path.out, paste0(GCM, "_historical_", min(as.numeric(paste(hist.df$year))), "-", max(as.numeric(paste(hist.df$year))), ".csv")), row.names = F)
 }
 # --------------
-
+}
 # -----------------------------------
 }
