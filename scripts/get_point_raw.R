@@ -277,7 +277,7 @@ if(!paste0(GCM, "_p1000") %in% substr(met.done, 1, nchar(GCM)+6)) {
   vars.gcm <- c(vars.gcm.day, vars.gcm.mo)
   dat.gcm.p1k=NULL # Giving a value to evaluate to determine if we need to make a new dataframe or not
   for(v in vars.gcm){
-    print(paste0("** processing: ", v))
+    print(paste0("** processing: ", v, " (p1000)"))
     
     # Getting the daily files first
     freq=ifelse(v %in% vars.gcm.day, "day", "month")
@@ -373,14 +373,15 @@ if(!paste0(GCM, "_historical") %in% substr(met.done, 1, nchar(GCM)+11)){
   vars.gcm <- c(vars.gcm.day, vars.gcm.mo)
   dat.gcm.hist=NULL # Giving a value to evaluate to determine if we need to make a new dataframe or not
   for(v in vars.gcm){
-    print(paste0("** processing: ", v))
+    print(paste0("** processing: ", v, " (historical)"))
     
     freq=ifelse(v %in% vars.gcm.mo, "month", "day")
     setwd(file.path(dir.gcm, "historical", freq, v))
     
     files.v <- dir()
-    for(i in 1:length(files.v)){
-      fnow=files.v[i]
+#     for(i in 1:length(files.v)){
+      for(i in 1:min(length(files.v), 2)){
+        fnow=files.v[i]
 
       # Open the file
       ncT <- nc_open(fnow)
@@ -429,24 +430,31 @@ if(!paste0(GCM, "_historical") %in% substr(met.done, 1, nchar(GCM)+11)){
     setwd(wd.base)
   } # End variable
   
-  hist.day <- data.frame(dataset=paste0(GCM, ".p1000"),
+  hist.day <- data.frame(dataset=paste0(GCM, ".hist"),
                          dat.gcm.hist[[vars.gcm.day[1]]][,1:(ncol(dat.gcm.hist[[vars.gcm.day[1]]])-1)]
                          )
-  hist.mo <- data.frame(dataset=paste0(GCM, ".p1000"),
-                        dat.gcm.hist[[vars.gcm.mo[1]]][,1:(ncol(dat.gcm.hist[[vars.gcm.mo[1]]])-1)]
-                        )
-  
+
   for(v in vars.gcm.day){
     var2 <- paste(gcm.recode[gcm.recode$gcm==v,"met"])
     hist.day[,var2] <- dat.gcm.hist[[v]]$value
   }
-  for(v in vars.gcm.mo){
-    var2 <- paste(gcm.recode[gcm.recode$gcm==v,"met"])
-    hist.mo[,var2] <- dat.gcm.hist[[v]]$value
+
+  if(length(vars.gcm.mo)>0){
+    hist.mo <- data.frame(dataset=paste0(GCM, ".hist"),
+                          dat.gcm.hist[[vars.gcm.mo[1]]][,1:(ncol(dat.gcm.hist[[vars.gcm.mo[1]]])-1)]
+                          )
+    for(v in vars.gcm.mo){
+      var2 <- paste(gcm.recode[gcm.recode$gcm==v,"met"])
+      hist.mo[,var2] <- dat.gcm.hist[[v]]$value
+    }
+
+    hist.df <- merge(hist.day, hist.mo[,!names(hist.mo) %in% c("day", "doy")], all=T)
+    summary(hist.df)    
+  } else {
+    hist.df <- hist.day
   }
+
   
-  hist.df <- merge(hist.day, hist.mo[,!names(hist.mo) %in% c("day", "doy")], all=T)
-  summary(hist.df)
   
   write.csv(hist.df, file.path(path.out, paste0(GCM, "_historical_", min(as.numeric(paste(hist.df$year))), "-", max(as.numeric(paste(hist.df$year))), ".csv")), row.names = F)
 }
