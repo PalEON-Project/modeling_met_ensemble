@@ -302,7 +302,7 @@ if(!paste0(GCM, "_p1000") %in% substr(met.done, 1, nchar(GCM)+6)) {
       }
       
       # extracting the met variable
-      if(v == "hus"){
+      if(v %in% c("hus", "ua", "va")){
         plev <- ncvar_get(ncT, "plev")
         puse <- which(plev==max(plev)) # Get humidity at the place of highest pressure (closest to surface)
         dat.now <- ncvar_get(ncT, v)[ind.lon,ind.lat,puse,] 
@@ -342,12 +342,28 @@ if(!paste0(GCM, "_p1000") %in% substr(met.done, 1, nchar(GCM)+6)) {
                        )
 
   for(v in vars.gcm.day){
-    var2 <- paste(gcm.recode[gcm.recode$gcm==v,"met"])
-    p1k.day[,var2] <- dat.gcm.p1k[[v]]$value
+    if(v %in% c("uas", "vas")){
+      wind <- sqrt(dat.gcm.p1k[["uas"]]$value^2 * dat.gcm.p1k[["vas"]]$value^2)
+      p1k.day[,"wind"] <- wind
+    } else if(v %in% c("ua", "va")){
+      wind <- sqrt(dat.gcm.p1k[["ua"]]$value^2 * dat.gcm.p1k[["va"]]$value^2)
+      p1k.day[,"wind"] <- wind
+    } else {
+      var2 <- paste(gcm.recode[gcm.recode$gcm==v,"met"])
+      p1k.day[,var2] <- dat.gcm.p1k[[v]]$value
+    }
   }
   for(v in vars.gcm.mo){
-    var2 <- paste(gcm.recode[gcm.recode$gcm==v,"met"])
-    p1k.mo[,var2] <- dat.gcm.p1k[[v]]$value
+    if(v %in% c("uas", "vas")){
+      wind <- sqrt(dat.gcm.p1k[["uas"]]$value^2 * dat.gcm.p1k[["vas"]]$value^2)
+      p1k.mo[,"wind"] <- wind
+    } else if(v %in% c("ua", "va")){
+      wind <- sqrt(dat.gcm.p1k[["ua"]]$value^2 * dat.gcm.p1k[["va"]]$value^2)
+      p1k.mo[,"wind"] <- wind
+    } else {
+      var2 <- paste(gcm.recode[gcm.recode$gcm==v,"met"])
+      p1k.mo[,var2] <- dat.gcm.p1k[[v]]$value
+    }
   }
   
   p1k.df <- merge(p1k.day, p1k.mo[,!names(p1k.mo) %in% c("day", "doy")], all=T)
@@ -380,7 +396,7 @@ if(!paste0(GCM, "_historical") %in% substr(met.done, 1, nchar(GCM)+11)){
     
     files.v <- dir()
     for(i in 1:length(files.v)){
-        fnow=files.v[i]
+      fnow=files.v[i]
 
       # Open the file
       ncT <- nc_open(fnow)
@@ -397,7 +413,7 @@ if(!paste0(GCM, "_historical") %in% substr(met.done, 1, nchar(GCM)+11)){
       }
       
       # extracting the met variable
-      if(v == "hus"){
+      if(v %in% c("hus", "ua", "va")){
         plev <- ncvar_get(ncT, "plev")
         puse <- which(plev==max(plev)) # Get humidity at the place of highest pressure (closest to surface)
         dat.now <- ncvar_get(ncT, v)[ind.lon,ind.lat,puse,] 
@@ -445,8 +461,16 @@ if(!paste0(GCM, "_historical") %in% substr(met.done, 1, nchar(GCM)+11)){
                          )
 
   for(v in vars.gcm.day){
-    var2 <- paste(gcm.recode[gcm.recode$gcm==v,"met"])
-    hist.day[,var2] <- dat.gcm.hist[[v]]$value
+    if(v %in% c("uas", "vas")){
+      wind <- sqrt(dat.gcm.hist[["uas"]]$value^2 * dat.gcm.hist[["vas"]]$value^2)
+      hist.day[,"wind"] <- wind
+    } else if(v %in% c("ua", "va")){
+      wind <- sqrt(dat.gcm.hist[["ua"]]$value^2 * dat.gcm.hist[["va"]]$value^2)
+      hist.day[,"wind"] <- wind
+    } else {
+      var2 <- paste(gcm.recode[gcm.recode$gcm==v,"met"])
+      hist.day[,var2] <- dat.gcm.hist[[v]]$value
+    }
   }
 
   if(length(vars.gcm.mo)>0){
@@ -454,8 +478,16 @@ if(!paste0(GCM, "_historical") %in% substr(met.done, 1, nchar(GCM)+11)){
                           dat.gcm.hist[[vars.gcm.mo[1]]][,1:(ncol(dat.gcm.hist[[vars.gcm.mo[1]]])-1)]
                           )
     for(v in vars.gcm.mo){
-      var2 <- paste(gcm.recode[gcm.recode$gcm==v,"met"])
-      hist.mo[,var2] <- dat.gcm.hist[[v]]$value
+      if(v %in% c("uas", "vas")){
+        wind <- sqrt(dat.gcm.hist[["uas"]]$value^2 * dat.gcm.hist[["vas"]]$value^2)
+        hist.mo[,"wind"] <- wind
+      } else if(v %in% c("ua", "va")){
+        wind <- sqrt(dat.gcm.hist[["ua"]]$value^2 * dat.gcm.hist[["va"]]$value^2)
+        hist.mo[,"wind"] <- wind
+      } else {
+        var2 <- paste(gcm.recode[gcm.recode$gcm==v,"met"])
+        hist.mo[,var2] <- dat.gcm.hist[[v]]$value
+      }
     }
 
     hist.df <- merge(hist.day, hist.mo[,!names(hist.mo) %in% c("day", "doy")], all=T)
