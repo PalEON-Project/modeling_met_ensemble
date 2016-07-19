@@ -83,7 +83,7 @@ cruncep  <- read.csv(file.path(path.dat, "CRUNCEP_1901-2010.csv"))
 gcm.p1k  <- read.csv(file.path(path.dat, "MIROC-ESM_historical_1850-2005.csv"))
 gcm.hist <- read.csv(file.path(path.dat, "MIROC-ESM_p1000_850-1849.csv"))
 
-# Adding an hour field to the gcm; setting as noon for simplicity
+# Adding an hour field to the gcm; setting as noon (middle of window) for simplicity
 gcm.p1k$hour  <- 12.00
 gcm.hist$hour <- 12.00
 

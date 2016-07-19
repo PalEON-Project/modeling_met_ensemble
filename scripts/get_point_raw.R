@@ -252,10 +252,16 @@ if(!"CRUNCEP" %in% substr(met.done, 1, 7)) {
 setwd(wd.base)
 
 for(GCM in GCM.list){
+
+print(paste0("** processing: ", GCM))  
 # Right now haven't extracted the paleon domain & are going to work with just MIROC-ESM
 dir.gcm <- file.path("data/full_raw", GCM)
 
 if(!dir.exists(dir.gcm)) stop("Invalid GCM!  Are you sure the raw data is downloaded? Check file structure.")
+
+gcm.recode <- data.frame(gcm = c("tasmax", "tasmin", "pr"     , "psl"  , "huss", "hus" , "sfcWind", "rsds"  , "rlds"  ),
+                         met = c("tmax"  , "tmin"  , "precipf", "press", "qair", "qair", "wind"   , "swdown", "lwdown")
+                         )
 
 # --------------
 # start with p1000
@@ -266,8 +272,9 @@ if(!paste0(GCM, "_p1000") %in% substr(met.done, 1, nchar(GCM)+6)) {
   # Start by getting daily for what we can
   vars.gcm.day <- dir(file.path(dir.gcm, "p1000", "day"))
   vars.gcm.mo <- dir(file.path(dir.gcm, "p1000", "month"))
+  vars.gcm.mo <- vars.gcm.mo[!vars.gcm.mo %in% vars.gcm.day]
   
-  vars.gcm <- c(vars.gcm.day, vars.gcm.mo[!vars.gcm.mo %in% vars.gcm.day])
+  vars.gcm <- c(vars.gcm.day, vars.gcm.mo)
   dat.gcm.p1k=NULL # Giving a value to evaluate to determine if we need to make a new dataframe or not
   for(v in vars.gcm){
     print(paste0("** processing: ", v))
@@ -295,7 +302,13 @@ if(!paste0(GCM, "_p1000") %in% substr(met.done, 1, nchar(GCM)+6)) {
       }
       
       # extracting the met variable
-      dat.now <- ncvar_get(ncT, v)[ind.lon,ind.lat,]
+      if(v == "hus"){
+        plev <- ncvar_get(ncT, "plev")
+        puse <- which(plev==max(plev)) # Get humidity at the place of highest pressure (closest to surface)
+        dat.now <- ncvar_get(ncT, v)[ind.lon,ind.lat,puse,] 
+      } else {
+        dat.now <- ncvar_get(ncT, v)[ind.lon,ind.lat,]
+      }
       
       # creating a vector of the time stamp (daily)
       #fday <- (nc.time-0.5)/365 # Note: this is the midpoint
@@ -322,19 +335,20 @@ if(!paste0(GCM, "_p1000") %in% substr(met.done, 1, nchar(GCM)+6)) {
   } # End variable
   
   p1k.day <- data.frame(dataset=paste0(GCM, ".p1000"),
-                        dat.gcm.p1k[["tasmax"]][,1:(ncol(dat.gcm.p1k[["tasmax"]])-1)], 
-                        tmax=dat.gcm.p1k$tasmax$value, 
-                        tmin=dat.gcm.p1k$tasmin$value, 
-                        precipf=dat.gcm.p1k$pr$value,
-                        press=dat.gcm.p1k$psl$value,
-                        qair=dat.gcm.p1k$huss$value,
-                        wind=dat.gcm.p1k$sfcWind$value
+                        dat.gcm.p1k[[vars.gcm.day[1]]][,1:(ncol(dat.gcm.p1k[[vars.gcm.day[1]]])-1)]
                         )
   p1k.mo <- data.frame(dataset=paste0(GCM, ".p1000"),
-                       dat.gcm.p1k[["rsds"]][,1:(ncol(dat.gcm.p1k[["rsds"]])-1)], 
-                       swdown=dat.gcm.p1k$rsds$value,
-                       lwdown=dat.gcm.p1k$rlds$value
+                       dat.gcm.p1k[[vars.gcm.mo[1]]][,1:(ncol(dat.gcm.p1k[[vars.gcm.mo[1]]])-1)]
                        )
+
+  for(v in vars.gcm.day){
+    var2 <- paste(gcm.recode[gcm.recode$gcm==v,"met"])
+    p1k.day[,var2] <- dat.gcm.p1k[[v]]$value
+  }
+  for(v in vars.gcm.mo){
+    var2 <- paste(gcm.recode[gcm.recode$gcm==v,"met"])
+    p1k.mo[,var2] <- dat.gcm.p1k[[v]]$value
+  }
   
   p1k.df <- merge(p1k.day, p1k.mo[,!names(p1k.mo) %in% c("day", "doy")], all=T)
   summary(p1k.df)
@@ -354,8 +368,9 @@ if(!paste0(GCM, "_historical") %in% substr(met.done, 1, nchar(GCM)+11)){
   # Start by getting daily for what we can
   vars.gcm.day <- dir(file.path(dir.gcm, "historical", "day"))
   vars.gcm.mo <- dir(file.path(dir.gcm, "historical", "month"))
+  vars.gcm.mo <- vars.gcm.mo[!vars.gcm.mo %in% vars.gcm.day] # get rid of anything already in day
   
-  vars.gcm <- c(vars.gcm.mo, vars.gcm.day[!vars.gcm.day %in% vars.gcm.mo])
+  vars.gcm <- c(vars.gcm.day, vars.gcm.mo)
   dat.gcm.hist=NULL # Giving a value to evaluate to determine if we need to make a new dataframe or not
   for(v in vars.gcm){
     print(paste0("** processing: ", v))
@@ -382,7 +397,13 @@ if(!paste0(GCM, "_historical") %in% substr(met.done, 1, nchar(GCM)+11)){
       }
       
       # extracting the met variable
-      dat.now <- ncvar_get(ncT, v)[ind.lon,ind.lat,]
+      if(v == "hus"){
+        plev <- ncvar_get(ncT, "plev")
+        puse <- which(plev==max(plev)) # Get humidity at the place of highest pressure (closest to surface)
+        dat.now <- ncvar_get(ncT, v)[ind.lon,ind.lat,puse,] 
+      } else {
+        dat.now <- ncvar_get(ncT, v)[ind.lon,ind.lat,]
+      }
       
       # creating a vector of the time stamp (daily)
       #fday <- (nc.time-0.5)/365 # Note: this is the midpoint
@@ -408,20 +429,21 @@ if(!paste0(GCM, "_historical") %in% substr(met.done, 1, nchar(GCM)+11)){
     setwd(wd.base)
   } # End variable
   
-  hist.day <- data.frame(dataset=paste0(GCM, ".hist"),
-                         dat.gcm.hist[["tasmax"]][,1:(ncol(dat.gcm.hist[["tasmax"]])-1)], 
-                         tmax=dat.gcm.hist$tasmax$value, 
-                         tmin=dat.gcm.hist$tasmin$value, 
-                         precipf=dat.gcm.hist$pr$value,
-                         press=dat.gcm.hist$psl$value,
-                         qair=dat.gcm.hist$huss$value,
-                         wind=dat.gcm.hist$sfcWind$value
+  hist.day <- data.frame(dataset=paste0(GCM, ".p1000"),
+                         dat.gcm.hist[[vars.gcm.day[1]]][,1:(ncol(dat.gcm.hist[[vars.gcm.day[1]]])-1)]
                          )
-  hist.mo <- data.frame(dataset=paste0(GCM, ".hist"),
-                       dat.gcm.hist[["rsds"]][,1:(ncol(dat.gcm.hist[["rsds"]])-1)], 
-                       swdown=dat.gcm.hist$rsds$value,
-                       lwdown=dat.gcm.hist$rlds$value
-                       )
+  hist.mo <- data.frame(dataset=paste0(GCM, ".p1000"),
+                        dat.gcm.hist[[vars.gcm.mo[1]]][,1:(ncol(dat.gcm.hist[[vars.gcm.mo[1]]])-1)]
+                        )
+  
+  for(v in vars.gcm.day){
+    var2 <- paste(gcm.recode[gcm.recode$gcm==v,"met"])
+    hist.day[,var2] <- dat.gcm.hist[[v]]$value
+  }
+  for(v in vars.gcm.mo){
+    var2 <- paste(gcm.recode[gcm.recode$gcm==v,"met"])
+    hist.mo[,var2] <- dat.gcm.hist[[v]]$value
+  }
   
   hist.df <- merge(hist.day, hist.mo[,!names(hist.mo) %in% c("day", "doy")], all=T)
   summary(hist.df)
