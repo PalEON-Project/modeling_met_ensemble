@@ -480,10 +480,22 @@ if(!paste0(GCM, "_historical") %in% substr(met.done, 1, nchar(GCM)+11)){
     for(v in vars.gcm.mo){
       if(v %in% c("uas", "vas")){
         wind <- sqrt(dat.gcm.hist[["uas"]]$value^2 * dat.gcm.hist[["vas"]]$value^2)
-        hist.mo[,"wind"] <- wind
+        if(length(wind) != nrow(hist.mo)){ 
+          # If for some reason we don't have the right wind value, 
+          # put in the mean value & we can approximate it with the downscaling
+          hist.mo[,"wind"] <- mean(wind)
+        } else {
+          hist.mo[,"wind"] <- wind
+        }
       } else if(v %in% c("ua", "va")){
         wind <- sqrt(dat.gcm.hist[["ua"]]$value^2 * dat.gcm.hist[["va"]]$value^2)
-        hist.mo[,"wind"] <- wind
+        if(length(wind) != nrow(hist.mo)){ 
+          # If for some reason we don't have the right wind value, 
+          # put in the mean value & we can approximate it with the downscaling
+          hist.mo[,"wind"] <- mean(wind)
+        } else {
+          hist.mo[,"wind"] <- wind
+        }
       } else {
         var2 <- paste(gcm.recode[gcm.recode$gcm==v,"met"])
         hist.mo[,var2] <- dat.gcm.hist[[v]]$value
