@@ -65,9 +65,14 @@ path.gam <- "~/Desktop/Research/R_Functions"
 
 # Defining a site name -- this can go into a function later
 site.name="HARVARD"
+site.lat=42.54
+site.lon=-72.18
+GCM="MIROC-ESM"
+LDAS="NLDAS"
+n=25 # Number of ensemble members
 
 path.dat <- file.path(wd.base, "data/paleon_sites", site.name)
-path.out <- file.path(wd.base, "data/met_ensembles", site.name)
+path.out <- file.path(wd.base, "data/met_ensembles", site.name, GCM, "day")
 if(!dir.exists(path.out)) dir.create(path.out, recursive=T)  
 
 met.done <- dir(path.out, ".csv")
@@ -78,10 +83,10 @@ met.done <- dir(path.out, ".csv")
 # -----------------------------------
 #    - aggregate all variable to daily for the bias-correction
 #    - do some exploratory graphing along the way
-ldas     <- read.csv(file.path(path.dat, "NLDAS_1980-2015.csv"))
+ldas     <- read.csv(file.path(path.dat, paste0(LDAS, "_1980-2015.csv")))
 cruncep  <- read.csv(file.path(path.dat, "CRUNCEP_1901-2010.csv"))
-gcm.p1k  <- read.csv(file.path(path.dat, "MIROC-ESM_historical_1850-2005.csv"))
-gcm.hist <- read.csv(file.path(path.dat, "MIROC-ESM_p1000_850-1849.csv"))
+gcm.p1k  <- read.csv(file.path(path.dat, paste0(GCM, "_historical_1850-2005.csv")))
+gcm.hist <- read.csv(file.path(path.dat, paste0(GCM, "_p1000_850-1849.csv")))
 
 # Adding an hour field to the gcm; setting as noon (middle of window) for simplicity
 gcm.p1k$hour  <- 12.00
@@ -96,8 +101,8 @@ gcm.hist$tair <- apply(gcm.hist[,c("tmax", "tmin")], 1, FUN=mean)
 # ******* TYPO CORRECTIONS!! *******
 # **** NOTE: WILL NEED TO CANCEL THIS OUT UPON NEW EXTRACTION
 # make first day of year start on 0
-ldas$doy    <- ldas$doy - 1
-cruncep$doy <- cruncep$doy -1
+# ldas$doy    <- ldas$doy - 1
+# cruncep$doy <- cruncep$doy -1
 ldas$precipf <- ldas$precipf*.1
 
 summary(ldas)
@@ -117,20 +122,20 @@ summary(met.all)
 met.day <- aggregate(met.all[,vars.met], by=met.all[,c("dataset", "year", "doy")], FUN=mean)
 
 # getting tmax & tmin for ldas & cru
-met.day2 <- aggregate(met.all[met.all$dataset %in% c("NLDAS", "CRUNCEP"),"tair"], 
-                      by=met.all[met.all$dataset %in% c("NLDAS", "CRUNCEP"),c("dataset", "year", "doy")], 
+met.day2 <- aggregate(met.all[met.all$dataset %in% c(LDAS, "CRUNCEP"),"tair"], 
+                      by=met.all[met.all$dataset %in% c(LDAS, "CRUNCEP"),c("dataset", "year", "doy")], 
                       FUN=max)
 names(met.day2)[4] <- "tmax"
-met.day2$tmin <- aggregate(met.all[met.all$dataset %in% c("NLDAS", "CRUNCEP"),"tair"], 
-                           by=met.all[met.all$dataset %in% c("NLDAS", "CRUNCEP"),c("dataset", "year", "doy")], 
+met.day2$tmin <- aggregate(met.all[met.all$dataset %in% c(LDAS, "CRUNCEP"),"tair"], 
+                           by=met.all[met.all$dataset %in% c(LDAS, "CRUNCEP"),c("dataset", "year", "doy")], 
                            FUN=min)[,4]
 summary(met.day2)
 
 # merging tmax & tmin back into met.day 
-met.day[met.day$dataset %in% c("NLDAS", "CRUNCEP"), "tmax"] <- aggregate(met.all[met.all$dataset %in% c("NLDAS", "CRUNCEP"),"tair"], 
+met.day[met.day$dataset %in% c(LDAS, "CRUNCEP"), "tmax"] <- aggregate(met.all[met.all$dataset %in% c("NLDAS", "CRUNCEP"),"tair"], 
                                                                          by=met.all[met.all$dataset %in% c("NLDAS", "CRUNCEP"),c("dataset", "year", "doy")], 
                                                                          FUN=max)[,4]
-met.day[met.day$dataset %in% c("NLDAS", "CRUNCEP"), "tmin"] <- aggregate(met.all[met.all$dataset %in% c("NLDAS", "CRUNCEP"),"tair"], 
+met.day[met.day$dataset %in% c(LDAS, "CRUNCEP"), "tmin"] <- aggregate(met.all[met.all$dataset %in% c("NLDAS", "CRUNCEP"),"tair"], 
                                                                          by=met.all[met.all$dataset %in% c("NLDAS", "CRUNCEP"),c("dataset", "year", "doy")], 
                                                                          FUN=min)[,4]
 summary(met.day)
@@ -164,8 +169,8 @@ met.doy$lwr <- stack(aggregate(met.day[,vars.met], by=met.day[,c("dataset", "doy
 met.doy$upr <- stack(aggregate(met.day[,vars.met], by=met.day[,c("dataset", "doy")], FUN=quantile, 0.975)[,vars.met])[,1]
 summary(met.doy)
 
-met.year$dataset <- factor(met.year$dataset, levels=c("MIROC-ESM.p1000", "MIROC-ESM.hist", "CRUNCEP", "NLDAS"))
-met.doy $dataset <- factor(met.doy $dataset, levels=c("MIROC-ESM.p1000", "MIROC-ESM.hist", "CRUNCEP", "NLDAS"))
+met.year$dataset <- factor(met.year$dataset, levels=c(paste0(GCM, ".p1000"), paste0(GCM, ".hist"), "CRUNCEP", LDAS))
+met.doy $dataset <- factor(met.doy $dataset, levels=c(paste0(GCM, ".p1000"), paste0(GCM, ".hist"), "CRUNCEP", LDAS))
 met.year$met     <- factor(met.year$met,  levels=c("tair", "tmax", "tmin", "precipf", "swdown", "lwdown", "press", "qair", "wind"))
 met.doy $met     <- factor(met.doy $met,  levels=c("tair", "tmax", "tmin", "precipf", "swdown", "lwdown", "press", "qair", "wind"))
 
@@ -173,7 +178,7 @@ met.doy $met     <- factor(met.doy $met,  levels=c("tair", "tmax", "tmin", "prec
 precip.cutoff <- quantile(met.doy[met.doy$met=="precipf","upr"], 0.95)
 met.doy$upr2 <- ifelse(met.doy$met=="precipf" & met.doy$upr>=precip.cutoff, precip.cutoff, met.doy$upr)
 
-png(file.path(path.out, "Met_Raw_Year_0850-2015.png"), height=11, width=8.5, "in", res=180)
+png(file.path(path.out, paste0(GCM, "_Raw_Year_0850-2015.png")), height=11, width=8.5, "in", res=180)
 ggplot(data=met.year) +
   facet_grid(met~., scales="free_y") +
   geom_line(aes(x=year, y=value, color=dataset)) +
@@ -184,7 +189,7 @@ ggplot(data=met.year) +
         legend.direction="horizontal")
 dev.off()
 
-png(file.path(path.out, "Met_Raw_DOY_All.png"), height=11, width=8.5, "in", res=180)
+png(file.path(path.out, past0(GCM, "_Raw_DOY_All.png")), height=11, width=8.5, "in", res=180)
 ggplot(data=met.doy) +
   facet_grid(met~., scales="free_y") +
   geom_ribbon(aes(x=doy, ymin=lwr, ymax=upr2, fill=dataset), alpha=0.3) +
@@ -206,16 +211,16 @@ dev.off()
 
 # The met vars we need (in the order we want to do them)
 vars.met <- c("tmax", "tmin", "swdown", "lwdown", "precipf", "qair", "press", "wind")
-dat.cal = "NLDAS"
+dat.cal = LDAS
 
 # Note This dataframe is only for the datasets to be bias-corrected!
-yrs.cal = data.frame(dataset = c("CRUNCEP", "MIROC-ESM.hist", "MIROC-ESM.p1000"),
+yrs.cal = data.frame(dataset = c("CRUNCEP", paste0(GCM, ".hist"), paste0(GCM, ".p1000")),
                      cal.min = c(1980,             1901,              1829),
                      cal.max = c(2010,             1921,              1849)
                      )
 source("scripts/bias_correct_day.R")
 met.bias <- met.day
-dat.out.full <- bias.correct(met.bias=met.bias, vars.met=vars.met, dat.train="NLDAS", GCM="MIROC-ESM", yrs.cal=yrs.cal, n=25, path.out=path.out)
+dat.out.full <- bias.correct(met.bias=met.bias, vars.met=vars.met, dat.train=LDAS, GCM=GCM, yrs.cal=yrs.cal, n=n, path.out=path.out)
 # --------------------
 
 
@@ -229,15 +234,15 @@ for(met.var in vars.met){
   dat.yr.bias <- aggregate(dat.out$ci[,c("X", "anom.raw", "mean", "lwr", "upr")],
                            by=dat.out$ci[,c("dataset", "met", "year")],
                            FUN=mean)
-  dat.yr.bias$dataset <- factor(dat.yr.bias$dataset, levels=c("MIROC-ESM.p1000", "MIROC-ESM.hist", "CRUNCEP", "NLDAS"))
+  dat.yr.bias$dataset <- factor(dat.yr.bias$dataset, levels=c(paste0(GCM, ".p1000"), paste0(GCM, ".hist"), "CRUNCEP", LDAS))
   # dat.yr.bias$met     <- factor(dat.yr.bias$met,  levels=c("tair", "tmax", "tmin", "precipf", "swdown", "lwdown", "press", "qair", "wind"))
   summary(dat.yr.bias)
   summary(met.year[met.year$met==met.var,]) #raw annual data
   
-  LDAS.use.yr <- dat.yr.bias[dat.yr.bias$dataset=="NLDAS",]
+  LDAS.use.yr <- dat.yr.bias[dat.yr.bias$dataset==LDAS,]
   CRU.use.yr <- dat.yr.bias[dat.yr.bias$dataset=="CRUNCEP" & dat.yr.bias$year<min(LDAS.use.yr$year),]
-  GCM.hist.use.yr <- dat.yr.bias[dat.yr.bias$dataset=="MIROC-ESM.hist" & dat.yr.bias$year<min(CRU.use.yr$year),]
-  GCM.p1k.use.yr <- dat.yr.bias[dat.yr.bias$dataset=="MIROC-ESM.p1000" & dat.yr.bias$year<min(GCM.hist.use.yr$year),]
+  GCM.hist.use.yr <- dat.yr.bias[dat.yr.bias$dataset==paste0(GCM, ".hist") & dat.yr.bias$year<min(CRU.use.yr$year),]
+  GCM.p1k.use.yr <- dat.yr.bias[dat.yr.bias$dataset==paste0(GCM, ".p1000") & dat.yr.bias$year<min(GCM.hist.use.yr$year),]
   met.final.yr <- rbind(LDAS.use.yr, CRU.use.yr, GCM.hist.use.yr, GCM.p1k.use.yr)
   
   # Original 
@@ -263,10 +268,10 @@ for(met.var in vars.met){
                     theme(legend.position="top",
                           legend.direction="horizontal")  
     
-  LDAS.use <- dat.out$ci[dat.out$ci$dataset=="NLDAS",]
+  LDAS.use <- dat.out$ci[dat.out$ci$dataset==LDAS,]
   CRU.use <- dat.out$ci[dat.out$ci$dataset=="CRUNCEP" & dat.out$ci$year<min(LDAS.use$year),]
-  GCM.hist.use <- dat.out$ci[dat.out$ci$dataset=="MIROC-ESM.hist" & dat.out$ci$year<min(CRU.use$year),]
-  GCM.p1k.use <- dat.out$ci[dat.out$ci$dataset=="MIROC-ESM.p1000" & dat.out$ci$year<min(GCM.hist.use$year),]
+  GCM.hist.use <- dat.out$ci[dat.out$ci$dataset==paste0(GCM, ".hist") & dat.out$ci$year<min(CRU.use$year),]
+  GCM.p1k.use <- dat.out$ci[dat.out$ci$dataset==paste0(GCM, ".p1000") & dat.out$ci$year<min(GCM.hist.use$year),]
   
   met.final.day <- rbind(LDAS.use, CRU.use, GCM.hist.use, GCM.p1k.use)
   met.final.day$splice <- NA
@@ -276,7 +281,7 @@ for(met.var in vars.met){
   met.final.day$splice <- as.factor(met.final.day$splice)
   met.final.day$year.frac <- met.final.day$year + met.final.day$doy/366
   summary(met.final.day)
-  met.final.day$dataset <- factor(met.final.day$dataset, levels=c("MIROC-ESM.p1000", "MIROC-ESM.hist", "CRUNCEP", "NLDAS"))
+  met.final.day$dataset <- factor(met.final.day$dataset, levels=c(paste0(GCM, ".p1000"), paste0(GCM, ".hist"), "CRUNCEP", LDAS))
   
   plot.splice <- ggplot(data=met.final.day[!is.na(met.final.day$splice),]) +
                     facet_wrap(~splice, scales="free_x", ncol=1) +
@@ -289,7 +294,7 @@ for(met.var in vars.met){
                     theme(legend.position="top",
                           legend.direction="horizontal")
 
-  png(file.path(path.out, paste0("Met_", met.var, "_bias-correction.png")), height=8.5, width=14, "in", res=180)
+  png(file.path(path.out, paste0(GCM, met.var, "_bias-correction.png")), height=8.5, width=14, "in", res=180)
     grid.newpage()
     pushViewport(viewport(layout=grid.layout(1,3)))
     print(plot.orig  , vp = viewport(layout.pos.row = 1, layout.pos.col = 1))
@@ -299,4 +304,116 @@ for(met.var in vars.met){
 }
 # -----------------------------------
 
-# save(dat.out.full, file=file.path(path.out, "MetAll_Daily_Ensemble_MIROC-ESM.Rdata"))
+# -----------------------------------
+# Get rid of years we don't want to use
+# -----------------------------------
+CRU.max <- min(dat.out.full$met.bias[dat.out.full$met.bias$dataset==LDAS,"year"])-1
+GCM.hist.max <- min(dat.out.full$met.bias[dat.out.full$met.bias$dataset=="CRUNCEP","year"])-1
+GCM.p1000.max <- min(dat.out.full$met.bias[dat.out.full$met.bias$dataset==paste0(GCM, ".hist"),"year"])-1
+
+for(v in names(dat.out.full)){
+  if(v == "met.bias"){
+    dat.out.full[[v]] <- dat.out.full[[v]][dat.out.full[[v]]$dataset==LDAS | 
+                                             (dat.out.full[[v]]$dataset=="CRUNCEP" & dat.out.full[[v]]$year<=CRU.max) |
+                                             (dat.out.full[[v]]$dataset==paste0(GCM, ".hist") & dat.out.full[[v]]$year<=GCM.hist.max) |
+                                             (dat.out.full[[v]]$dataset==paste0(GCM, ".p1000") & dat.out.full[[v]]$year<=GCM.p1000.max),]
+  } else {
+    dat.out.full[[v]]$ci <- dat.out.full[[v]]$ci[dat.out.full[[v]]$ci$dataset==LDAS | 
+                                                 (dat.out.full[[v]]$ci$dataset=="CRUNCEP" & dat.out.full[[v]]$ci$year<=CRU.max) |
+                                                 (dat.out.full[[v]]$ci$dataset==paste0(GCM, ".hist") & dat.out.full[[v]]$ci$year<=GCM.hist.max) |
+                                                 (dat.out.full[[v]]$ci$dataset==paste0(GCM, ".p1000") & dat.out.full[[v]]$ci$year<=GCM.p1000.max),]
+    dat.out.full[[v]]$sims <- dat.out.full[[v]]$sims[dat.out.full[[v]]$sims$dataset==LDAS | 
+                                                   (dat.out.full[[v]]$sims$dataset=="CRUNCEP" & dat.out.full[[v]]$sims$year<=CRU.max) |
+                                                   (dat.out.full[[v]]$sims$dataset==paste0(GCM, ".hist") & dat.out.full[[v]]$sims$year<=GCM.hist.max) |
+                                                   (dat.out.full[[v]]$sims$dataset==paste0(GCM, ".p1000") & dat.out.full[[v]]$sims$year<=GCM.p1000.max),]
+    
+    
+  }
+}
+summary(dat.out.full$tmax$sims)
+
+save(dat.out.full, file=file.path(path.out, paste0(GCM, "day_alldata.Rdata")))
+# -----------------------------------
+
+# -----------------------------------
+# Saving each variable as a netcdf 
+# -----------------------------------
+# Breaking from previous versions and putting all variables into the same file in 100 year
+# chunks
+library(ncdf4)
+library(lubridate)
+library(stringr)
+
+# Defining variable names, longname & units
+vars.info <- data.frame(name=c("tair", "tmax", "tmin", "precipf", "swdown", "lwdown", "press", "qair", "wind"),
+                        longname=c("2 meter mean air temperature", 
+                                   "2 meter daily maximum air temperature", 
+                                   "2 meter daily minimum air temperature",
+                                   paste('The per unit area and time ',
+                                         'precipitation representing the sum of convective rainfall, ',
+                                         'stratiform rainfall, and snowfall', sep=''),
+                                   paste('Incident (downwelling) radiation in ',
+                                         'the shortwave part of the spectrum averaged over the time ',
+                                         'step of the forcing data', sep=''),
+                                   paste('Incident (downwelling) longwave ',
+                                         'radiation averaged over the time step of the forcing data', sep=''),
+                                   'Pressure at the surface',
+                                   'Specific humidity measured at the lowest level of the atmosphere',
+                                   'Wind speed' 
+                                   ),
+                        units= c("K", "K", "K", "kg m-2 s-1", "W m-2", "W m-2", "Pa", "kg kg-1", "m s-1")
+                        )
+# Make a few dimensions we can use
+dimY <- ncdim_def( "lon", units="degrees", longname="latitude", vals=site.lat )
+dimX <- ncdim_def( "lat", units="degrees", longname="longitude", vals=site.lon )
+
+
+yr.bins <- c(min(dat.out.full$met.bias$year), seq(min(dat.out.full$met.bias$year)+50, round(max(dat.out.full$met.bias$year),-2), by=100))
+for(i in 1:n){
+  # Make a directory for each ensemble member
+  out.name <- paste0(site.name, "_", GCM, "_day_", str_pad(i, 3, pad=0))
+  new.dir <- file.path(wd.base, "data/met_ensembles", site.name, GCM, "day", out.name)
+  if(!dir.exists(new.dir)) dir.create(new.dir, recursive=T)  
+  
+  for(j in 1:length(yr.bins)){
+    date.start <- as.Date(paste0(yr.bins[j], "-01-01"))
+    if(j < length(yr.bins)){
+      date.end   <- as.Date(paste0(yr.bins[j+1]-1, "-12-31"))
+    } else {
+      date.end   <- as.Date(paste0(max(dat.out.full$met.bias$year), "-12-31"))
+    }
+    day.vec <- seq(date.start, date.end, by="day")
+    day.vec <- julian(day.vec, origin=as.Date("850-01-01"))
+  
+    dim.t <- ncdim_def(name = "time",
+                       units = paste0("days since 850"),
+                       vals = day.vec, # calculating the number of months in this run
+                       calendar = "standard", unlim = TRUE)
+
+    var.list <- list()
+    dat.list <- list()
+    
+    for(v in names(dat.out.full)[1:(length(dat.out.full)-1)]){
+      var.list[[v]] <- ncvar_def(v, units=paste(vars.info[vars.info$name==v, "units"]), dim=list(dimX, dimY, dim.t), longname=paste(vars.info[vars.info$name==v, "longname"]))
+      dat.list[[v]] <- array(dat.out.full[[v]]$sims[dat.out.full[[v]]$sims$year>=year(date.start) & dat.out.full[[v]]$sims$year<=year(date.end), paste0("X", i)], dim=c(1,1,length(day.vec)))
+    }
+    
+    # Naming convention: [SITE]_[GCM]_day_[member]_[YEAR].nc
+    nc <- nc_create(file.path(new.dir, paste0(out.name, "_", str_pad(year(date.start), 4, pad=0), ".nc")), var.list)
+    for(v in 1:length(var)) {
+      ncvar_put(nc, var.list[[v]], dat.list[[v]])
+    }
+    nc_close(nc)    
+  }
+  # Compress the ensemble file  setwd(dir.out) # Go to the output directory so we don't get annoying file paths
+  setwd(path.out)
+  system(paste0("tar -jcvf ", out.name, ".tar.bz2 ", out.name)) # Compress the folder
+  system(paste0("rm -rf ", out.name)) # remove the uncompressed folder
+  setwd(wd.base) # Go back to our base directory
+  
+
+}
+
+
+# -----------------------------------
+
