@@ -259,8 +259,8 @@ dir.gcm <- file.path("data/full_raw", GCM)
 
 if(!dir.exists(dir.gcm)) stop("Invalid GCM!  Are you sure the raw data is downloaded? Check file structure.")
 
-gcm.recode <- data.frame(gcm = c("tasmax", "tasmin", "pr"     , "psl"  , "huss", "hus" , "sfcWind", "rsds"  , "rlds"  ),
-                         met = c("tmax"  , "tmin"  , "precipf", "press", "qair", "qair", "wind"   , "swdown", "lwdown")
+gcm.recode <- data.frame(gcm = c("tas", "tasmax", "tasmin", "pr"     , "psl"  , "huss", "hus" , "sfcWind", "rsds"  , "rlds"  ),
+                         met = c("tair", "tmax"  , "tmin"  , "precipf", "press", "qair", "qair", "wind"   , "swdown", "lwdown")
                          )
 
 # --------------
@@ -379,8 +379,7 @@ if(!paste0(GCM, "_historical") %in% substr(met.done, 1, nchar(GCM)+11)){
     setwd(file.path(dir.gcm, "historical", freq, v))
     
     files.v <- dir()
-#     for(i in 1:length(files.v)){
-      for(i in 1:min(length(files.v), 2)){
+    for(i in 1:length(files.v)){
         fnow=files.v[i]
 
       # Open the file
@@ -429,6 +428,17 @@ if(!paste0(GCM, "_historical") %in% substr(met.done, 1, nchar(GCM)+11)){
     
     setwd(wd.base)
   } # End variable
+  
+  # Double checking to make sure things are in the right place
+  for(v in names(dat.gcm.hist)){
+    if(!v %in% vars.gcm.mo){ # if the variable isn't already in month, double check
+      if(nrow(dat.gcm.hist[[v]])<nrow(dat.gcm.hist[["pr"]])){ 
+        # If this variable has fewer observations than temp, add it to monthly
+        vars.gcm.mo <- c(vars.gcm.mo, v)
+        vars.gcm.day <- vars.gcm.day[!vars.gcm.day==v]
+      }
+    }
+  }
   
   hist.day <- data.frame(dataset=paste0(GCM, ".hist"),
                          dat.gcm.hist[[vars.gcm.day[1]]][,1:(ncol(dat.gcm.hist[[vars.gcm.day[1]]])-1)]
