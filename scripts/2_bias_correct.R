@@ -54,20 +54,16 @@ rm(list=ls())
 library(mgcv); library(ggplot2)
 
 # Set the working directory
-wd.base <- "~/Desktop/Research/PalEON_CR/met_ensemble"
+# wd.base <- "~/Desktop/Research/PalEON_CR/met_ensemble"
 # wd.base <- "~/Dropbox/PalEON_CR/met_ensemble"
-# wd.base <- "/projectnb/dietzelab/paleon/met_ensemble"
+wd.base <- "/projectnb/dietzelab/paleon/met_ensemble"
 setwd(wd.base)
-
-# Source to my gamm helper scripts
-# Github: https://github.com/crollinson/R_Functions
-path.gam <- "~/Desktop/Research/R_Functions"
 
 # Defining a site name -- this can go into a function later
 site.name="HARVARD"
 site.lat=42.54
 site.lon=-72.18
-GCM="MIROC-ESM"
+GCM.list=c("MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1")
 LDAS="NLDAS"
 n=25 # Number of ensemble members
 
@@ -77,6 +73,8 @@ if(!dir.exists(path.out)) dir.create(path.out, recursive=T)
 
 met.done <- dir(path.out, ".csv")
 # -----------------------------------
+
+for(GCM in GCM.list){
 
 # -----------------------------------
 # 1. Read in & format the different datasets
@@ -413,7 +411,6 @@ for(i in 1:n){
   
 
 }
-
-
 # -----------------------------------
 
+}
