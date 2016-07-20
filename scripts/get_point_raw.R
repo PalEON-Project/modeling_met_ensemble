@@ -253,7 +253,7 @@ setwd(wd.base)
 
 for(GCM in GCM.list){
 
-print(paste0("** processing: ", GCM))  
+print(paste0(" ------ ", GCM, " ------ "))  
 # Right now haven't extracted the paleon domain & are going to work with just MIROC-ESM
 dir.gcm <- file.path("data/full_raw", GCM)
 
@@ -277,11 +277,11 @@ if(!paste0(GCM, "_p1000") %in% substr(met.done, 1, nchar(GCM)+6)) {
   vars.gcm <- c(vars.gcm.day, vars.gcm.mo)
   dat.gcm.p1k=NULL # Giving a value to evaluate to determine if we need to make a new dataframe or not
   for(v in vars.gcm){
-    print(paste0("** processing: ", v, " (p1000)"))
-    
     # Getting the daily files first
     freq=ifelse(v %in% vars.gcm.day, "day", "month")
     setwd(file.path(dir.gcm, "p1000", freq, v))
+    
+    print(paste0("** processing: ", v, " (p1000, ", freq, ")"))
     
     files.v <- dir()
     for(i in 1:length(files.v)){
@@ -306,6 +306,13 @@ if(!paste0(GCM, "_p1000") %in% substr(met.done, 1, nchar(GCM)+6)) {
         plev <- ncvar_get(ncT, "plev")
         puse <- which(plev==max(plev)) # Get humidity at the place of highest pressure (closest to surface)
         dat.now <- ncvar_get(ncT, v)[ind.lon,ind.lat,puse,] 
+        
+        # If dat.now has missing values, try the next layer
+        puse.orig <- puse
+        while(is.na(mean(dat.now))){
+          if(puse.orig==1) { puse = puse + 1 } else { puse = puse -1 }
+          dat.now <- ncvar_get(ncT, v)[ind.lon,ind.lat,puse,] 
+        }
       } else {
         dat.now <- ncvar_get(ncT, v)[ind.lon,ind.lat,]
       }
@@ -343,10 +350,10 @@ if(!paste0(GCM, "_p1000") %in% substr(met.done, 1, nchar(GCM)+6)) {
 
   for(v in vars.gcm.day){
     if(v %in% c("uas", "vas")){
-      wind <- sqrt(dat.gcm.p1k[["uas"]]$value^2 * dat.gcm.p1k[["vas"]]$value^2)
+      wind <- sqrt(dat.gcm.p1k[["uas"]]$value^2 + dat.gcm.p1k[["vas"]]$value^2)
       p1k.day[,"wind"] <- wind
     } else if(v %in% c("ua", "va")){
-      wind <- sqrt(dat.gcm.p1k[["ua"]]$value^2 * dat.gcm.p1k[["va"]]$value^2)
+      wind <- sqrt(dat.gcm.p1k[["ua"]]$value^2 + dat.gcm.p1k[["va"]]$value^2)
       p1k.day[,"wind"] <- wind
     } else {
       var2 <- paste(gcm.recode[gcm.recode$gcm==v,"met"])
@@ -355,10 +362,10 @@ if(!paste0(GCM, "_p1000") %in% substr(met.done, 1, nchar(GCM)+6)) {
   }
   for(v in vars.gcm.mo){
     if(v %in% c("uas", "vas")){
-      wind <- sqrt(dat.gcm.p1k[["uas"]]$value^2 * dat.gcm.p1k[["vas"]]$value^2)
+      wind <- sqrt(dat.gcm.p1k[["uas"]]$value^2 + dat.gcm.p1k[["vas"]]$value^2)
       p1k.mo[,"wind"] <- wind
     } else if(v %in% c("ua", "va")){
-      wind <- sqrt(dat.gcm.p1k[["ua"]]$value^2 * dat.gcm.p1k[["va"]]$value^2)
+      wind <- sqrt(dat.gcm.p1k[["ua"]]$value^2 + dat.gcm.p1k[["va"]]$value^2)
       p1k.mo[,"wind"] <- wind
     } else {
       var2 <- paste(gcm.recode[gcm.recode$gcm==v,"met"])
@@ -389,10 +396,10 @@ if(!paste0(GCM, "_historical") %in% substr(met.done, 1, nchar(GCM)+11)){
   vars.gcm <- c(vars.gcm.day, vars.gcm.mo)
   dat.gcm.hist=NULL # Giving a value to evaluate to determine if we need to make a new dataframe or not
   for(v in vars.gcm){
-    print(paste0("** processing: ", v, " (historical)"))
-    
     freq=ifelse(v %in% vars.gcm.mo, "month", "day")
     setwd(file.path(dir.gcm, "historical", freq, v))
+    
+    print(paste0("** processing: ", v, " (historical, ", freq, ")"))
     
     files.v <- dir()
     for(i in 1:length(files.v)){
@@ -417,6 +424,14 @@ if(!paste0(GCM, "_historical") %in% substr(met.done, 1, nchar(GCM)+11)){
         plev <- ncvar_get(ncT, "plev")
         puse <- which(plev==max(plev)) # Get humidity at the place of highest pressure (closest to surface)
         dat.now <- ncvar_get(ncT, v)[ind.lon,ind.lat,puse,] 
+
+        # If dat.now has missing values, try the next layer
+        puse.orig <- puse
+        while(is.na(mean(dat.now))){
+          if(puse.orig==1) { puse = puse + 1 } else { puse = puse -1 }
+          dat.now <- ncvar_get(ncT, v)[ind.lon,ind.lat,puse,] 
+        }
+        
       } else {
         dat.now <- ncvar_get(ncT, v)[ind.lon,ind.lat,]
       }
@@ -462,10 +477,10 @@ if(!paste0(GCM, "_historical") %in% substr(met.done, 1, nchar(GCM)+11)){
 
   for(v in vars.gcm.day){
     if(v %in% c("uas", "vas")){
-      wind <- sqrt(dat.gcm.hist[["uas"]]$value^2 * dat.gcm.hist[["vas"]]$value^2)
+      wind <- sqrt(dat.gcm.hist[["uas"]]$value^2 + dat.gcm.hist[["vas"]]$value^2)
       hist.day[,"wind"] <- wind
     } else if(v %in% c("ua", "va")){
-      wind <- sqrt(dat.gcm.hist[["ua"]]$value^2 * dat.gcm.hist[["va"]]$value^2)
+      wind <- sqrt(dat.gcm.hist[["ua"]]$value^2 + dat.gcm.hist[["va"]]$value^2)
       hist.day[,"wind"] <- wind
     } else {
       var2 <- paste(gcm.recode[gcm.recode$gcm==v,"met"])
@@ -479,23 +494,11 @@ if(!paste0(GCM, "_historical") %in% substr(met.done, 1, nchar(GCM)+11)){
                           )
     for(v in vars.gcm.mo){
       if(v %in% c("uas", "vas")){
-        wind <- sqrt(dat.gcm.hist[["uas"]]$value^2 * dat.gcm.hist[["vas"]]$value^2)
-        if(length(wind) != nrow(hist.mo)){ 
-          # If for some reason we don't have the right wind value, 
-          # put in the mean value & we can approximate it with the downscaling
-          hist.mo[,"wind"] <- mean(wind)
-        } else {
-          hist.mo[,"wind"] <- wind
-        }
+        wind <- sqrt(dat.gcm.hist[["uas"]]$value^2 + dat.gcm.hist[["vas"]]$value^2)
+        hist.mo[,"wind"] <- wind
       } else if(v %in% c("ua", "va")){
-        wind <- sqrt(dat.gcm.hist[["ua"]]$value^2 * dat.gcm.hist[["va"]]$value^2)
-        if(length(wind) != nrow(hist.mo)){ 
-          # If for some reason we don't have the right wind value, 
-          # put in the mean value & we can approximate it with the downscaling
-          hist.mo[,"wind"] <- mean(wind)
-        } else {
-          hist.mo[,"wind"] <- wind
-        }
+        wind <- sqrt(dat.gcm.hist[["ua"]]$value^2 + dat.gcm.hist[["va"]]$value^2)
+        hist.mo[,"wind"] <- wind
       } else {
         var2 <- paste(gcm.recode[gcm.recode$gcm==v,"met"])
         hist.mo[,var2] <- dat.gcm.hist[[v]]$value
