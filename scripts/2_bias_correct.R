@@ -66,25 +66,30 @@ site.lon=-72.18
 GCM.list=c("MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1")
 LDAS="NLDAS"
 n=25 # Number of ensemble members
+# -----------------------------------
 
+for(GCM in GCM.list){
+  
 path.dat <- file.path(wd.base, "data/paleon_sites", site.name)
 path.out <- file.path(wd.base, "data/met_ensembles", site.name, GCM, "day")
 if(!dir.exists(path.out)) dir.create(path.out, recursive=T)  
 
 met.done <- dir(path.out, ".csv")
-# -----------------------------------
 
-for(GCM in GCM.list){
 
 # -----------------------------------
 # 1. Read in & format the different datasets
 # -----------------------------------
-#    - aggregate all variable to daily for the bias-correction
-#    - do some exploratory graphing along the way
-ldas     <- read.csv(file.path(path.dat, paste0(LDAS, "_1980-2015.csv")))
+# Find the appropriate file name for each
+file.ldas <- dir(path.dat, LDAS)
+file.cru <- dir(path.dat, "CRUNCEP")
+file.hist <- dir(path.dat, paste0(GCM, "_historical"))
+file.p1k <- dir(path.dat, paste0(GCM, "_p1000"))
+
+ldas     <- read.csv(file.path(path.dat, file.ldas))
 cruncep  <- read.csv(file.path(path.dat, "CRUNCEP_1901-2010.csv"))
-gcm.p1k  <- read.csv(file.path(path.dat, paste0(GCM, "_historical_1850-2005.csv")))
-gcm.hist <- read.csv(file.path(path.dat, paste0(GCM, "_p1000_850-1849.csv")))
+gcm.hist <- read.csv(file.path(path.dat, paste0(GCM, "_historical_1850-2005.csv")))
+gcm.p1k  <- read.csv(file.path(path.dat, paste0(GCM, "_p1000_850-1849.csv")))
 
 # Adding an hour field to the gcm; setting as noon (middle of window) for simplicity
 gcm.p1k$hour  <- 12.00
@@ -187,7 +192,7 @@ ggplot(data=met.year) +
         legend.direction="horizontal")
 dev.off()
 
-png(file.path(path.out, past0(GCM, "_Raw_DOY_All.png")), height=11, width=8.5, "in", res=180)
+png(file.path(path.out, paste0(GCM, "_Raw_DOY_All.png")), height=11, width=8.5, "in", res=180)
 ggplot(data=met.doy) +
   facet_grid(met~., scales="free_y") +
   geom_ribbon(aes(x=doy, ymin=lwr, ymax=upr2, fill=dataset), alpha=0.3) +

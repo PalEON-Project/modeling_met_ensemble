@@ -59,33 +59,33 @@ fi
       mkdir -p ${outdir}
    fi
 
-   # -----------
-   # Getting daily data
-   # -----------
-      echo "---------- Loop 1: p1000 daily ----------"
-      # Define file path & variables of interest
-      path_p1000_day=/badc/cmip5/data/cmip5/output1/IPSL/IPSL-CM5A-LR/past1000/day/atmos/day/r1i1p1/latest
-      var_p1000_day=(tas tasmax tasmin pr rsds psl huss sfcWind)
-
-      # Make a directory for the daily data so we can keep things separate
-      if [ ! -d ${outdir}day/ ]
-      then
-         mkdir -p ${outdir}day/
-      fi
-
-      # Change to the daily p1000 working directory
-      pushd ${outdir}day/
-
-      # loop through daily variables
-      for var in ${var_p1000_day[@]}
-      do
-         echo $var
-         wget -r -nH --cut-dirs=14 ftp://${ceda_user}:${cedapw}@ftp.ceda.ac.uk/${path_p1000_day}/${var}
-      done
-      popd # leave the daily directory
-   # -----------
-   
-   
+#    # -----------
+#    # Getting daily data
+#    # -----------
+#       echo "---------- Loop 1: p1000 daily ----------"
+#       # Define file path & variables of interest
+#       path_p1000_day=/badc/cmip5/data/cmip5/output1/IPSL/IPSL-CM5A-LR/past1000/day/atmos/day/r1i1p1/latest
+#       var_p1000_day=(tas tasmax tasmin pr psl huss sfcWind)
+# 
+#       # Make a directory for the daily data so we can keep things separate
+#       if [ ! -d ${outdir}day/ ]
+#       then
+#          mkdir -p ${outdir}day/
+#       fi
+# 
+#       # Change to the daily p1000 working directory
+#       pushd ${outdir}day/
+# 
+#       # loop through daily variables
+#       for var in ${var_p1000_day[@]}
+#       do
+#          echo $var
+#          wget -r -nH --cut-dirs=14 ftp://${ceda_user}:${cedapw}@ftp.ceda.ac.uk/${path_p1000_day}/${var}
+#       done
+#       popd # leave the daily directory
+#    # -----------
+#    
+#    
    # -----------
    # loop through monthly
    # -----------
@@ -124,59 +124,59 @@ fi
    then
       mkdir -p ${outdir}
    fi
-#  
-#    # -----------
-#    # Getting monthly data (radiation pre-1950)
-#    # -----------
-#       echo "---------- Loop 3: historical monthly ----------"
-#       Define file path & variables of interest
-#       path_hist_mon=/badc/cmip5/data/cmip5/output1/IPSL/IPSL-CM5A-LR/historical/mon/atmos/Amon/r1i1p1/latest
-#       var_hist_mon=(rlds rsds)
-# 
-#       Make a directory for the daily data so we can keep things separate
-#       if [ ! -d ${outdir}month/ ]
-#       then
-#          mkdir -p ${outdir}month/
-#       fi
-# 
-#       Change to the daily historical working directory
-#       pushd ${outdir}month/
-# 
-#       loop through daily variables
-#       for var in ${var_hist_mon[@]}
-#       do
-#          echo $var
-#          wget -r -nH --cut-dirs=14 ftp://${ceda_user}:${cedapw}@ftp.ceda.ac.uk/${path_hist_mon}/${var}
-#       done
-#       popd # leave the daily directory
-#    # -----------
-
+ 
    # -----------
-   # Getting daily data
+   # Getting monthly data (radiation pre-1950)
    # -----------
-      echo "---------- Loop 4: historical daily ----------"
+      echo "---------- Loop 3: historical monthly ----------"
       Define file path & variables of interest
-      path_hist_day=/badc/cmip5/data/cmip5/output1/IPSL/IPSL-CM5A-LR/historical/day/atmos/day/r1i1p1/latest
-      var_hist_day=(tas tasmin tasmax pr psl huss rsds rlds sfcWind)
+      path_hist_mon=/badc/cmip5/data/cmip5/output1/IPSL/IPSL-CM5A-LR/historical/mon/atmos/Amon/r1i1p1/latest
+      var_hist_mon=(rlds rsds)
 
       Make a directory for the daily data so we can keep things separate
-      if [ ! -d ${outdir}day/ ]
+      if [ ! -d ${outdir}month/ ]
       then
-         mkdir -p ${outdir}day/
+         mkdir -p ${outdir}month/
       fi
 
       Change to the daily historical working directory
-      pushd ${outdir}day/
+      pushd ${outdir}month/
 
       loop through daily variables
-      for var in ${var_hist_day[@]}
+      for var in ${var_hist_mon[@]}
       do
          echo $var
-         wget -r -nH --cut-dirs=14 ftp://${ceda_user}:${cedapw}@ftp.ceda.ac.uk/${path_hist_day}/${var}
+         wget -r -nH --cut-dirs=14 ftp://${ceda_user}:${cedapw}@ftp.ceda.ac.uk/${path_hist_mon}/${var}
       done
       popd # leave the daily directory
    # -----------
-
+# 
+#    # -----------
+#    # Getting daily data
+#    # -----------
+#       echo "---------- Loop 4: historical daily ----------"
+#       Define file path & variables of interest
+#       path_hist_day=/badc/cmip5/data/cmip5/output1/IPSL/IPSL-CM5A-LR/historical/day/atmos/day/r1i1p1/latest
+#       var_hist_day=(tas tasmin tasmax pr psl huss sfcWind)
+# 
+#       Make a directory for the daily data so we can keep things separate
+#       if [ ! -d ${outdir}day/ ]
+#       then
+#          mkdir -p ${outdir}day/
+#       fi
+# 
+#       Change to the daily historical working directory
+#       pushd ${outdir}day/
+# 
+#       loop through daily variables
+#       for var in ${var_hist_day[@]}
+#       do
+#          echo $var
+#          wget -r -nH --cut-dirs=14 ftp://${ceda_user}:${cedapw}@ftp.ceda.ac.uk/${path_hist_day}/${var}
+#       done
+#       popd # leave the daily directory
+#    # -----------
+# 
 #    # -----------
 #    # Getting sub-daily data
 #    # -----------
