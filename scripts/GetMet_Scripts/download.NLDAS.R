@@ -135,8 +135,8 @@ download.NLDAS <- function(outfolder, start_date, end_date, site_id, lat.in, lon
         } # end variable loop
       } # end hour
     } # end day
-    ## change units of precip to kg/m2/s instead of hour accumulated precip
-    dat.list[["precipitation_flux"]] = dat.list[["precipitation_flux"]]/3600
+    ## change units of precip from kg/m2/hr to kg/m2/s 
+    dat.list[["precipitation_flux"]] = dat.list[["precipitation_flux"]]/(60*60)
     
     ## put data in new file
     loc <- nc_create(filename=loc.file, vars=var.list, verbose=verbose)

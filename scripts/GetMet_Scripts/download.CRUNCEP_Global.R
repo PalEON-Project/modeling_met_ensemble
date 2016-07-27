@@ -68,7 +68,10 @@ download.CRUNCEP <- function(outfolder, start_date, end_date, site_id, lat.in, l
       
     }
     ## change units of precip to kg/m2/s instead of 6 hour accumulated precip
-    dat.list[[8]] = dat.list[[8]]/21600
+    ## 1 g H2O = 1 g/cm3 
+    ## 1 cm3 = 100^3 cm3/m3
+    ## 1 kg H2O = 10^3 g/kg = 10^3 (g/kg) * 100^-3 (m3/cm3) = 0.01 m3/m2 = 0.001 m = 1 mm
+    dat.list[[8]] = dat.list[[8]]/(60*60*6)
     
     
     ## put data in new file
