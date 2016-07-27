@@ -162,7 +162,7 @@ for(v in 1:length(vars.met)){
                             stack(dat.out[[met.var]]$sims[dat.out[[met.var]]$sims$dataset==dat.train & dat.out[[met.var]]$sims$year>=yr.min.train & dat.out[[met.var]]$sims$year<=yr.max.train, paste0("X", 1:n)])
                             )
         
-    dat.temp <- aggregate(dat.temp0$values, by=dat.temp0[,c("doy", "ind")], FUN=mean)
+    dat.temp <- aggregate(dat.temp0$values, by=dat.temp0[,c("doy", "ind")], FUN=mean) # Note: this gets rid of years
     names(dat.temp)[3] <- "Y"
     summary(dat.temp)
     
@@ -180,14 +180,28 @@ for(v in 1:length(vars.met)){
     summary(dat.temp)
         
     # 4. Getting the raw ("bias") & training data for the calibration periods so we can model the anomalies
-    #    -- NOTE: here I'm not pulling each iteration and am using the mean anomaly from the previous round.
-    #              -- I probably should do something similar to above to propogate the uncertainty, but I was 
-    #                 trying to simplify things until I was sure everything worked okay
-    raw.train <- met.bias[met.bias$dataset==dat.train & met.bias$year>=yr.min.train & met.bias$year<=yr.max.train, c("dataset", "year", "doy", met.var, vars.met)]
+    #    -- NOTE: Now propogating anomaly uncertainty by pulling each simulation from the previous round.
+    # The dataset to be bias-corrected is easy because there's no anomaly variation
     raw.bias  <- met.bias[met.bias$dataset==dat.bias  & met.bias$year>=yr.min       & met.bias$year<=yr.max      , c("dataset", "year", "doy", met.var, vars.met)]
-    names(raw.train) <- c("dataset", "year", "doy", "X", vars.met)
     names(raw.bias) <- c("dataset", "year", "doy", "X", vars.met)
     
+    # Propogating anomaly uncertainty -- need to stack the variables for each (if there's 1 or more predictor variables)
+    # raw.train <- met.bias[met.bias$dataset==dat.train & met.bias$year>=yr.min.train & met.bias$year<=yr.max.train, c("dataset", "year", "doy", met.var)]
+    # names(raw.train) <- c("dataset", "year", "doy", "X")
+    
+    # pulling the 
+    raw.train <- data.frame(dataset=dat.train,
+                            year = rep(dat.out[[met.var]]$sims[dat.out[[met.var]]$sims$dataset==dat.train  & dat.out[[met.var]]$sims$year>=yr.min.train & dat.out[[met.var]]$sims$year<=yr.max.train, "year" ], n),
+                            doy  = rep(dat.out[[met.var]]$sims[dat.out[[met.var]]$sims$dataset==dat.train  & dat.out[[met.var]]$sims$year>=yr.min.train & dat.out[[met.var]]$sims$year<=yr.max.train, "doy"  ], n),
+                            stack(dat.out[[met.var]]$sims[dat.out[[met.var]]$sims$dataset==dat.train & dat.out[[met.var]]$sims$year>=yr.min.train & dat.out[[met.var]]$sims$year<=yr.max.train, paste0("X", 1:n)])
+                            )
+    names(raw.train)[4:5] <- c("X", "ind")
+    if(length(vars.pred)>0){ 
+      for(v.pred in vars.pred){
+        raw.train[,v.pred] <- stack(dat.out[[met.var]]$sims[dat.out[[met.var]]$sims$dataset==dat.train  & dat.out[[met.var]]$sims$year>=yr.min.train & dat.out[[met.var]]$sims$year<=yr.max.train, paste0("X", 1:n)])[,1]
+      }
+    }
+
     #  # Merge in the full permutation of anomalies -- here's where that pairing like we did for climate can occur
     #  raw.bias <- merge(raw.bias, met.df)
     
@@ -291,10 +305,10 @@ for(v in 1:length(vars.met)){
       #        # dat.pred$anom.raw <- dat.pred$X
       
       raw.train$pred <- predict(mod.bias, newdata=raw.train)
-      raw.bias$pred <- predict(mod.bias, newdata=raw.bias)
+      raw.bias $pred <- predict(mod.bias, newdata=raw.bias)
       raw.train$anom.train <- raw.train$X - raw.train$pred
       raw.bias $anom.raw   <- raw.bias$X - raw.bias$pred
-      dat.pred$anom.raw <- dat.pred$X - dat.pred$pred
+      dat.pred $anom.raw <- dat.pred$X - dat.pred$pred
 
     } else {
       # If this is NOT preciptiation, anomalies are pretty well distributed around climatic means or at least aren't nearly as messy
@@ -303,8 +317,8 @@ for(v in 1:length(vars.met)){
       raw.bias$pred <- predict(mod.bias, newdata=raw.bias)
 
       # We don't want the anomaly from the bias-corrected mean, we want it form the original  
-      anom.train <- gam(X ~ s(doy), data=raw.train)
-      anom.bias  <- gam(X ~ s(doy), data=raw.bias)
+      anom.train <- gam(X ~ s(doy, by=ind) + ind, data=raw.train) # Need to account for the climatic differences in the simulations 
+      anom.bias  <- gam(X ~ s(doy), data=raw.bias) # Note: the "bias" dataset has not corrected yet, so there should only be 1 value
       raw.train$anom.train <- resid(anom.train)
       raw.bias $anom.raw   <- resid(anom.bias)      
       dat.pred$anom.raw <- dat.pred$X - predict(anom.bias, newdata=dat.pred)
@@ -324,10 +338,10 @@ for(v in 1:length(vars.met)){
       dat.pred$Q <- dat.pred[,j]
       
       if(j %in% vars.pred){ 
-        anom.train2  <- gam(Q ~ s(doy), data=raw.train)
+        anom.train2  <- gam(Q ~ s(doy, by=ind) + ind, data=raw.train) # Need to account for the climatic differences in the simulations 
         raw.train[,paste0(j, ".anom")] <- resid(anom.train2)
         
-        anom.bias2  <- gam(Q ~ s(doy), data=raw.bias)
+        anom.bias2  <- gam(Q ~ s(doy), data=raw.bias) # Note: the "bias" dataset has not corrected yet, so there should only be 1 value
         raw.bias[,paste0(j, ".anom")] <- resid(anom.bias2)
         dat.pred[,paste0(j, ".anom")] <- dat.pred$Q - predict(anom.bias2, newdata=dat.pred)
       } else {
@@ -348,7 +362,9 @@ for(v in 1:length(vars.met)){
     #     the right distribution of anomalies
     if(dat.bias %in% empirical & dat.train %in% empirical){ 
       # if it's empirical we can, pair the anomalies for best estimation
-      dat.anom <- merge(raw.bias[,c("year", "doy", "X", "anom.raw", vars.met, paste0(vars.met, ".anom"))], raw.train[,c("year", "doy", "anom.train")])
+      # Note: Pull the covariates from the training data to get any uncertainty &/or try to correct covariances
+      #        -- this makes it mroe consistent with the GCM calculations
+      dat.anom <- merge(raw.bias[,c("year", "doy", "X", "anom.raw")], raw.train[,c("year", "doy", "anom.train", "ind", vars.met, paste0(vars.met, ".anom"))])
 
       # plot(anom.train ~ anom.raw, data=dat.anom)
       # abline(a=0, b=1, col="red")

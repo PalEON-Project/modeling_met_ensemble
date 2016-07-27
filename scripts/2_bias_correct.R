@@ -88,9 +88,9 @@ file.hist <- dir(path.dat, paste0(GCM, "_historical"))
 file.p1k <- dir(path.dat, paste0(GCM, "_p1000"))
 
 ldas     <- read.csv(file.path(path.dat, file.ldas))
-cruncep  <- read.csv(file.path(path.dat, "CRUNCEP_1901-2010.csv"))
-gcm.hist <- read.csv(file.path(path.dat, paste0(GCM, "_historical_1850-2005.csv")))
-gcm.p1k  <- read.csv(file.path(path.dat, paste0(GCM, "_p1000_850-1849.csv")))
+cruncep  <- read.csv(file.path(path.dat, file.cru))
+gcm.hist <- read.csv(file.path(path.dat, file.hist))
+gcm.p1k  <- read.csv(file.path(path.dat, file.p1k))
 
 # Adding an hour field to the gcm; setting as noon (middle of window) for simplicity
 gcm.p1k$hour  <- 12.00
@@ -107,7 +107,7 @@ gcm.hist$tair <- apply(gcm.hist[,c("tmax", "tmin")], 1, FUN=mean)
 # make first day of year start on 0
 # ldas$doy    <- ldas$doy - 1
 # cruncep$doy <- cruncep$doy -1
-ldas$precipf <- ldas$precipf*.1
+# ldas$precipf <- ldas$precipf*.1
 
 summary(ldas)
 summary(cruncep)
@@ -298,7 +298,7 @@ for(met.var in vars.met){
                     theme(legend.position="top",
                           legend.direction="horizontal")
 
-  png(file.path(path.out, paste0(GCM, met.var, "_bias-correction.png")), height=8.5, width=14, "in", res=180)
+  png(file.path(path.out, paste0(GCM,"_", met.var, "_bias-correction.png")), height=8.5, width=14, "in", res=180)
     grid.newpage()
     pushViewport(viewport(layout=grid.layout(1,3)))
     print(plot.orig  , vp = viewport(layout.pos.row = 1, layout.pos.col = 1))
@@ -336,7 +336,7 @@ for(v in names(dat.out.full)){
 }
 summary(dat.out.full$tmax$sims)
 
-save(dat.out.full, file=file.path(path.out, paste0(GCM, "day_alldata.Rdata")))
+save(dat.out.full, file=file.path(path.out, paste0(GCM, "_day_alldata.Rdata")))
 # -----------------------------------
 
 # -----------------------------------
