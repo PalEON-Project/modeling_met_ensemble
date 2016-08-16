@@ -63,8 +63,8 @@ setwd(wd.base)
 site.name="HARVARD"
 site.lat=42.54
 site.lon=-72.18
-# GCM.list=c("MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1", "CCSM4")
-GCM.list=c("CCSM4")
+GCM.list=c("MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1", "CCSM4")
+# GCM.list=c("CCSM4")
 LDAS="NLDAS"
 n=25 # Number of ensemble members
 # -----------------------------------
@@ -74,6 +74,7 @@ for(GCM in GCM.list){
 print(GCM)
 path.dat <- file.path(wd.base, "data/paleon_sites", site.name)
 path.out <- file.path(wd.base, "data/met_ensembles", site.name, GCM, "day")
+# path.out <- file.path("~/Desktop/met_bias_day/no_ResidErr", site.name, GCM)
 if(!dir.exists(path.out)) dir.create(path.out, recursive=T)  
 
 met.done <- dir(path.out, ".csv")
