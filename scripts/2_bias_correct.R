@@ -66,7 +66,7 @@ site.lon=-72.18
 GCM.list=c("MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1", "CCSM4")
 # GCM.list=c("CCSM4")
 LDAS="NLDAS"
-n=25 # Number of ensemble members
+n=10 # Number of ensemble members
 # -----------------------------------
 
 for(GCM in GCM.list){
@@ -74,7 +74,7 @@ for(GCM in GCM.list){
 print(GCM)
 path.dat <- file.path(wd.base, "data/paleon_sites", site.name)
 path.out <- file.path(wd.base, "data/met_ensembles", site.name, GCM, "day")
-# path.out <- file.path("~/Desktop/met_bias_day/no_ResidErr", site.name, GCM)
+# path.out <- file.path("~/Desktop/met_bias_day", site.name, GCM)
 if(!dir.exists(path.out)) dir.create(path.out, recursive=T)  
 
 met.done <- dir(path.out, ".csv")
@@ -307,7 +307,8 @@ for(met.var in vars.met){
     print(plot.bias  , vp = viewport(layout.pos.row = 1, layout.pos.col = 2))
     print(plot.splice, vp = viewport(layout.pos.row = 1, layout.pos.col = 3))
   dev.off()
-}
+  
+} # End QA/QC graphs
 # -----------------------------------
 
 # -----------------------------------
@@ -335,8 +336,52 @@ for(v in names(dat.out.full)){
     
     
   }
+} # End year selection
+
+# --------------
+# Looking at the low-frequency trends in a continuous time series for 3 ensemble members
+# --------------
+library(zoo)
+sims.check <- paste0("X", sample(1:n, 3)) # randomly pick 3 ensemble members
+for(v in names(dat.out.full)[!names(dat.out.full)=="met.bias"]){
+  dat.temp <- dat.out.full[[v]]$sims[,c("year", "doy", sims.check)]
+  
+  # aggregating up to the annual scale
+  dat.temp <- aggregate(dat.temp[,sims.check], by=list(dat.temp$year), FUN=mean)
+  names(dat.temp)[1] <- "year"
+  # Making sure that data are ordered 850-2010
+  dat.temp <- dat.temp[order(dat.temp$year),]
+  
+  dat.smooth <- data.frame(rollapply(dat.temp[,sims.check], width=10, fill=NA, FUN=mean))
+  
+  dat.check <- stack(dat.temp[,c(sims.check)])
+  names(dat.check) <- c("annual", "EnsMem")
+  dat.check$decadal <- stack(dat.smooth[,c(sims.check)])[,1]
+  dat.check$year <- dat.temp$year
+  dat.check$Met <- v
+  summary(dat.check)
+  
+  if(v == names(dat.out.full)[1]){
+    dat.final <- dat.check
+  } else {
+    dat.final <- rbind(dat.final, dat.check)
+  }
+  
+  
 }
-summary(dat.out.full$tmax$sims)
+
+png(file.path(path.out, paste0(GCM,"_Ensembles_Smoothed.png")), height=8.5, width=14, "in", res=180)
+ggplot(data=dat.final) +
+  facet_wrap(~Met, scales="free_y") +
+  geom_line(aes(x=year, y=annual, color=EnsMem), size=0.2, alpha=0.2) +
+  geom_line(aes(x=year, y=decadal, color=EnsMem)) +
+  scale_x_continuous(name="Year (A.D.)", expand=c(0,0)) +
+  scale_y_continuous(expand=c(0,0)) +
+  guides(color=F) +
+  geom_vline(xintercept=c(1850, 1901, 1980), linetype="dashed") +
+  theme_bw()
+dev.off()
+# --------------
 
 save(dat.out.full, file=file.path(path.out, paste0(GCM, "_day_alldata.Rdata")))
 # -----------------------------------
@@ -418,7 +463,7 @@ for(i in 1:n){
   setwd(wd.base) # Go back to our base directory
   
 
-}
+} # end splitting ensemble members
 # -----------------------------------
 
-}
+} # End GCM loop
