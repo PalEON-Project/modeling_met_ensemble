@@ -366,11 +366,10 @@ for(v in names(dat.out.full)[!names(dat.out.full)=="met.bias"]){
   } else {
     dat.final <- rbind(dat.final, dat.check)
   }
-  
-  
 }
 
 png(file.path(path.out, paste0(GCM,"_Ensembles_Smoothed.png")), height=8.5, width=14, "in", res=180)
+print(
 ggplot(data=dat.final) +
   facet_wrap(~Met, scales="free_y") +
   geom_line(aes(x=year, y=annual, color=EnsMem), size=0.2, alpha=0.2) +
@@ -380,6 +379,7 @@ ggplot(data=dat.final) +
   guides(color=F) +
   geom_vline(xintercept=c(1850, 1901, 1980), linetype="dashed") +
   theme_bw()
+)
 dev.off()
 # --------------
 
