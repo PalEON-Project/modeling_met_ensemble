@@ -54,9 +54,9 @@ rm(list=ls())
 library(mgcv); library(ggplot2)
 
 # Set the working directory
-# wd.base <- "~/Desktop/Research/PalEON_CR/met_ensemble"
+wd.base <- "~/Desktop/Research/PalEON_CR/met_ensemble"
 # wd.base <- "~/Dropbox/PalEON_CR/met_ensemble"
-wd.base <- "/projectnb/dietzelab/paleon/met_ensemble"
+# wd.base <- "/projectnb/dietzelab/paleon/met_ensemble"
 setwd(wd.base)
 
 # Defining a site name -- this can go into a function later
@@ -116,12 +116,13 @@ summary(cruncep)
 summary(gcm.p1k)
 summary(gcm.hist)
 
+
+
 vars.met <- c("tair", "tmax", "tmin", "precipf", "press", "qair", "wind", "swdown", "lwdown")
 cols.bind <- c("dataset", "year", "doy", "hour", vars.met)
 met.all <- rbind(ldas[,cols.bind], cruncep[,cols.bind], gcm.p1k[,cols.bind], gcm.hist[,cols.bind])
 met.all$Date <- as.Date(met.all$doy, origin=as.Date(paste(met.all$year, "01", "01", sep="-")))
 summary(met.all)
-
 # ----------------
 # Creating a daily met record
 # ----------------
@@ -224,6 +225,83 @@ yrs.cal = data.frame(dataset = c("CRUNCEP", paste0(GCM, ".hist"), paste0(GCM, ".
                      cal.min = c(1980,             1901,              1829),
                      cal.max = c(2010,             1921,              1849)
                      )
+
+
+# --------------------------
+# Looking at the covariance among different variables
+# Very very clunky way of plotting the linear model of several pairs
+# --------------------------
+{
+  pdf(file.path(path.out, paste0(GCM, "_MetCovariance.pdf")))
+  print(
+  ggplot(data=met.day) +
+    stat_smooth(aes(x=tmax, y=tmin, color=dataset, fill=dataset), method="lm") +
+    ggtitle("Tmax vs Tmin") +
+    theme_bw()
+  )
+  print(
+  ggplot(data=met.day) +
+    stat_smooth(aes(x=tmax, y=swdown, color=dataset, fill=dataset), method="lm") +
+    ggtitle("Tmax vs swdown") +
+    theme_bw()
+  )
+  print(
+  ggplot(data=met.day) +
+    stat_smooth(aes(x=tmax, y=lwdown, color=dataset, fill=dataset), method="lm") +
+    ggtitle("Tmax vs lwdown") +
+    theme_bw()
+  )
+  print(
+  ggplot(data=met.day) +
+    stat_smooth(aes(x=tmax, y=precipf, color=dataset, fill=dataset), method="lm") +
+    ggtitle("Tmax vs precipf") +
+    theme_bw()
+  )
+  print(
+  ggplot(data=met.day) +
+    stat_smooth(aes(x=tmax, y=press, color=dataset, fill=dataset), method="lm") +
+    ggtitle("Tmax vs press") +
+    theme_bw()
+  )
+  print(
+  ggplot(data=met.day) +
+    stat_smooth(aes(x=tmax, y=qair, color=dataset, fill=dataset), method="lm") +
+    ggtitle("Tmax vs Qair") +
+    theme_bw()
+  )
+  print(
+  ggplot(data=met.day) +
+    stat_smooth(aes(x=tmax, y=wind, color=dataset, fill=dataset), method="lm") +
+    ggtitle("Tmax vs Wind") +
+    theme_bw()
+  )
+  print(
+  ggplot(data=met.day) +
+    stat_smooth(aes(x=swdown, y=precipf, color=dataset, fill=dataset), method="lm") +
+    ggtitle("Swdown vs Precipf") +
+    theme_bw()
+  )
+  print(
+  ggplot(data=met.day) +
+    stat_smooth(aes(x=precipf, y=qair, color=dataset, fill=dataset), method="lm") +
+    ggtitle("Precipf vs Qair") +
+    theme_bw()
+  )
+  print(
+  ggplot(data=met.day) +
+    stat_smooth(aes(x=precipf, y=press, color=dataset, fill=dataset), method="lm") +
+    ggtitle("Precipf vs Press") +
+    theme_bw()
+  )
+  print(
+  ggplot(data=met.day) +
+    stat_smooth(aes(x=precipf, y=wind, color=dataset, fill=dataset), method="lm") +
+    ggtitle("Precipf vs Wind") +
+    theme_bw()
+  )
+  dev.off()
+}
+
 source("scripts/bias_correct_day.R")
 met.bias <- met.day
 dat.out.full <- bias.correct(met.bias=met.bias, vars.met=vars.met, dat.train=LDAS, GCM=GCM, yrs.cal=yrs.cal, n=n, path.out=path.out)

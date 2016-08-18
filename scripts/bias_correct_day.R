@@ -49,6 +49,7 @@ for(v in 1:length(vars.met)){
   vars.pred <- vars.pred[!vars.pred %in% c("qair")] 
   # if we're not looking at humidity, also exlcude precip
   if(met.var!="qair") vars.pred <- vars.pred[!vars.pred == "precipf"] 
+  if(met.var=="tmin") vars.pred <- vector()
   # -------------
   
   # -------------
@@ -411,7 +412,7 @@ for(v in 1:length(vars.met)){
           mod.anom <- gam(anom.raw ~  s(year, k=k) + tmax.anom + tmin.anom + swdown.anom + lwdown.anom, data=dat.pred)  
         } else if(max(raw.bias[,vars.met])>0){
           # See if we have some other anomaly that we can use to get the anomaly covariance & temporal trends right
-          mod.anom <- gam(anom.train ~ s(doy, k=4) + tmax.anom + tmin.anom + precipf.anom + swdown.anom + qair.anom + lwdown.anom + press.anom + wind.anom, data=raw.train)  
+          mod.anom <- gam(anom.train ~ s(doy, k=4) + tmax.anom + tmin.anom + precipf.anom + swdown.anom + qair.anom + lwdown.anom + press.anom + wind.anom, data=raw.train)
         } else {
           # If we haven't already done another met product, our best shot is to just model the variance adding in as much of the low-frequency cylce as possible
           mod.anom <- gam(anom.raw ~ s(doy) + s(year, k=k) + pred, data=dat.pred)
@@ -580,8 +581,6 @@ for(v in 1:length(vars.met)){
     # Formatting the output
     dat.sims <- data.frame(dataset=dat.bias, met=met.var, dat.pred[,c("year", "doy", "time")])
     dat.sims <- cbind(dat.sims, sim.final)
-    
-    
     # ---------
 
     # ---------
