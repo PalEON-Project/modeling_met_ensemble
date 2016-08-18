@@ -326,10 +326,41 @@ if(!paste0(GCM, "_p1000") %in% substr(met.done, 1, nchar(GCM)+6)) {
       }
       
       
-      dates <- seq(from=date.start, length.out=length(dat.now), by=freq)
+      
+      # Some models do NOT do leap year 
+      #  -- there's probably an better way to soft code this, but right now I'm going to be 
+      #     lazy and hard-code it
+      # No leap-year models: bcc-csm1-1
+      no.leap <- c("bcc-csm1-1")
+      if(freq=="day" & GCM %in% no.leap){
+        dates <- seq(from=date.start, length.out=length(dat.now), by=freq)
+        leaps <- which(substr(dates,6,10)=="02-29")
+        dates <- dates[!(1:length(dates) %in% leaps)] # Exclude leap years
+        dates <- c(dates, seq(max(dates)+1, length.out=length(leaps), by=freq)) # add extra dates
+      } else {
+        dates <- seq(from=date.start, length.out=length(dat.now), by=freq)
+      }
   
       # Combine everything into a dataframe
       dat.var <- data.frame(year=format(dates, "%Y"), month=format(dates, "%m"), day=format(dates, "%d"), doy=as.POSIXlt(dates, "%Y%b%d")$yday, value=dat.now)
+      
+      # Add in leap year as duplicate of Feb-28
+      if(freq=="day" & GCM %in% no.leap){        
+        for(y in unique(dat.var$year)){
+          if(lubridate:: leap_year(as.numeric(paste(y)))){
+            row.copy <- which(dat.var$year==y & dat.var$month=="02" & dat.var$day=="28")
+            
+            date.fill <- as.Date(paste0(y, "-02-29"))
+            fill <- data.frame(year=format(date.fill, "%Y"), month=format(date.fill, "%m"), day=format(date.fill, "%d"), doy=as.POSIXlt(date.fill, "%Y%b%d")$yday, value=dat.now[row.copy])
+            
+            dat.var <- rbind(dat.var, fill)
+          }
+        }
+        # Sort the data so it's ordered properly
+        dat.var <- dat.var[order(dat.var$year, dat.var$doy),]
+      }
+      
+      # Sticking stuff together
       if(i==1){
         dat.gcm.p1k[[v]] <- dat.var
       } else {
