@@ -334,7 +334,7 @@ if(!paste0(GCM, "_p1000") %in% substr(met.done, 1, nchar(GCM)+6)) {
       no.leap <- c("bcc-csm1-1")
       if(freq=="day" & GCM %in% no.leap){
         dates <- seq(from=date.start, length.out=length(dat.now), by=freq)
-        leaps <- which(substr(dates,6,10)=="02-29")
+        leaps <- which(substr(dates,nchar(paste(dates))-4,nchar(paste(dates)))=="02-29")
         dates <- dates[!(1:length(dates) %in% leaps)] # Exclude leap years
         dates <- c(dates, seq(max(dates)+1, length.out=length(leaps), by=freq)) # add extra dates
       } else {
