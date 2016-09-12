@@ -54,9 +54,9 @@ rm(list=ls())
 library(mgcv); library(ggplot2)
 
 # Set the working directory
-wd.base <- "~/Desktop/Research/PalEON_CR/met_ensemble"
+# wd.base <- "~/Desktop/Research/PalEON_CR/met_ensemble"
 # wd.base <- "~/Dropbox/PalEON_CR/met_ensemble"
-# wd.base <- "/projectnb/dietzelab/paleon/met_ensemble"
+wd.base <- "/projectnb/dietzelab/paleon/met_ensemble"
 setwd(wd.base)
 
 # Defining a site name -- this can go into a function later
@@ -66,7 +66,7 @@ site.lon=-72.18
 GCM.list=c("MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1", "CCSM4")
 # GCM.list=c("CCSM4")
 LDAS="NLDAS"
-n=10 # Number of ensemble members
+n=25 # Number of ensemble members
 # -----------------------------------
 
 for(GCM in GCM.list){
@@ -412,9 +412,12 @@ for(v in names(dat.out.full)){
                                                    (dat.out.full[[v]]$sims$dataset==paste0(GCM, ".hist") & dat.out.full[[v]]$sims$year<=GCM.hist.max) |
                                                    (dat.out.full[[v]]$sims$dataset==paste0(GCM, ".p1000") & dat.out.full[[v]]$sims$year<=GCM.p1000.max),]
     
-    
+    # Make sure the data is in chronological order so that it gets saved into the netcdf file properly
+    dat.out.full[[v]]$ci   <- dat.out.full[[v]]$ci[order(dat.out.full[[v]]$ci$time),]
+    dat.out.full[[v]]$sims <- dat.out.full[[v]]$sims[order(dat.out.full[[v]]$sims$time),]
   }
-} # End year selection
+  
+} # End variable selection
 
 # --------------
 # Looking at the low-frequency trends in a continuous time series for 3 ensemble members
