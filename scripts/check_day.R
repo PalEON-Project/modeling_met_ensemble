@@ -10,17 +10,6 @@ summary(ncT$var)
 
 tmax <- ncvar_get(ncT, "tmax")
 summary(tmax)
-plot(tmax[1:365], type="b")
+plot(tmax[1:(365*5)], type="b")
+plot(tmax, type="l")
 
-load('~/Desktop/phase3_met_ensembe/bias_correct_day/HARVARD/MIROC-ESM/day/MIROC-ESM_day_alldata.Rdata')
-
-
-summary(dat.out.full)
-summary(dat.out.full$tmax$sims)
-
-# Sort the data
-dat.out.full$tmax$sims <- dat.out.full$tmax$sims[order(dat.out.full$tmax$sims$time),] 
-
-dat.out.full$tmax$sims[1:100,1:10]
-
-plot(dat.out.full$tmax$sims[1:700,"X1"], type="b")

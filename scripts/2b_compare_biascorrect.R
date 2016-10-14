@@ -38,17 +38,17 @@ rm(list=ls())
 library(zoo); library(ggplot2)
 
 # Set the working directory
-wd.base <- "~/Desktop/Research/PalEON_CR/met_ensemble"
-# wd.base <- "~/Dropbox/PalEON_CR/met_ensemble"
+# wd.base <- "~/Desktop/Research/PalEON_CR/met_ensemble"
+wd.base <- "~/Dropbox/PalEON_CR/met_ensemble"
 # wd.base <- "/projectnb/dietzelab/paleon/met_ensemble"
 setwd(wd.base)
-
+dir.dat <- "~/Desktop/phase3_met_ensembe/bias_correct_day"
 # Defining a site name -- this can go into a function later
 site.name="HARVARD"
 site.lat=42.54
 site.lon=-72.18
 GCM.list=c("MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1", "CCSM4")
-n=10 # Number of ensemble members
+n=25 # Number of ensemble members
 # -----------------------------------
 
 # -----------------------------------
@@ -57,7 +57,7 @@ n=10 # Number of ensemble members
 dat.out <- NULL
 for(GCM in GCM.list){
   # load the data
-  load(file.path(wd.base, "data/met_ensembles", site.name, GCM, "day", paste0(GCM, "_day_alldata.Rdata")))
+  load(file.path(dir.dat, site.name, GCM, "day", paste0(GCM, "_day_alldata.Rdata")))
   
   # Extract the sims for each variable
   for(v in names(dat.out.full)[!names(dat.out.full)=="met.bias"]){
