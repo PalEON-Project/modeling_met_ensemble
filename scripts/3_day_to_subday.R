@@ -41,8 +41,8 @@ rm(list=ls())
 library(mgcv); library(ggplot2)
 
 # Set the working directory
-wd.base <- "~/Desktop/Research/PalEON_CR/met_ensemble"
-# wd.base <- "~/Dropbox/PalEON_CR/met_ensemble"
+# wd.base <- "~/Desktop/Research/PalEON_CR/met_ensemble"
+wd.base <- "~/Dropbox/PalEON_CR/met_ensemble"
 # wd.base <- "/projectnb/dietzelab/paleon/met_ensemble"
 setwd(wd.base)
 
