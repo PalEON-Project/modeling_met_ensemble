@@ -3,6 +3,7 @@ library(ncdf4)
 library(mgcv)
 library(lubridate)
 library(ggplot2)
+library(tictoc)
 rm(list=ls())
 
 dat.train <- read.csv("../data/paleon_sites/HARVARD/NLDAS_1980-2015.csv")
@@ -14,133 +15,179 @@ dat.train[1:25,]
 head(dat.train)
 summary(dat.train)
 
-dat.tair3 <- dat.train[,c("dataset", "year", "doy", "hour", "tair")]
-dat.tair3$date <- strptime(paste(dat.tair3$year, dat.tair3$doy+1, dat.tair3$hour, sep="-"), "%Y-%j-%H", tz="GMT")
-dat.tair3$time.hr <- as.numeric(difftime(dat.tair3$date, "2016-01-01", tz="GMT", units="hour"))
-dat.tair3$time.day <- as.numeric(difftime(dat.tair3$date, "2016-01-01", tz="GMT", units="day"))+1/24
-dat.tair3$time.day2 <- as.integer(dat.tair3$time.day)-1
-dat.tair3 <- dat.tair3[order(dat.tair3$time.hr, decreasing=T),]
-# dat.tair3[1:25,]
-head(dat.tair3)
+dat.tair <- dat.train[,c("dataset", "year", "doy", "hour", "tair", "precipf", "swdown", "lwdown", "press", "qair", "wind")]
+dat.tair$date <- strptime(paste(dat.tair$year, dat.tair$doy+1, dat.tair$hour, sep="-"), "%Y-%j-%H", tz="GMT")
+dat.tair$time.hr <- as.numeric(difftime(dat.tair$date, "2016-01-01", tz="GMT", units="hour"))
+dat.tair$time.day <- as.numeric(difftime(dat.tair$date, "2016-01-01", tz="GMT", units="day"))+1/24
+dat.tair$time.day2 <- as.integer(dat.tair$time.day)-1
+dat.tair <- dat.tair[order(dat.tair$time.hr, decreasing=T),]
+# dat.tair[1:25,]
+head(dat.tair)
 
-tair.day <- aggregate(dat.tair3[,c("tair")], by=dat.tair3[,c("year", "doy")], FUN=mean)
-names(tair.day)[which(names(tair.day)=="x")] <- "tmean"
-tair.day$tmax <- aggregate(dat.tair3[,c("tair")], by=dat.tair3[,c("year", "doy")], FUN=max)$x
-tair.day$tmin <- aggregate(dat.tair3[,c("tair")], by=dat.tair3[,c("year", "doy")], FUN=min)$x
+tair.day <- aggregate(dat.tair[,c("tair", "precipf", "swdown", "lwdown", "press", "qair", "wind")], by=dat.tair[,c("year", "doy")], FUN=mean)
+names(tair.day)[which(names(tair.day)=="tair")] <- "tmean"
+tair.day$tmax <- aggregate(dat.tair[,c("tair")], by=dat.tair[,c("year", "doy")], FUN=max)$x
+tair.day$tmin <- aggregate(dat.tair[,c("tair")], by=dat.tair[,c("year", "doy")], FUN=min)$x
 summary(tair.day)
 
-dat.tair3 <- merge(dat.tair3, tair.day, all.x=T, all.y=T)
-summary(dat.tair3)
+dat.tair <- merge(dat.tair[,c("dataset", "year", "doy", "hour", "date", "time.hr", "time.day", "time.day2", "tair")], tair.day, all.x=T, all.y=T)
+summary(dat.tair)
 
 # adding in the 1-hour lag
-lag.hr <- dat.tair3
+lag.hr <- dat.tair
 names(lag.hr)[which(names(lag.hr)=="tair")] <- "lag.hr"
 lag.hr$time.hr <- lag.hr$time.hr-1
 head(lag.hr)
 
-dat.tair3 <- merge(dat.tair3, lag.hr[,c("time.hr", "lag.hr")], all.x=T)
-dat.tair3 <- dat.tair3[order(dat.tair3$time.hr, decreasing=T),]
-dat.tair3[is.na(dat.tair3$lag.hr),"lag.hr"] <- dat.tair3[1,"tair"]
-head(dat.tair3)
-summary(dat.tair3)
+dat.tair <- merge(dat.tair, lag.hr[,c("time.hr", "lag.hr")], all.x=T)
+dat.tair <- dat.tair[order(dat.tair$time.hr, decreasing=T),]
+dat.tair[is.na(dat.tair$lag.hr),"lag.hr"] <- dat.tair[1,"tair"]
+head(dat.tair)
+summary(dat.tair)
 
 # creating a variable for 11 pm the day before (to work at daily timestep)
-lag.day <- dat.tair3[dat.tair3$hour>=21,]
+lag.day <- dat.tair[dat.tair$hour>=21,]
 names(lag.day)[which(names(lag.day)=="tair")] <- "lag.day"
 lag.day <- aggregate(lag.day[,c("lag.day", "tmean", "tmax", "tmin")],
                      by=lag.day[,c("year", "doy", "time.day2")],
                      FUN=mean)
 lag.day$time.day2 <- lag.day$time.day2-1
-lag.day[is.na(lag.day$lag.day), "lag.day"] <- dat.tair3[1,"tair"]
+lag.day[is.na(lag.day$lag.day), "lag.day"] <- dat.tair[1,"tair"]
 head(lag.day)
 summary(lag.day)
 
-dat.tair3 <- merge(dat.tair3, lag.day[,c("time.day2", "lag.day")], all.x=T)
-dat.tair3 <- dat.tair3[order(dat.tair3$time.hr, decreasing=T),]
-dat.tair3[is.na(dat.tair3$lag.day), "lag.day"] <- dat.tair3[1,"tair"]
-head(dat.tair3)
-summary(dat.tair3)
+dat.tair <- merge(dat.tair, lag.day[,c("time.day2", "lag.day")], all.x=T)
+dat.tair <- dat.tair[order(dat.tair$time.hr, decreasing=T),]
+dat.tair[is.na(dat.tair$lag.day), "lag.day"] <- dat.tair[1,"tair"]
+head(dat.tair)
+summary(dat.tair)
+
+# Lookign at max & min as departure from mean
+dat.tair$max.dep <- dat.tair$tmax - dat.tair$tmean
+dat.tair$min.dep <- dat.tair$tmin - dat.tair$tmean
+summary(dat.tair)
+
+# ------------------------------------------
+# Generating all the daily models and storing it into an easy-to-find list
+# ------------------------------------------
+source("temporal_downscale_functions.R")
+tic()
+mod.tair.doy <- model.tair(dat.tair=dat.tair[,], parallel=T, n.cores=8)
+toc()
+length(mod.tair.doy)
+# summary(mod.tair.doy[[1]]$model)
+
+# mod.tair.doy[[1]]$model$call
+# ------------------------------------------
 
 
-dat.tair4 <- dat.tair3[dat.tair3$year==2015 & dat.tair3$doy<31,c("dataset", "year", "doy", "hour", "date", "time.hr", "time.day", "time.day2", "tair", "tmax", "tmin", "tmean", "lag.hr", "lag.day")]
-dat.tair4[, "lag.hr"] <- NA
-dat.tair4[, "lag.day"] <- NA
-dat.tair4[, "mod.hr"] <- NA
-dat.tair4[, "mod.day"] <- NA
-head(dat.tair4)
+
+# ------------------------------------------
+# Testing the run with propogating uncertainty
+# ------------------------------------------
+source("temporal_downscale_functions.R")
+
+# Set up data
+tair.mod <- dat.tair[dat.tair$year==2015,]
+tair.mod[, "lag.hr"] <- NA
+tair.mod[, "lag.day"] <- NA
+tair.mod[, "mod.hr"] <- NA
+tair.mod[, "mod.day"] <- NA
+# head(tair.mod)
 
 # Initializing the lags
-dat.tair4[dat.tair4$time.hr==max(dat.tair4$time.hr),"lag.hr"] <- dat.tair4[dat.tair4$time.hr==max(dat.tair4$time.hr),"tair"]
-# for(i in max(dat.tair4[dat.tair4$time.day2==max(dat.tair4$time.day2),"time.hr"]):min(dat.tair4[dat.tair4$time.day2==max(dat.tair4$time.day2),"time.hr"])){
-#   dat.tair4[dat.tair4$time.hr==i-1,"lag.hr"] <- dat.tair4[dat.tair4$time.hr==i,"tair"]
-# }
-# dat.tair4[dat.tair4$time.hr!=max(dat.tair4$time.hr),"lag.hr"] <- dat.tair4[dat.tair4$time.hr==max(dat.tair4$time.hr),"tair"]
-dat.tair4[dat.tair4$time.day2==max(dat.tair4$time.day2),"lag.day"] <- dat.tair4[dat.tair4$time.day2==max(dat.tair4$time.day2) & dat.tair4$hour==23,"tair"]
-head(dat.tair4)
-dat.tair4[1:27,]
-# dat.tair4[,c("year", "doy", "hour", "tair", "tair2", "mod3", "time")]
+tair.mod[tair.mod$time.hr==max(tair.mod$time.hr),"lag.hr"] <- tair.mod[tair.mod$time.hr==max(tair.mod$time.hr),"tair"]
+# head(tair.mod)
+# tair.mod[1:27,]
+# tair.mod[,c("year", "doy", "hour", "tair", "tair2", "mod3", "time")]
 
-n=30
-dat.sim <- array(dim=c(nrow(dat.tair4), n))
+n.ens=10
+dat.sim <- data.frame(array(dim=c(nrow(tair.mod), n.ens)))
+dat.sim[1,] <- tair.mod[1,"tair"]
+# dat.simstack <- 
 
 library(MASS)
 # Do the calculation by Hour
-pb <- txtProgressBar(min=1, max=nrow(dat.tair4), style=3)
-for(i in 1:nrow(dat.tair4)){
+pb <- txtProgressBar(min=1, max=nrow(tair.mod), style=3)
+set.seed(138)
+tic()
+for(i in 1:nrow(tair.mod)){
   setTxtProgressBar(pb, i)
-  day.now = dat.tair4[i,"doy"]
-  # mod.fill <- gam(tair ~ s(hour, by=as.factor(doy)) + tmax*tmin*tmean  -1, data=dat.tair3[dat.tair3$doy==day.now,])
-  mod.fill <- lm(tair ~ as.factor(hour)*lag.hr*(tmax*tmin +tmean) - as.factor(hour)-1, data=dat.tair3[dat.tair3$doy==day.now,])
-  # summary(mod.fill)
-  # plot(mod.fill)
-  mod.terms <- terms(mod.fill)
-  # Terms <- delete.response(tt)
-  # p <- mod.fill$rank
-  # p1 <- seq_len(p)
-  # piv <- if (p)  qr(mod.fill)$pivot[p1]
-  # drop(X[, piv, drop = FALSE] %*% beta[piv])
-  # 
-  m <- model.frame(mod.terms, dat.tair4[i,], xlev = mod.fill$xlevels)
-  Xp <- model.matrix(mod.terms, m, contrasts.arg = mod.fill$contrasts)
-  # 
-  mod.coef <- coef(mod.fill)
-  mod.cov  <- vcov(mod.fill)
-  piv <- as.numeric(which(!is.na(mod.coef)))
-  # piv2 <- as.numeric(which(!is.na(mod.coef)))
+
+  dat.temp <- tair.mod[i,c("doy", "hour", "tmax", "tmin","tmean", "max.dep", "min.dep", "precipf", "swdown", "lwdown", "press", "qair", "wind")]
+  dat.temp$tair = -99999 # Dummy value so there's a column
+  day.now = dat.temp$doy
   
-  Rbeta <- mvrnorm(n=n, mod.coef[piv], mod.cov)
-  # mod.resid <- resid(mod.fill)
-  # 
-  dat.sim[i,] <- Xp[,piv] %*% t(Rbeta) #+ rnorm(n, mean=mean(mod.resid), sd=sd(mod.resid))
-  # test <- Xp[,piv] %*% t(Rbeta)
-  # summary(out)
+  # Set up the lags
+  if(i==1){
+    sim.lag <- stack(data.frame(array(dat.sim[i,], dim=c(1, ncol(dat.sim)))))
+  } else {
+    sim.lag <- stack(data.frame(array(dat.sim[i-1,], dim=c(1, ncol(dat.sim)))))
+  }
+  names(sim.lag) <- c("lag.hr", "ens")
+  dat.temp <- merge(dat.temp, sim.lag, all.x=T)
+
+
+  dat.pred <- predict.met(newdata=dat.temp, mod.predict=mod.tair.doy[[paste(day.now)]]$model, betas=mod.tair.doy[[paste(day.now)]]$betas, n.ens=n.ens)
   
-  # dat.tair4[i,"mod.hr"] <- mean(dat.sim[i,])
-  dat.tair4[i,"mod.hr"] <- predict(mod.fill, dat.tair4[i,])
-  if(i<nrow(dat.tair4)) dat.tair4[i+1,"lag.hr"] <- dat.tair4[i,"mod.hr"]
+  # Randomly pick which values to save & propogate
+  cols.prop <- sample(1:n.ens, ncol(dat.sim), replace=T)
+  # pred.prop <- array(dim=c(1,ncol(dat.sim)))
+  for(j in 1:ncol(dat.sim)){
+    dat.sim[i,j] <- dat.pred[j,cols.prop[j]]
+  }
+
+  tair.mod[i,"mod.hr"] <- mean(as.numeric(dat.sim[i,]))
+  # dat.sim[i,] <- dat.pred
+  # tair.mod[i,"mod.hr"] <- predict(mod.fill, tair.mod[i,])
+  if(i<nrow(tair.mod)) tair.mod[i+1,"lag.hr"] <- tair.mod[i,"mod.hr"]
 }
-dat.tair4$mod.hr2 <- apply(dat.sim, 1, mean)
-dat.tair4$mod.hr.low <- apply(dat.sim, 1, quantile, 0.025)
-dat.tair4$mod.hr.hi <- apply(dat.sim, 1, quantile, 0.975)
-summary(dat.tair4)
+tair.mod$mod.hr2 <- apply(dat.sim, 1, mean)
+tair.mod$mod.hr.low <- apply(dat.sim, 1, quantile, 0.025)
+tair.mod$mod.hr.hi <- apply(dat.sim, 1, quantile, 0.975)
+summary(tair.mod)
+toc()
 
-plot(tair ~ time.hr, data=dat.tair4[dat.tair4$doy<14,], type="l", lwd=2)
-points(tair ~ time.hr, data=dat.tair4[dat.tair4$doy<14,], pch=19, cex=0.5)
-abline(v=seq(min(dat.tair4$time.hr), max(dat.tair4$time.hr), by=24)-0.5, col="gray50", cex=0.5, lty="dashed")
-# lines(mod.day ~ abs(time.hr), data=dat.tair4, pch=19, cex=0.5, col="red")
-# points(mod.day ~ abs(time.hr), data=dat.tair4, pch=19, cex=0.5, col="red")
-lines(mod.hr ~ time.hr, data=dat.tair4[dat.tair4$doy<14,], pch=19, cex=0.5, col="blue")
-points(mod.hr ~ time.hr, data=dat.tair4[dat.tair4$doy<14,], pch=19, cex=0.5, col="blue")
+# tair.mod1 <- tair.mod
 
-png("Tair_test.png")
-ggplot(data=dat.tair4[dat.tair4$doy<14,]) +
+# ggplot(data=tair.mod[,]) +
+#   # geom_point(aes(x=date, y=tmax, color=as.factor(doy)), size=0.25, alpha=0.5) +
+#   # geom_point(aes(x=date, y=tmin, color=as.factor(doy)), size=0.25, alpha=0.5) +
+#   geom_ribbon(aes(x=date, ymin=mod.hr.low, ymax=mod.hr.hi), alpha=0.5, fill="blue") +
+#   geom_line(aes(x=date, y=mod.hr), color="blue") +
+#   geom_point(aes(x=date, y=mod.hr), color="blue", size=0.5) +
+#   geom_line(aes(x=date, y=tair), color="black") +
+#   geom_point(aes(x=date, y=tair), color="black", size=0.5) +
+#   # geom_vline(xintercept=seq(min(tair.mod$time.hr), max(tair.mod$time.hr), by=24)-0.5, linetype="dashed", color="gray50") +
+#   # scale_x_continuous(name="Hourly Air Temperature", expand=c(0,0)) +
+#   theme_bw()
+
+
+dat.graph1 <- tair.mod[tair.mod$doy>=32 & tair.mod$doy<=(32+14),]
+dat.graph1$season <- as.factor("winter")
+dat.graph2 <- tair.mod[tair.mod$doy>=123 & tair.mod$doy<=(123+14),]
+dat.graph2$season <- as.factor("spring")
+dat.graph3 <- tair.mod[tair.mod$doy>=214 & tair.mod$doy<=(213+14),]
+dat.graph3$season <- as.factor("summer")
+dat.graph4 <- tair.mod[tair.mod$doy>=305 & tair.mod$doy<=(305+14),]
+dat.graph4$season <- as.factor("fall")
+
+tair.graph <- rbind(dat.graph1, dat.graph2, dat.graph3, dat.graph4)
+
+png("Tair_2015_examples.png", height=8, width=10, units="in", res=220)
+ggplot(data=tair.graph[,]) +
+  facet_wrap(~season, scales="free") +
+  # geom_point(aes(x=date, y=tmax), size=0.1, alpha=0.5, color="gray50") +
+  # geom_point(aes(x=date, y=tmin), size=0.1, alpha=0.5, color="gray50") +
+  geom_line(aes(x=date, y=tair), color="black") +
+  geom_point(aes(x=date, y=tair), color="black", size=0.5) +
+
   geom_ribbon(aes(x=date, ymin=mod.hr.low, ymax=mod.hr.hi), alpha=0.5, fill="blue") +
   geom_line(aes(x=date, y=mod.hr), color="blue") +
   geom_point(aes(x=date, y=mod.hr), color="blue", size=0.5) +
-  geom_line(aes(x=date, y=tair), color="black") +
-  geom_point(aes(x=date, y=tair), color="black", size=0.5) +
-  # geom_vline(xintercept=seq(min(dat.tair4$time.hr), max(dat.tair4$time.hr), by=24)-0.5, linetype="dashed", color="gray50") +
-  # scale_x_continuous(limits=range(dat.tair4[dat.tair4$doy<14,"time.day"]), expand=c(0,0)) +
+  scale_y_continuous(name="Hourly Air Temperature")+
   theme_bw()
 dev.off()
+
+# ------------------------------------------
 
