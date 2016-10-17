@@ -80,6 +80,31 @@ length(mod.tair.doy)
 # mod.tair.doy[[1]]$model$call
 # ------------------------------------------
 
+# ------------------------------------------
+# Looking at the residuals from the model
+# ------------------------------------------
+for(i in names(mod.tair.doy)){
+  if(as.numeric(i) == 365) next # 365 is weird, so lets skip it
+  dat.tair[dat.tair$doy==as.numeric(i), "resid"] <- resid(mod.tair.doy[[i]]$model)
+  dat.tair[dat.tair$doy==as.numeric(i), "predict"] <- predict(mod.tair.doy[[i]]$model)
+}
+summary(dat.tair)
+
+png("Resid_vs_Hour.png")
+plot(resid ~ hour, data=dat.tair, cex=0.5); abline(h=0, col="red")
+dev.off()
+png("Resid_vs_DOY.png")
+plot(resid ~ doy, data=dat.tair, cex=0.5); abline(h=0, col="red") # slightly better in summer, but no clear temporal over-dispersion
+dev.off()
+# plot(resid ~ predict, data=dat.tair); abline(h=0, col="red")
+png("Resid_vs_Obs.png")
+plot(resid ~ tair, data=dat.tair, cex=0.5); abline(h=0, col="red")
+dev.off()
+png("Predict_vs_Obs.png")
+plot(predict ~ tair, data=dat.tair, cex=0.5); abline(a=0, b=1, col="red")
+dev.off()
+
+# ------------------------------------------
 
 
 # ------------------------------------------
