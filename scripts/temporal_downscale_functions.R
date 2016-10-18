@@ -1,19 +1,34 @@
-model.tair <- function(dat.tair, n.cores=4, n.beta=100, parallel=F, ncores=NULL, seed=1237){
+model.tair <- function(dat.tair, n.cores=4, n.beta=1000, parallel=F, ncores=NULL, seed=1237){
   library(MASS)
   set.seed(seed)
 
   # The model we're going to use
   model.train <- function(dat.subset, n.beta){ 
+      # day model works pretty good
+      mod.doy <- lm(tair ~ as.factor(hour)*tmean*(lag.day + lag.min + max.dep*min.dep) + as.factor(hour)*swdown*(max.dep + min.dep) - 1 - as.factor(hour) - swdown - tmean - lag.day - lag.min - min.dep - max.dep - min.dep*max.dep - tmean*max.dep*min.dep - swdown*max.dep*min.dep, data=dat.subset) #
+      # mod.doy <- lm(tair ~ as.factor(hour)*tmean*(lag.day + lag.min + max.dep*min.dep) + as.factor(hour)*swdown - 1 - as.factor(hour) - swdown - tmean - lag.day - lag.min -  tmean*lag.min - min.dep - max.dep - min.dep*max.dep - tmean*max.dep*min.dep, data=dat.subset) #
+      # mod.doy <- lm(tair ~ as.factor(hour)*tmean + as.factor(hour)*lag.day + as.factor(hour)*lag.min + tmean*(lag.day + lag.min)  + as.factor(hour)*tmean*max.dep*min.dep - as.factor(hour) - 1 - tmean - lag.day - lag.min - max.dep - min.dep - max.dep*min.dep-tmean*max.dep*min.dep, data=dat.subset) #
+
+      # mod.doy <- lm(tair ~ as.factor(hour)*tmean*(lag.day + lag.min + tmean+max.dep+min.dep) + as.factor(hour)*swdown -1 - as.factor(hour) - swdown - tmean - lag.day - lag.min - tmean*lag.day - tmean*lag.min - min.dep - max.dep - min.dep*max.dep - tmean*max.dep*min.dep, data=dat.subset) #
+      # mod.doy <- lm(tair ~ as.factor(hour)*tmean + as.factor(hour)*lag.day + as.factor(hour)*lag.min + as.factor(hour)*swdown + tmean*(lag.day + lag.min)  + as.factor(hour)*tmean*max.dep*min.dep  + as.factor(hour)*swdown*max.dep*min.dep - as.factor(hour) - 1 - tmean - lag.day - lag.min - swdown - max.dep - min.dep - max.dep*min.dep-tmean*max.dep*min.dep, data=dat.subset) #
+      # mod.doy <- lm(tair ~ as.factor(hour)*tmean*(lag.day + lag.min + tmax + tmin) - as.factor(hour) - 1 - tmean - lag.day - lag.min - tmax - tmin, data=dat.subset) #
+      # mod.doy <- lm(tair ~ as.factor(hour)*tmean*(lag.day + lag.min + tmax*tmin + swdown) - as.factor(hour) - swdown*tmean - swdown - tmean - lag.day - lag.min - tmax - tmin - tmax*tmin - max.dep, data=dat.subset) #
+
+      # mod.doy <- lm(tair ~ as.factor(hour)*tmean + as.factor(hour)*lag.day + lag.day*tmean*lag.diff  + as.factor(hour)*tmean*max.dep*min.dep - as.factor(hour) - 1 - tmean - lag.day - lag.diff - lag.day*lag.diff - max.dep - min.dep - max.dep*min.dep-tmean*max.dep*min.dep, data=dat.subset) #
+      # mod.doy <- lm(tair ~ as.factor(hour)*tmean + as.factor(hour)*lag.day + as.factor(hour)*lag.min + as.factor(hour)*lag.max + tmean*(lag.day + lag.min + lag.max)  + as.factor(hour)*tmean*max.dep*min.dep - as.factor(hour) - 1 - tmean - lag.day - lag.min - lag.max - max.dep - min.dep - max.dep*min.dep-tmean*max.dep*min.dep, data=dat.subset) #
+      # mod.doy <- lm(tair ~ as.factor(hour)*tmean + as.factor(hour)*lag.day + as.factor(hour)*swdown + lag.day*tmean + as.factor(hour)*tmean*max.dep*min.dep + as.factor(hour)*swdown*max.dep*min.dep - as.factor(hour) - 1 - swdown*tmean - tmean - lag.day - max.dep - min.dep - max.dep*min.dep, data=dat.subset) # REALLY REALLY GOOD
+    
+
+      # Rejected options
+      # Pretty good default
       # mod.doy <- lm(tair ~ as.factor(hour)*tmean + as.factor(hour)*lag.hr  + lag.hr*tmean + as.factor(hour)*tmean*max.dep*min.dep - as.factor(hour) - 1 - tmean - lag.hr - max.dep - min.dep - max.dep*min.dep-tmean*max.dep*min.dep, data=dat.subset) # REALLY REALLY GOOD
       
       # Tryign with a single met covariate
       # mod.doy <- lm(tair ~ as.factor(hour)*tmean + as.factor(hour)*lag.hr + as.factor(hour)*swdown + lag.hr*tmean + as.factor(hour)*tmean*max.dep*min.dep + as.factor(hour)*swdown*max.dep*min.dep - as.factor(hour) - 1 - swdown*tmean - tmean - lag.hr - max.dep - min.dep - max.dep*min.dep, data=dat.subset) # REALLY REALLY GOOD
       
       # Tryign with two covariates
-      mod.doy <- lm(tair ~ as.factor(hour)*tmean + as.factor(hour)*lag.hr + as.factor(hour)*swdown + lag.hr*tmean + as.factor(hour)*tmean*max.dep*min.dep + as.factor(hour)*swdown*max.dep*min.dep + as.factor(hour)*press - as.factor(hour) - 1 - swdown - press - tmean - lag.hr - max.dep - min.dep - max.dep*min.dep, data=dat.subset) # REALLY REALLY GOOD
+      # mod.doy <- lm(tair ~ as.factor(hour)*tmean + as.factor(hour)*lag.hr + as.factor(hour)*swdown + lag.hr*tmean + as.factor(hour)*tmean*max.dep*min.dep + as.factor(hour)*swdown*max.dep*min.dep + as.factor(hour)*press - as.factor(hour) - 1 - swdown - press - tmean - lag.hr - max.dep - min.dep - max.dep*min.dep, data=dat.subset) # REALLY REALLY GOOD
       
-
-      # Rejected options
       # mod.doy <- lm(tair ~ lag.hr*tmean + as.factor(hour)*max.dep*min.dep - as.factor(hour), data=dat.subset) # Not bad
       # mod.doy <- lm(tair ~ as.factor(hour)*lag.hr  + lag.hr*tmean + as.factor(hour)*max.dep*min.dep - as.factor(hour), data=dat.subset) # Good
       # mod.doy <- lm(tair ~ as.factor(hour)*tmean  + lag.hr*tmean + as.factor(hour)*max.dep*min.dep - as.factor(hour), data=dat.subset) # better
