@@ -93,7 +93,7 @@ dat.mod[, "lag.tair"] <- NA
 dat.mod[, "mod.tair"] <- NA
 # head(dat.mod)
 
-n.ens=10
+n.ens=30
 dat.sim <- list() # Each variable needs to be a layer in a list so we can propogate that uncertainty
 # ------------------------------------------
 
@@ -179,51 +179,38 @@ length(mod.swdown.doy)
   dat.sim[["swdown"]] <- data.frame(array(dim=c(nrow(dat.mod), n.ens)))
   dat.sim[["swdown"]][1,] <- dat.mod[1,"swdown"]
   
-  pb <- txtProgressBar(min=abs(max(dat.mod$time.day2)), max=abs(min(dat.mod$time.day2)), style=3)
+  pb <- txtProgressBar(min=min(dat.mod$doy), max=max(dat.mod$doy), style=3)
   set.seed(138)
   tic()
-  for(i in max(dat.mod$time.day2):min(dat.mod$time.day2)){
+  for(i in min(dat.mod$doy):max(dat.mod$doy)){
     setTxtProgressBar(pb, abs(i))
     
     # For SWDOWN, we only want to model daylight hours -- make sure this matches what's in the swdown function
-    day.now = unique(dat.mod[dat.mod$time.day2==i, "doy"])
+    day.now = i
     
     # Use the training data to figure out night/day
     hrs.day = unique(dat.train[dat.train$doy==day.now & dat.train$swdown>quantile(dat.train[dat.train$swdown>0,"swdown"], 0.05), "hour"])
     
-    rows.now = which(dat.mod$time.day2==i)
-    rows.mod = which(dat.mod$time.day2==i & dat.mod$hour %in% hrs.day)
+    rows.now = which(dat.mod$doy==i)
+    rows.mod = which(dat.mod$doy==i & dat.mod$hour %in% hrs.day)
     
     dat.temp <- dat.mod[rows.mod,c("time.day2", "year", "doy", "hour", "tmax.day", "tmin.day", "tmean.day", "max.dep", "min.dep", "precipf.day", "swdown.day", "lwdown.day", "press.day", "qair.day", "wind.day")]
     dat.temp$swdown = 99999 # Dummy value so there's a column
     dat.temp <- dat.temp[complete.cases(dat.temp),]
-    # day.now = dat.temp$doy
-    # day.now = unique(dat.temp$doy)
     
-    # # Set up the lags
-    # if(i==max(dat.mod$time.day2)){
-    #   sim.lag <- stack(data.frame(array(dat.mod[which(dat.mod$time.day2==i & dat.mod$hour==0),"swdown"], dim=c(1, ncol(dat.sim$swdown)))))
-    #   names(sim.lag) <- c("lag.swdown", "ens")
-    #   
-    #   # sim.lag <- stack(data.frame(array(mean(dat.mod[which(dat.mod$time.day2==i & dat.mod$hour<=2),"swdown"]), dim=c(1, ncol(dat.sim)))))
-    # } else {
-    #   sim.lag <- stack(data.frame(array(dat.sim[["swdown"]][dat.mod$time.day2==(i+1)  & dat.mod$hour==0,], dim=c(1, ncol(dat.sim$swdown)))))
-    #   names(sim.lag) <- c("lag.swdown", "ens")
-    #   
-    #   # sim.lag <- stack(apply(dat.sim[dat.mod$time.day2==(i+1)  & dat.mod$hour<=2,],2, mean))
-    # }
-    # dat.temp <- merge(dat.temp, sim.lag, all.x=T)
-    
-    # Set up the other predictors
-    # dat.temp$tair <- stack(dat.sim[["tair"]][rows.now,])[,1]
-    
-    dat.pred <- predict.met(newdata=dat.temp, mod.predict=mod.swdown.doy[[paste(day.now)]]$model, betas=mod.swdown.doy[[paste(day.now)]]$betas, n.ens=n.ens)
+    # dat.pred <- predict.met(newdata=dat.temp, model.predict=mod.swdown.doy[[paste(day.now)]]$model, betas=mod.swdown.doy[[paste(day.now)]]$betas, n.ens=n.ens)
+    dat.pred <- predict.met(newdata=dat.temp, 
+                            model.predict=mod.swdown.doy[[paste(day.now)]]$model, 
+                            betas=mod.swdown.doy[[paste(day.now)]]$betas, 
+                            resid.err=T,
+                            model.resid=mod.swdown.doy[[paste(day.now)]]$model.resid, 
+                            betas.resid=mod.swdown.doy[[paste(day.now)]]$betas.resid, 
+                            n.ens=n.ens)
     dat.pred[dat.pred<0] <- 0
     # dat.pred <- exp(dat.pred)
     
     # Randomly pick which values to save & propogate
     cols.prop <- sample(1:n.ens, ncol(dat.sim$swdown), replace=T)
-    # pred.prop <- array(dim=c(1,ncol(dat.sim)))
     for(j in 1:ncol(dat.sim$swdown)){
       dat.sim[["swdown"]][rows.mod,j] <- dat.pred[,cols.prop[j]]
     }
@@ -232,13 +219,8 @@ length(mod.swdown.doy)
     dat.sim[["swdown"]][rows.now[!rows.now %in% rows.mod],] <- 0
     
     dat.mod[rows.now,"mod.swdown"] <- apply(dat.sim[["swdown"]][rows.now,],1, mean)
-    # dat.sim[i,] <- dat.pred
-    # dat.mod[i,"mod.hr"] <- predict(mod.fill, dat.mod[i,])
-    # if(i>min(dat.mod$time.day2)){ 
-    #   dat.mod[dat.mod$time.day2==i-1,"lag.swdown" ] <- dat.mod[dat.mod$time.day2==i & dat.mod$hour==0,"mod.swdown"] 
-    # }
   }
-  dat.mod$mod.swdown.mean <- apply(dat.sim[["swdown"]], 1, mean)
+  # dat.mod$mod.swdown.mean <- apply(dat.sim[["swdown"]], 1, mean)
   dat.mod$mod.swdown.025   <- apply(dat.sim[["swdown"]], 1, quantile, 0.025)
   dat.mod$mod.swdown.975   <- apply(dat.sim[["swdown"]], 1, quantile, 0.975)
   summary(dat.mod)
@@ -327,7 +309,7 @@ rm(mod.swdown.doy) # Clear out the model to save memory
 # ---------
 source("temporal_downscale_functions.R")
 tic()
-mod.tair.doy <- model.tair(dat.train=dat.train[,], parallel=F, n.cores=4, n.beta=100)
+mod.tair.doy <- model.tair(dat.train=dat.train[,], resids=T, parallel=F, n.cores=4, n.beta=100)
 toc()
 length(mod.tair.doy)
 # ---------
@@ -336,57 +318,53 @@ length(mod.tair.doy)
 # Looking at the residuals from the model
 # ---------
 {
-  # for(i in names(mod.tair.doy)){
-  #   if(as.numeric(i) == 365) next # 365 is weird, so lets skip it
-  #   dat.train[dat.train$doy==as.numeric(i) & !is.na(dat.train$lag.day), "resid"] <- resid(mod.tair.doy[[i]]$model)
-  #   dat.train[dat.train$doy==as.numeric(i) & !is.na(dat.train$lag.day), "predict"] <- predict(mod.tair.doy[[i]]$model)
-  # }
-  # summary(dat.train)
-  # 
-  # png("Resid_vs_Hour.png")
-  # plot(resid ~ hour, data=dat.train, cex=0.5); abline(h=0, col="red")
-  # dev.off()
-  # png("Resid_vs_DOY.png")
-  # plot(resid ~ doy, data=dat.train, cex=0.5); abline(h=0, col="red") # slightly better in summer, but no clear temporal over-dispersion
-  # dev.off()
-  # # plot(resid ~ predict, data=dat.train); abline(h=0, col="red")
-  # png("Resid_vs_Obs.png")
-  # plot(resid ~ tair, data=dat.train, cex=0.5); abline(h=0, col="red")
-  # dev.off()
-  # png("Predict_vs_Obs.png")
-  # plot(predict ~ tair, data=dat.train, cex=0.5); abline(a=0, b=1, col="red")
-  # dev.off()
-  # 
-  # # Looking at the daily maxes & mins
-  # day.stats <- aggregate(dat.train[,c("tair", "tmax", "tmin", "resid", "predict")],
-  #                        by=dat.train[,c("time.day2", "year", "doy")],
-  #                        FUN=mean)
-  # day.stats$mod.max <- aggregate(dat.train[,c("predict")],
-  #                                by=dat.train[,c("time.day2", "year", "doy")],
-  #                                FUN=max)[,"x"]
-  # day.stats$mod.min <- aggregate(dat.train[,c("predict")],
-  #                                by=dat.train[,c("time.day2", "year", "doy")],
-  #                                FUN=min)[,"x"]
-  # day.stats$max.resid <- day.stats$mod.max - day.stats$tmax
-  # day.stats$min.resid <- day.stats$mod.min - day.stats$tmin
-  # 
-  # png("Predict_vs_Tmax.png")
-  # plot(mod.max ~ tmax, data=day.stats, cex=0.5); abline(a=0, b=1, col="red")
-  # dev.off()
-  # png("Predict_vs_Tmin.png")
-  # plot(mod.min ~ tmin, data=day.stats, cex=0.5); abline(a=0, b=1, col="red")
-  # dev.off()
-  # png("Predict_vs_Tmean.png")
-  # plot(predict ~ tair, data=day.stats, cex=0.5); abline(a=0, b=1, col="red")
-  # dev.off()
-  # 
-  # png("ResidualHistograms.png", height=6, width=8, units="in", res=220)
+  for(i in names(mod.tair.doy)){
+    if(as.numeric(i) == 365) next # 365 is weird, so lets skip it
+    dat.train[dat.train$doy==as.numeric(i) & !is.na(dat.train$lag.tair), "resid"] <- resid(mod.tair.doy[[i]]$model)
+    dat.train[dat.train$doy==as.numeric(i) & !is.na(dat.train$lag.tair), "predict"] <- predict(mod.tair.doy[[i]]$model)
+  }
+  summary(dat.train)
+  
+  png(file.path(fig.dir, "TAIR_Resid_vs_Hour.png"), height=8, width=8, units="in", res=180)
+  plot(resid ~ hour, data=dat.train, cex=0.5); abline(h=0, col="red")
+  dev.off()
+  
+  png(file.path(fig.dir, "TAIR_Resid_vs_DOY.png"), height=8, width=8, units="in", res=180)
+  plot(resid ~ doy, data=dat.train, cex=0.5); abline(h=0, col="red") # slightly better in summer, but no clear temporal over-dispersion
+  dev.off()
+  
+  png(file.path(fig.dir, "TAIR_Resid_vs_Predict.png"), height=8, width=8, units="in", res=180)
+  plot(resid ~ predict, data=dat.train); abline(h=0, col="red")
+  dev.off()
+  
+  png(file.path(fig.dir, "TAIR_Resid_vs_Obs.png"), height=8, width=8, units="in", res=180)
+  plot(resid ~ tair, data=dat.train, cex=0.5); abline(h=0, col="red")
+  dev.off()
+  
+  png(file.path(fig.dir, "TAIR_Predict_vs_Obs.png"), height=8, width=8, units="in", res=180)
+  plot(predict ~ tair, data=dat.train, cex=0.5); abline(a=0, b=1, col="red")
+  dev.off()
+  
+  # Looking at the daily maxes & mins
+  day.stats <- aggregate(dat.train[,c("tair", "resid", "predict")],
+                         by=dat.train[,c("time.day2", "year", "doy")],
+                         FUN=mean, na.rm=T)
+  day.stats$mod.max <- aggregate(dat.train[,c("predict")],
+                                 by=dat.train[,c("time.day2", "year", "doy")],
+                                 FUN=max)[,"x"]
+  day.stats$mod.min <- aggregate(dat.train[,c("predict")],
+                                 by=dat.train[,c("time.day2", "year", "doy")],
+                                 FUN=min)[,"x"]
+  
+  png(file.path(fig.dir, "TAIR_Predict_vs_SWmean.png"), height=8, width=8, units="in", res=180)
+  plot(predict~ tair, data=day.stats, cex=0.5); abline(a=0, b=1, col="red")
+  dev.off()
+  
+  png(file.path(fig.dir, "TAIR_ResidualHistograms.png"), height=6, width=8, units="in", res=180)
   # par(mfrow=c(3,1))
-  # hist(day.stats$resid, main="Daily Mean Residuals")
-  # hist(day.stats$min.resid, main="Daily Min Residuals")
-  # hist(day.stats$max.resid, main="Daily Max Residuals")
-  # par(mfrow=c(1,1))
-  # dev.off()
+  par(mfrow=c(1,1))
+  hist(day.stats$resid, main="Daily Mean Residuals")
+  dev.off()
 }
 # ---------
 
@@ -431,8 +409,15 @@ length(mod.tair.doy)
     }
     dat.temp <- merge(dat.temp, sim.lag, all.x=T)
     
+    dat.temp$swdown <- stack(dat.sim$swdown[rows.now,])[,1]
     
-    dat.pred <- predict.met(newdata=dat.temp, mod.predict=mod.tair.doy[[paste(day.now)]]$model, betas=mod.tair.doy[[paste(day.now)]]$betas, n.ens=n.ens)
+    dat.pred <- predict.met(newdata=dat.temp, 
+                            model.predict=mod.tair.doy[[paste(day.now)]]$model, 
+                            betas=mod.tair.doy[[paste(day.now)]]$betas, 
+                            resid.err=T,
+                            model.resid=mod.tair.doy[[paste(day.now)]]$model.resid, 
+                            betas.resid=mod.tair.doy[[paste(day.now)]]$betas.resid, 
+                            n.ens=n.ens)
     
     # Randomly pick which values to save & propogate
     cols.prop <- sample(1:n.ens, ncol(dat.sim$tair), replace=T)
@@ -451,7 +436,7 @@ length(mod.tair.doy)
     }
     # if(i>min(dat.mod$time.day2)) dat.mod[dat.mod$time.day2==i-1,"lag.day"] <- mean(dat.mod[dat.mod$time.day2==i & dat.mod$hour<=2,"mod.tair"])
   }
-  dat.mod$mod.tair.mean <- apply(dat.sim[["tair"]], 1, mean)
+  # dat.mod$mod.tair.mean <- apply(dat.sim[["tair"]], 1, mean)
   dat.mod$mod.tair.025   <- apply(dat.sim[["tair"]], 1, quantile, 0.025)
   dat.mod$mod.tair.975   <- apply(dat.sim[["tair"]], 1, quantile, 0.975)
   summary(dat.mod)
@@ -464,7 +449,7 @@ toc()
 # ---------
 {
 for(y in unique(dat.mod$year)){
-  # png(paste0("Tair_", y, "_year.png"), height=8, width=10, units="in", res=220)
+  png(file.path(fig.dir, paste0("Tair_", y, "_year.png")), height=8, width=10, units="in", res=220)
   print(
     ggplot(data=dat.mod[dat.mod$year==y,]) +
       # geom_point(aes(x=date, y=tmax, color=as.factor(doy)), size=0.25, alpha=0.5) +
@@ -479,7 +464,18 @@ for(y in unique(dat.mod$year)){
       ggtitle(y) +
       theme_bw()
   )
-  # dev.off() 
+  dev.off()
+  
+  png(file.path(fig.dir, paste0("Tair_", y, "_year_scatter.png")), height=8, width=10, units="in", res=220)
+  print(
+    ggplot(data=dat.mod[dat.mod$year==y,]) +
+      geom_point(aes(x=tair, y=mod.tair), color="black", size=0.5) +
+      geom_abline(slope=1, intercept=0, color="red") +
+      ggtitle(y) +
+      theme_bw()
+  )
+  dev.off()
+  
 }  
   
   
@@ -495,12 +491,10 @@ dat.graph4$season <- as.factor("fall")
 tair.graph <- rbind(dat.graph1, dat.graph2, dat.graph3, dat.graph4)
 
 for(y in unique(tair.graph$year)){
-  # png(paste0("Tair_",y,"_examples.png"), height=8, width=10, units="in", res=220)
+  png(file.path(fig.dir, paste0("Tair_",y,"_examples.png")), height=8, width=10, units="in", res=220)
   print(
   ggplot(data=tair.graph[tair.graph$year==y,]) +
     facet_wrap(~season, scales="free") +
-    # geom_point(aes(x=date, y=tmax), size=0.1, alpha=0.5, color="gray50") +
-    # geom_point(aes(x=date, y=tmin), size=0.1, alpha=0.5, color="gray50") +
     geom_line(aes(x=date, y=tair), color="black") +
     geom_point(aes(x=date, y=tair), color="black", size=0.5) +
     geom_ribbon(aes(x=date, ymin=mod.tair.025, ymax=mod.tair.975), alpha=0.5, fill="blue") +
@@ -511,7 +505,18 @@ for(y in unique(tair.graph$year)){
     ggtitle(y) +
     theme_bw()
   )
-  # dev.off()
+  dev.off()
+  png(file.path(fig.dir, paste0("Tair_",y,"_examples_scatter.png")), height=8, width=10, units="in", res=220)
+  print(
+    ggplot(data=tair.graph[tair.graph$year==y,]) +
+      facet_wrap(~season, scales="free") +
+      geom_point(aes(x=tair, y=mod.tair), color="black", size=0.5) +
+      geom_abline(intercept=0, slope=1, color="red") +
+      ggtitle(y) +
+      theme_bw()
+  )
+  dev.off()
+  
 }
 }
 # ---------

@@ -3,9 +3,11 @@ model.tair <- function(dat.train, n.cores=4, n.beta=1000, resids=F, parallel=F, 
   set.seed(seed)
 
   # The model we're going to use
-  model.train <- function(dat.subset, n.beta){ 
-      # day model works pretty good
-      mod.doy <- lm(tair ~ as.factor(hour)*tmean.day*(lag.tair + lag.tmin + max.dep*min.dep) + as.factor(hour)*swdown.day*(max.dep + min.dep) - 1 - as.factor(hour) - swdown.day - tmean.day - lag.tair - lag.tmin - min.dep - max.dep - min.dep*max.dep - tmean.day*max.dep*min.dep - swdown.day*max.dep*min.dep, data=dat.subset) #
+  model.train <- function(dat.subset, n.beta, resids=resids){ 
+    dat.subset$year <- as.ordered(dat.subset$year)  
+    # day model works pretty good
+      # Note: Tried fitting with hourly swdown & it didn't improve things (visually or with AIC), so for the sake of simplicity, using swdown.day
+      mod.doy <- lm(tair ~ as.ordered(hour)*tmean.day*(lag.tair + lag.tmin + max.dep*min.dep) + as.ordered(hour)*swdown.day*(max.dep + min.dep) - 1 - as.ordered(hour) - swdown.day - tmean.day - lag.tair - lag.tmin - min.dep - max.dep - min.dep*max.dep - tmean.day*max.dep*min.dep - swdown.day*max.dep*min.dep, data=dat.subset) #
 
       # Generate a bunch of random coefficients that we can pull from 
       # without needing to do this step every day
@@ -20,8 +22,8 @@ model.tair <- function(dat.train, n.cores=4, n.beta=1000, resids=F, parallel=F, 
       
       # Model residuals as a function of hour so we can increase our uncertainty
       if(resids==T){
-        mod.resid <- resid(mod.doy)
-        resid.model <- lm(mod.resid ~ as.factor(dat.subset$hour)*(dat.subset$tmean + dat.subset$max.dep + dat.subset$min.dep)-1)
+        dat.subset[!is.na(dat.subset$lag.tair),"resid"] <- resid(mod.doy)
+        resid.model <- lm(resid ~ as.factor(hour)*(tmean.day + max.dep + min.dep)-1, data=dat.subset[!is.na(dat.subset$lag.tair),])
         res.coef <- coef(resid.model)
         res.cov  <- vcov(resid.model)
         res.piv <- as.numeric(which(!is.na(res.coef)))
@@ -51,10 +53,10 @@ model.tair <- function(dat.train, n.cores=4, n.beta=1000, resids=F, parallel=F, 
   # Final list will have 2 layers per DOY: the model, and a bunch of simulated betas
   if(parallel==T){
     library(parallel)
-    mod.out <- mclapply(dat.list, model.train, mc.cores=n.cores, n.beta=n.beta)
+    mod.out <- mclapply(dat.list, model.train, mc.cores=n.cores, n.beta=n.beta, resids=resids)
   } else {
     for(i in names(dat.list)){
-      mod.out[[i]] <- model.train(dat.subset=dat.list[[i]], n.beta=n.beta)
+      mod.out[[i]] <- model.train(dat.subset=dat.list[[i]], n.beta=n.beta, resids=resids)
     }
   }
   
@@ -66,7 +68,7 @@ model.swdown <- function(dat.train, n.cores=4, n.beta=1000, resids=F, parallel=F
   set.seed(seed)
   
   # The model we're going to use
-  model.train <- function(dat.subset, threshold=NULL, n.beta){ 
+  model.train <- function(dat.subset, threshold=NULL, n.beta, resids=resids){ 
     
     # Don't bother trying to fit hours that are completely or pretty darn close to dark
     hrs.day <- unique(dat.subset[dat.subset$swdown>threshold, "hour"])
@@ -86,8 +88,8 @@ model.swdown <- function(dat.train, n.cores=4, n.beta=1000, resids=F, parallel=F
                      betas=Rbeta)
     # Model residuals as a function of hour so we can increase our uncertainty
     if(resids==T){
-      mod.resid <- resid(mod.doy)
-      resid.model <- lm(mod.resid ~ as.factor(dat.subset[dat.subset$hour %in% hrs.day,"hour"])*dat.subset[dat.subset$hour %in% hrs.day,"swdown.day"]-1)
+      dat.subset[dat.subset$hour %in% hrs.day,"resid"] <- resid(mod.doy)
+      resid.model <- lm(resid ~ as.factor(hour)*swdown.day-1, data=dat.subset[dat.subset$hour %in% hrs.day,])
       res.coef <- coef(resid.model)
       res.cov  <- vcov(resid.model)
       res.piv <- as.numeric(which(!is.na(res.coef)))
@@ -118,10 +120,10 @@ model.swdown <- function(dat.train, n.cores=4, n.beta=1000, resids=F, parallel=F
   # Final list will have 2 layers per DOY: the model, and a bunch of simulated betas
   if(parallel==T){
     library(parallel)
-    mod.out <- mclapply(dat.list, model.train, mc.cores=n.cores, n.beta=n.beta)
+    mod.out <- mclapply(dat.list, model.train, mc.cores=n.cores, n.beta=n.beta, resids=resids)
   } else {
     for(i in names(dat.list)){
-      mod.out[[i]] <- model.train(dat.subset=dat.list[[i]], threshold=quantile(dat.train[dat.train$swdown>0,"swdown"], 0.05), n.beta=n.beta)
+      mod.out[[i]] <- model.train(dat.subset=dat.list[[i]], threshold=quantile(dat.train[dat.train$swdown>0,"swdown"], 0.05), n.beta=n.beta, resids=resids)
     }
   }
   
@@ -129,38 +131,37 @@ model.swdown <- function(dat.train, n.cores=4, n.beta=1000, resids=F, parallel=F
 }
 
 
-
-
-predict.met <- function(newdata, mod.predict, betas, resids=F, mod.resid=NULL, betas.resid=NULL, n.ens, seed=9321){
+predict.met <- function(newdata, model.predict, betas, resid.err=F, model.resid=NULL, betas.resid=NULL, n.ens, seed=9321){
   set.seed(9321)
   err.resid = 0 # dummy residual error term; if we want to add residual error, we're modeling it by hour
 
-  mod.terms <- terms(mod.predict)
-  mod.coef <- coef(mod.predict)
-  mod.cov  <- vcov(mod.predict)
-  mod.resid <- resid(mod.predict)
+  mod.terms <- terms(model.predict)
+  mod.coef <- coef(model.predict)
+  mod.cov  <- vcov(model.predict)
+  mod.resid <- resid(model.predict)
   piv <- as.numeric(which(!is.na(mod.coef)))
   
-  m <- model.frame(mod.terms, newdata, xlev = mod.predict$xlevels)
-  Xp <- model.matrix(mod.terms, m, contrasts.arg = mod.predict$contrasts)
+  m <- model.frame(mod.terms, newdata, xlev = model.predict$xlevels)
+  Xp <- model.matrix(mod.terms, m, contrasts.arg = model.predict$contrasts)
   
   rows.beta <- sample(1:nrow(betas), n.ens, replace=T)
 
   Rbeta <- as.matrix(betas[rows.beta,], nrow=length(rows.beta), ncol=ncol(betas))
   
-  if(resids==T){
-    resid.terms <- terms(mod.resid)
-    resid.coef <- coef(mod.resid)
-    resid.cov  <- vcov(mod.resid)
-    resid.resid <- resid(mod.resid)
+  if(resid.err==T){
+    newdata$resid <- 99999
+    resid.terms <- terms(model.resid)
+    resid.coef <- coef(model.resid)
+    resid.cov  <- vcov(model.resid)
+    resid.resid <- resid(model.resid)
     resid.piv <- as.numeric(which(!is.na(resid.coef)))
     
-    m2 <- model.frame(resid.terms, newdata, xlev = mod.resid$xlevels)
-    Xp.res <- model.matrix(resid.terms, m2, contrasts.arg = mod.resid$contrasts)
+    m2 <- model.frame(resid.terms, newdata, xlev = model.resid$xlevels)
+    Xp.res <- model.matrix(resid.terms, m2, contrasts.arg = model.resid$contrasts)
     
-    rows.beta <- sample(1:nrow(betas), n.ens, replace=T)
+    rows.beta2 <- sample(1:nrow(betas.resid), n.ens, replace=T)
     
-    Rbeta.res <- as.matrix(betas[rows.beta,], nrow=length(rows.beta), ncol=ncol(betas))
+    Rbeta.res <- as.matrix(betas.resid[rows.beta2,], nrow=length(rows.beta2), ncol=ncol(betas.resid))
     
     err.resid <- Xp.res[,resid.piv] %*% t(Rbeta.res)
   }
