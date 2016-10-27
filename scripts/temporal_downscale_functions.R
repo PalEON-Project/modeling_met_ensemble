@@ -206,10 +206,15 @@ model.press <- function(dat.train, n.cores=4, n.beta=1000, resids=F, parallel=F,
   # The model we're going to use
   model.train <- function(dat.subset, n.beta, resids=resids){ 
     
-    mod.doy <- lm(press ~ as.factor(hour)*press.day*lag.press-1 -as.factor(hour), data=dat.subset) ###
-    # mod.doy0 <- lm(press ~ as.factor(hour)*press.day*lag.press, data=dat.subset) ###
-    # mod.doy1 <- lm(press ~ as.factor(hour)*press.day*(lag.press + tmean.day), data=dat.subset) ###
-    # mod.doy2 <- lm(press ~ as.factor(hour)*press.day*(lag.press + swdown.day), data=dat.subset) ###
+    # mod.doy <- lm(press ~ as.factor(hour)*press.day*(lag.press + next.press)-1-as.factor(hour), data=dat.subset) ###
+    # mod.doy0 <- lm(press ~ as.factor(hour)*press.day-1-as.factor(hour), data=dat.subset) ###
+    # mod.doy1 <- lm(press ~ as.factor(hour)*press.day*(lag.press)-1-as.factor(hour), data=dat.subset) ###
+    # mod.doy2 <- lm(press ~ as.factor(hour)*press.day*(lag.press + next.press)-1-as.factor(hour), data=dat.subset) ###
+    # mod.doy3 <- lm(press ~ as.factor(hour)*press.day*(lag.press + next.press)-1-as.factor(hour)- next.press - lag.press, data=dat.subset) ###
+    # mod.doy4 <- lm(press ~ as.factor(hour)*press.day*(lag.press + next.press + tmean.day)-1-as.factor(hour)- next.press - lag.press, data=dat.subset) ###
+    # mod.doy5 <- lm(press ~ as.factor(hour)*press.day*(lag.press + next.press + max.dep)-1-as.factor(hour)- next.press - lag.press, data=dat.subset) ###
+    # mod.doy6 <- lm(press ~ as.factor(hour)*press.day*(lag.press + next.press + min.dep)-1-as.factor(hour)- next.press - lag.press - press.day - min.dep, data=dat.subset) ###
+    mod.doy <- lm(press ~ as.factor(hour)*(press.day + lag.press + next.press)-as.factor(hour)-1, data=dat.subset) ###
 
     # Generate a bunch of random coefficients that we can pull from 
     # without needing to do this step every day
@@ -222,7 +227,7 @@ model.press <- function(dat.train, n.cores=4, n.beta=1000, resids=F, parallel=F,
                      betas=Rbeta)
     # Model residuals as a function of hour so we can increase our uncertainty
     if(resids==T){
-      dat.subset[!is.na(dat.subset$lag.press),"resid"] <- resid(mod.doy)
+      dat.subset[!is.na(dat.subset$lag.press) & !is.na(dat.subset$next.press),"resid"] <- resid(mod.doy)
       resid.model <- lm(resid ~ as.factor(hour)*press.day-1, data=dat.subset[,])
       res.coef <- coef(resid.model)
       res.cov  <- vcov(resid.model)

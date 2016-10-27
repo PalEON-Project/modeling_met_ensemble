@@ -48,12 +48,17 @@ summary(train.day)
 dat.train <- merge(dat.train[,], train.day, all.x=T, all.y=T)
 summary(dat.train)
 
-
-# creating a variable for midnight the next day since we're working backwards and that's the closest hour to what we're processing
-lag.day <- dat.train[dat.train$hour==0,c("year", "doy", "time.day2", "tair","precipf", "swdown", "lwdown", "press", "qair", "wind")]
-names(lag.day)[4:10] <- c("lag.tair", "lag.precipf", "lag.swdown", "lag.lwdown", "lag.press", "lag.qair", "lag.wind") 
+# ----------
+# Setting up a 1-hour lag -- smooth transitions at midnight
+# NOTE: because we're filtering from the present back through the past, -1 will associate the closest 
+#       hour that we've already done (midnight) with the day we're currently working on
+# ----------
+vars.hour <- c("tair","precipf", "swdown", "lwdown", "press", "qair", "wind")
+vars.lag <- c("lag.tair", "lag.precipf", "lag.swdown", "lag.lwdown", "lag.press", "lag.qair", "lag.wind") 
+lag.day <- dat.train[dat.train$hour==0,c("year", "doy", "time.day2", vars.hour)]
+names(lag.day)[4:10] <- vars.lag
 # lag.day$lag.diff <- dat.train[dat.train$hour==6,"tair"] - lag.day$lag.day # Lag is the change in temp in the proximate 3 hours
-lag.day <- aggregate(lag.day[,c("lag.tair", "lag.precipf", "lag.swdown", "lag.lwdown", "lag.press", "lag.qair", "lag.wind")],
+lag.day <- aggregate(lag.day[,vars.lag],
                      by=lag.day[,c("year", "doy", "time.day2")],
                      FUN=mean)
 lag.day$lag.tmin <- aggregate(dat.train[,c("tair")],  
@@ -62,20 +67,36 @@ lag.day$lag.tmin <- aggregate(dat.train[,c("tair")],
 lag.day$lag.tmax <- aggregate(dat.train[,c("tair")],  
                              by=dat.train[,c("year", "doy", "time.day2")],
                              FUN=max)[,"x"] # Add in a lag for the next day's min temp
-# lag.day <- aggregate(lag.day[,c("lag.day", "tmean", "tmax", "tmin")],
-#                      by=lag.day[,c("year", "doy", "time.day2")],
-#                      FUN=function(x){max(x)-min(x)})
 lag.day$time.day2 <- lag.day$time.day2-1
-# lag.day[is.na(lag.day$lag.day), "lag.day"] <- dat.train[1,"tair"]
 head(lag.day)
 summary(lag.day)
 
-dat.train <- merge(dat.train, lag.day[,c("time.day2", "lag.tair", "lag.tmin", "lag.tmax", "lag.precipf", "lag.swdown", "lag.lwdown", "lag.press", "lag.qair", "lag.wind")], all.x=T)
+dat.train <- merge(dat.train, lag.day[,c("time.day2", vars.lag, "lag.tmin", "lag.tmax")], all.x=T)
+# ----------
+
+
+# ----------
+# Setting up a variable to 'preview' the next day's mean to help get smoother transitions
+# NOTE: because we're filtering from the present back through the past, +1 will associate 
+#       the mean for the next day we're going to model with the one we're currently working on
+# ----------
+vars.day <- c("tmean.day", "tmax.day", "tmean.day", "precipf.day", "swdown.day", "lwdown.day", "press.day", "qair.day", "wind.day")
+vars.next <- c("next.tmean", "next.tmax", "next.tmin", "next.precipf", "next.swdown", "next.lwdown", "next.press", "next.qair", "next.wind") 
+
+next.day <- dat.train[c("year", "doy", "time.day2", vars.day)]
+names(next.day)[4:12] <- vars.next
+# next.day$next.diff <- dat.train[dat.train$hour==6,"tair"] - next.day$next.day # Lag is the change in temp in the proximate 3 hours
+next.day <- aggregate(next.day[,vars.next],
+                     by=next.day[,c("year", "doy", "time.day2")],
+                     FUN=mean)
+next.day$time.day2 <- next.day$time.day2+1  
+
+dat.train <- merge(dat.train, next.day[,c("time.day2", vars.next)], all.x=T)
+# ----------
+
+
+# Order the data just to help with my sanity when visualizing
 dat.train <- dat.train[order(dat.train$time.hr, decreasing=T),]
-# dat.train[is.na(dat.train$lag.day), "lag.day"] <- dat.train[1,"tair"]
-# dat.train[is.na(dat.train$lag.diff), "lag.diff"] <- mean(dat.train[,"lag.diff"],na.rm=T)
-# dat.train <- dat.train[complete.cases(dat.train),]
-# head(dat.train)
 summary(dat.train)
 
 # Lookign at max & min as departure from mean
@@ -776,8 +797,8 @@ dat.sim <- list() # Each variable needs to be a layer in a list so we can propog
   {
     for(i in names(mod.press.doy)){
       if(as.numeric(i) == 365) next # 365 is weird, so lets skip it
-      dat.train[dat.train$doy==as.numeric(i) & !is.na(dat.train$lag.press), "resid"] <- resid(mod.press.doy[[i]]$model)
-      dat.train[dat.train$doy==as.numeric(i) & !is.na(dat.train$lag.press), "predict"] <- predict(mod.press.doy[[i]]$model)
+      dat.train[dat.train$doy==as.numeric(i) & !is.na(dat.train$lag.press) & !is.na(dat.train$next.press), "resid"] <- resid(mod.press.doy[[i]]$model)
+      dat.train[dat.train$doy==as.numeric(i) & !is.na(dat.train$lag.press) & !is.na(dat.train$next.press), "predict"] <- predict(mod.press.doy[[i]]$model)
     }
     summary(dat.train)
     
@@ -840,7 +861,7 @@ dat.sim <- list() # Each variable needs to be a layer in a list so we can propog
       setTxtProgressBar(pb, abs(i))
       
       rows.now = which(dat.mod$time.day2==i)
-      dat.temp <- dat.mod[rows.now,c("time.day2", "year", "doy", "hour", "tmax.day", "tmin.day", "tmean.day", "max.dep", "min.dep", "precipf.day", "swdown.day", "press.day", "press.day", "qair.day", "wind.day")]
+      dat.temp <- dat.mod[rows.now,c("time.day2", "year", "doy", "hour", "tmax.day", "tmin.day", "tmean.day", "max.dep", "min.dep", "precipf.day", "swdown.day", "press.day", "press.day", "qair.day", "wind.day", "next.press")]
       dat.temp$press = -99999 # Dummy value so there's a column
       dat.temp <- dat.temp[complete.cases(dat.temp),]
       # day.now = dat.temp$doy
@@ -871,7 +892,7 @@ dat.sim <- list() # Each variable needs to be a layer in a list so we can propog
       dat.pred <- predict.met(newdata=dat.temp, 
                               model.predict=mod.press.doy[[paste(day.now)]]$model, 
                               betas=mod.press.doy[[paste(day.now)]]$betas, 
-                              resid.err=F,
+                              resid.err=T,
                               model.resid=mod.press.doy[[paste(day.now)]]$model.resid, 
                               betas.resid=mod.press.doy[[paste(day.now)]]$betas.resid, 
                               n.ens=n.ens)
