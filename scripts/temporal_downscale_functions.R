@@ -1,4 +1,4 @@
-model.tair <- function(dat.train, n.cores=4, n.beta=1000, resids=F, parallel=F, ncores=NULL, seed=1237){
+model.tair <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NULL, seed=1237){
   library(MASS)
   set.seed(seed)
 
@@ -7,7 +7,7 @@ model.tair <- function(dat.train, n.cores=4, n.beta=1000, resids=F, parallel=F, 
     dat.subset$year <- as.ordered(dat.subset$year)  
     # day model works pretty good
       # Note: Tried fitting with hourly swdown & it didn't improve things (visually or with AIC), so for the sake of simplicity, using swdown.day
-      mod.doy <- lm(tair ~ as.ordered(hour)*tmean.day*(lag.tair + lag.tmin + max.dep*min.dep) + as.ordered(hour)*swdown.day*(max.dep + min.dep) - 1 - as.ordered(hour) - swdown.day - tmean.day - lag.tair - lag.tmin - min.dep - max.dep - min.dep*max.dep - tmean.day*max.dep*min.dep - swdown.day*max.dep*min.dep, data=dat.subset) #
+      mod.doy <- lm(tair ~ as.ordered(hour)*tmean.day*(lag.tair + lag.tmin + next.tmax + max.dep*min.dep) + as.ordered(hour)*swdown.day*(max.dep + min.dep) - 1 - as.ordered(hour) - swdown.day - tmean.day - lag.tair - lag.tmin - next.tmax - min.dep - max.dep - min.dep*max.dep - tmean.day*max.dep*min.dep - swdown.day*max.dep*min.dep, data=dat.subset) #
 
       # Generate a bunch of random coefficients that we can pull from 
       # without needing to do this step every day
@@ -22,7 +22,7 @@ model.tair <- function(dat.train, n.cores=4, n.beta=1000, resids=F, parallel=F, 
       
       # Model residuals as a function of hour so we can increase our uncertainty
       if(resids==T){
-        dat.subset[!is.na(dat.subset$lag.tair),"resid"] <- resid(mod.doy)
+        dat.subset[!is.na(dat.subset$lag.tair) & !is.na(dat.subset$next.tmax),"resid"] <- resid(mod.doy)
         resid.model <- lm(resid ~ as.factor(hour)*(tmean.day + max.dep + min.dep)-1, data=dat.subset[!is.na(dat.subset$lag.tair),])
         res.coef <- coef(resid.model)
         res.cov  <- vcov(resid.model)
@@ -63,7 +63,7 @@ model.tair <- function(dat.train, n.cores=4, n.beta=1000, resids=F, parallel=F, 
   return(mod.out)
 }
 
-model.swdown <- function(dat.train, n.cores=4, n.beta=1000, resids=F, parallel=F, ncores=NULL, seed=1341){
+model.swdown <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NULL, seed=1341){
   library(MASS)
   set.seed(seed)
   
@@ -130,14 +130,14 @@ model.swdown <- function(dat.train, n.cores=4, n.beta=1000, resids=F, parallel=F
   return(mod.out)
 }
 
-model.lwdown <- function(dat.train, n.cores=4, n.beta=1000, resids=F, parallel=F, ncores=NULL, seed=341){
+model.lwdown <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NULL, seed=341){
   library(MASS)
   set.seed(seed)
   
   # The model we're going to use
   model.train <- function(dat.subset, n.beta, resids=resids){ 
     
-    mod.doy <- lm(lwdown ~ as.factor(hour)*lwdown.day*(lag.lwdown + tmean.day + swdown.day + tmax.day + tmin.day) - as.factor(hour) - tmean.day - tmax.day - tmin.day - swdown.day - 1, data=dat.subset) ###
+    mod.doy <- lm(lwdown ~ as.factor(hour)*lwdown.day*(lag.lwdown + next.lwdown + tmean.day + swdown.day + tmax.day + tmin.day) - as.factor(hour) - tmean.day - tmax.day - tmin.day - swdown.day - 1, data=dat.subset) ###
     # mod.doy <- lm(lwdown ~ as.factor(hour)*lwdown.day*(lag.lwdown + tair + swdown), data=dat.subset) ###
     # mod.doy0 <- lm(lwdown ~ as.factor(hour)*lwdown.day, data=dat.subset) ###
     # mod.doy1 <- lm(lwdown ~ as.factor(hour)*lwdown.day*(tmean.day + swdown.day), data=dat.subset) ###
@@ -158,7 +158,7 @@ model.lwdown <- function(dat.train, n.cores=4, n.beta=1000, resids=F, parallel=F
                      betas=Rbeta)
     # Model residuals as a function of hour so we can increase our uncertainty
     if(resids==T){
-      dat.subset[!is.na(dat.subset$lag.lwdown),"resid"] <- resid(mod.doy)
+      dat.subset[!is.na(dat.subset$lag.lwdown) & !is.na(dat.subset$next.lwdown),"resid"] <- resid(mod.doy)
       resid.model <- lm(resid ~ as.factor(hour)*lwdown.day-1, data=dat.subset[,])
       res.coef <- coef(resid.model)
       res.cov  <- vcov(resid.model)
@@ -199,7 +199,7 @@ model.lwdown <- function(dat.train, n.cores=4, n.beta=1000, resids=F, parallel=F
   return(mod.out)
 }
 
-model.press <- function(dat.train, n.cores=4, n.beta=1000, resids=F, parallel=F, ncores=NULL, seed=341){
+model.press <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NULL, seed=1347){
   library(MASS)
   set.seed(seed)
   
@@ -268,7 +268,7 @@ model.press <- function(dat.train, n.cores=4, n.beta=1000, resids=F, parallel=F,
   return(mod.out)
 }
 
-model.wind <- function(dat.train, n.cores=4, n.beta=1000, resids=F, parallel=F, ncores=NULL, seed=341){
+model.wind <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NULL, seed=708){
   library(MASS)
   set.seed(seed)
   
@@ -340,7 +340,7 @@ model.wind <- function(dat.train, n.cores=4, n.beta=1000, resids=F, parallel=F, 
   return(mod.out)
 }
 
-model.precipf <- function(dat.train, n.cores=4, n.beta=1000, resids=F, parallel=F, ncores=NULL, seed=341){
+model.precipf <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NULL, seed=1562){
   library(MASS)
   library(fitdistrplus)
   set.seed(seed)
@@ -406,7 +406,7 @@ model.precipf <- function(dat.train, n.cores=4, n.beta=1000, resids=F, parallel=
   return(mod.out)
 }
 
-model.qair <- function(dat.train, n.cores=4, n.beta=1000, resids=F, parallel=F, ncores=NULL, seed=341){
+model.qair <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NULL, seed=1009){
   library(MASS)
   set.seed(seed)
   
@@ -513,3 +513,57 @@ predict.met <- function(newdata, model.predict, betas, resid.err=F, model.resid=
   return(dat.sim)
   
 }
+
+graph.resids <- function(var, dat.train, model.var, fig.dir){
+  dat.train$var <- dat.train[,var]
+  dat.train$lag.var <- dat.train[,paste0("lag.", var)]
+  dat.train$next.var <- dat.train[,paste0("next.", var)]
+  for(i in names(model.var)){
+    if(as.numeric(i) == 365) next # 365 is weird, so lets skip it
+    dat.train[dat.train$doy==as.numeric(i) & !is.na(dat.train$lag.var) & !is.na(dat.train$next.var), "resid"] <- resid(model.var[[i]]$model)
+    dat.train[dat.train$doy==as.numeric(i) & !is.na(dat.train$lag.var) & !is.na(dat.train$next.var), "predict"] <- predict(model.var[[i]]$model)
+  }
+  summary(dat.train)
+  
+  png(file.path(fig.dir, paste0(var, "_Resid_vs_Hour.png")), height=8, width=8, units="in", res=180)
+  plot(resid ~ hour, data=dat.train, cex=0.5); abline(h=0, col="red")
+  dev.off()
+  
+  png(file.path(fig.dir, paste0(var, "_Resid_vs_DOY.png")), height=8, width=8, units="in", res=180)
+  plot(resid ~ doy, data=dat.train, cex=0.5); abline(h=0, col="red") # slightly better in summer, but no clear temporal over-dispersion
+  dev.off()
+  
+  png(file.path(fig.dir, paste0(var, "_Resid_vs_Predict.png")), height=8, width=8, units="in", res=180)
+  plot(resid ~ predict, data=dat.train); abline(h=0, col="red")
+  dev.off()
+  
+  png(file.path(fig.dir, paste0(var, "_Resid_vs_Obs.png")), height=8, width=8, units="in", res=180)
+  plot(resid ~ var, data=dat.train, cex=0.5); abline(h=0, col="red")
+  dev.off()
+  
+  png(file.path(fig.dir, paste0(var, "_Predict_vs_Obs.png")), height=8, width=8, units="in", res=180)
+  plot(predict ~ var, data=dat.train, cex=0.5); abline(a=0, b=1, col="red")
+  dev.off()
+  
+  # Looking at the daily maxes & mins
+  day.stats <- aggregate(dat.train[,c("var", "resid", "predict")],
+                         by=dat.train[,c("time.day2", "year", "doy")],
+                         FUN=mean, na.rm=T)
+  day.stats$mod.max <- aggregate(dat.train[,c("predict")],
+                                 by=dat.train[,c("time.day2", "year", "doy")],
+                                 FUN=max)[,"x"]
+  day.stats$mod.min <- aggregate(dat.train[,c("predict")],
+                                 by=dat.train[,c("time.day2", "year", "doy")],
+                                 FUN=min)[,"x"]
+  
+  png(file.path(fig.dir, paste0(var, "_Predict_vs_Mean.png")), height=8, width=8, units="in", res=180)
+  plot(predict~ tair, data=day.stats, cex=0.5); abline(a=0, b=1, col="red")
+  dev.off()
+  
+  png(file.path(fig.dir, paste0(var, "_ResidualHistograms_Day.png")), height=6, width=8, units="in", res=180)
+  # par(mfrow=c(3,1))
+  par(mfrow=c(1,1))
+  hist(day.stats$resid, main="Daily Mean Residuals")
+  dev.off()
+}
+

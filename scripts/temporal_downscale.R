@@ -2,194 +2,221 @@
 library(ncdf4)
 library(mgcv)
 library(MASS)
-library(lubridate)
+# library(lubridate)
 library(ggplot2)
-library(tictoc)
+# library(tictoc)
 rm(list=ls())
 
-fig.dir <- "../data/met_ensembles/HARVARD/subday_qaqc"
+# mod.out <- "../data/met_ensembles/HARVARD/subday_models"
+mod.out <- "~/Desktop/met_ensembles/HARVARD/subday_models"
+fig.dir <- file.path(mod.out, "model_qaqc")
+
+if(!dir.exists(mod.out)) dir.create(mod.out, recursive = T)
 if(!dir.exists(fig.dir)) dir.create(fig.dir, recursive = T)
 
-dat.train <- read.csv("../data/paleon_sites/HARVARD/NLDAS_1980-2015.csv")
-# dat.train$doy <- as.ordered(dat.train$doy)
 
-# Now trying things in a predictive framework
-dat.train <- dat.train[order(dat.train$year, dat.train$doy, dat.train$hour, decreasing=T),]
-dat.train[1:25,]
-head(dat.train)
-summary(dat.train)
-
-# dat.train <- dat.train[,c("dataset", "year", "doy", "hour", "tair", "precipf", "swdown", "lwdown", "press", "qair", "wind")]
-dat.train$date <- strptime(paste(dat.train$year, dat.train$doy+1, dat.train$hour, sep="-"), "%Y-%j-%H", tz="GMT")
-dat.train$time.hr <- as.numeric(difftime(dat.train$date, "2016-01-01", tz="GMT", units="hour"))
-dat.train$time.day <- as.numeric(difftime(dat.train$date, "2016-01-01", tz="GMT", units="day"))+1/24
-dat.train$time.day2 <- as.integer(dat.train$time.day)-1
-dat.train <- dat.train[order(dat.train$time.hr, decreasing=T),]
-# dat.train[1:25,]
-# head(dat.train)
-
-# For some reason certain days are getting an extra hour
-for(i in max(dat.train$time.day2):min(dat.train$time.day2)){
-  rows.now <- which(dat.train$time.day2==i)
-  if(length(rows.now)<=24) next
+# ------------------------------------------
+# 1. Load and format training data
+# ------------------------------------------
+# ----------
+# 1.0 Read data & Make time stamps
+# ----------
+{
+  # Load the data
+  dat.train <- read.csv("../data/paleon_sites/HARVARD/NLDAS_1980-2015.csv")
+  # dat.train$doy <- as.ordered(dat.train$doy)
   
-  dat.train[rows.now[25],"time.day2"] <- i-1
+  # order the data just o make life easier
+  dat.train <- dat.train[order(dat.train$year, dat.train$doy, dat.train$hour, decreasing=T),]
+  dat.train[1:25,]
+  head(dat.train)
+  summary(dat.train)
+  
+  # Add various types of time stamps to make life easier
+  dat.train$date <- strptime(paste(dat.train$year, dat.train$doy+1, dat.train$hour, sep="-"), "%Y-%j-%H", tz="GMT")
+  dat.train$time.hr <- as.numeric(difftime(dat.train$date, "2016-01-01", tz="GMT", units="hour"))
+  dat.train$time.day <- as.numeric(difftime(dat.train$date, "2016-01-01", tz="GMT", units="day"))+1/24
+  dat.train$time.day2 <- as.integer(dat.train$time.day)-1
+  dat.train <- dat.train[order(dat.train$time.hr, decreasing=T),]
+  # dat.train[1:25,]
+  # head(dat.train)
+  
+  # For some reason certain days are getting an extra hour, so make sure it lines up right
+  for(i in max(dat.train$time.day2):min(dat.train$time.day2)){
+    rows.now <- which(dat.train$time.day2==i)
+    if(length(rows.now)<=24) next
+    
+    dat.train[rows.now[25],"time.day2"] <- i-1
+  }
 }
-
-train.day <- aggregate(dat.train[,c("tair", "precipf", "swdown", "lwdown", "press", "qair", "wind")], 
-                       by=dat.train[,c("year", "doy")],
-                       FUN=mean)
-names(train.day)[3:9] <- c("tmean.day", "precipf.day", "swdown.day", "lwdown.day", "press.day", "qair.day", "wind.day")
-train.day$tmax.day <- aggregate(dat.train[,c("tair")], by=dat.train[,c("year", "doy")], FUN=max)$x
-train.day$tmin.day <- aggregate(dat.train[,c("tair")], by=dat.train[,c("year", "doy")], FUN=min)$x
-summary(train.day)
-
-
-dat.train <- merge(dat.train[,], train.day, all.x=T, all.y=T)
-summary(dat.train)
+# ----------
 
 # ----------
-# Setting up a 1-hour lag -- smooth transitions at midnight
+# 1.1 Coming up with the daily means that are what we can use as predictors
+# ----------
+{
+  train.day <- aggregate(dat.train[,c("tair", "precipf", "swdown", "lwdown", "press", "qair", "wind")], 
+                         by=dat.train[,c("year", "doy")],
+                         FUN=mean)
+  names(train.day)[3:9] <- c("tmean.day", "precipf.day", "swdown.day", "lwdown.day", "press.day", "qair.day", "wind.day")
+  train.day$tmax.day <- aggregate(dat.train[,c("tair")], by=dat.train[,c("year", "doy")], FUN=max)$x
+  train.day$tmin.day <- aggregate(dat.train[,c("tair")], by=dat.train[,c("year", "doy")], FUN=min)$x
+  summary(train.day)
+  
+  
+  dat.train <- merge(dat.train[,], train.day, all.x=T, all.y=T)
+  summary(dat.train)
+}
+# ----------
+
+# ----------
+# 1.2 Setting up a 1-hour lag -- smooth transitions at midnight
 # NOTE: because we're filtering from the present back through the past, -1 will associate the closest 
 #       hour that we've already done (midnight) with the day we're currently working on
 # ----------
-vars.hour <- c("tair","precipf", "swdown", "lwdown", "press", "qair", "wind")
-vars.lag <- c("lag.tair", "lag.precipf", "lag.swdown", "lag.lwdown", "lag.press", "lag.qair", "lag.wind") 
-lag.day <- dat.train[dat.train$hour==0,c("year", "doy", "time.day2", vars.hour)]
-names(lag.day)[4:10] <- vars.lag
-# lag.day$lag.diff <- dat.train[dat.train$hour==6,"tair"] - lag.day$lag.day # Lag is the change in temp in the proximate 3 hours
-lag.day <- aggregate(lag.day[,vars.lag],
-                     by=lag.day[,c("year", "doy", "time.day2")],
-                     FUN=mean)
-lag.day$lag.tmin <- aggregate(dat.train[,c("tair")],  
-                             by=dat.train[,c("year", "doy", "time.day2")],
-                             FUN=min)[,"x"] # Add in a lag for the next day's min temp
-lag.day$lag.tmax <- aggregate(dat.train[,c("tair")],  
-                             by=dat.train[,c("year", "doy", "time.day2")],
-                             FUN=max)[,"x"] # Add in a lag for the next day's min temp
-lag.day$time.day2 <- lag.day$time.day2-1
-head(lag.day)
-summary(lag.day)
-
-dat.train <- merge(dat.train, lag.day[,c("time.day2", vars.lag, "lag.tmin", "lag.tmax")], all.x=T)
+{
+  vars.hour <- c("tair","precipf", "swdown", "lwdown", "press", "qair", "wind")
+  vars.lag <- c("lag.tair", "lag.precipf", "lag.swdown", "lag.lwdown", "lag.press", "lag.qair", "lag.wind") 
+  lag.day <- dat.train[dat.train$hour==0,c("year", "doy", "time.day2", vars.hour)]
+  names(lag.day)[4:10] <- vars.lag
+  # lag.day$lag.diff <- dat.train[dat.train$hour==6,"tair"] - lag.day$lag.day # Lag is the change in temp in the proximate 3 hours
+  lag.day <- aggregate(lag.day[,vars.lag],
+                       by=lag.day[,c("year", "doy", "time.day2")],
+                       FUN=mean)
+  lag.day$lag.tmin <- aggregate(dat.train[,c("tair")],  
+                                by=dat.train[,c("year", "doy", "time.day2")],
+                                FUN=min)[,"x"] # Add in a lag for the next day's min temp
+  lag.day$lag.tmax <- aggregate(dat.train[,c("tair")],  
+                                by=dat.train[,c("year", "doy", "time.day2")],
+                                FUN=max)[,"x"] # Add in a lag for the next day's min temp
+  lag.day$time.day2 <- lag.day$time.day2-1
+  head(lag.day)
+  summary(lag.day)
+  
+  dat.train <- merge(dat.train, lag.day[,c("time.day2", vars.lag, "lag.tmin", "lag.tmax")], all.x=T)
+}
 # ----------
 
 
 # ----------
-# Setting up a variable to 'preview' the next day's mean to help get smoother transitions
+# 1.3 Setting up a variable to 'preview' the next day's mean to help get smoother transitions
 # NOTE: because we're filtering from the present back through the past, +1 will associate 
 #       the mean for the next day we're going to model with the one we're currently working on
 # ----------
-vars.day <- c("tmean.day", "tmax.day", "tmean.day", "precipf.day", "swdown.day", "lwdown.day", "press.day", "qair.day", "wind.day")
-vars.next <- c("next.tmean", "next.tmax", "next.tmin", "next.precipf", "next.swdown", "next.lwdown", "next.press", "next.qair", "next.wind") 
-
-next.day <- dat.train[c("year", "doy", "time.day2", vars.day)]
-names(next.day)[4:12] <- vars.next
-# next.day$next.diff <- dat.train[dat.train$hour==6,"tair"] - next.day$next.day # Lag is the change in temp in the proximate 3 hours
-next.day <- aggregate(next.day[,vars.next],
-                     by=next.day[,c("year", "doy", "time.day2")],
-                     FUN=mean)
-next.day$time.day2 <- next.day$time.day2+1  
-
-dat.train <- merge(dat.train, next.day[,c("time.day2", vars.next)], all.x=T)
+{
+  vars.day <- c("tmean.day", "tmax.day", "tmean.day", "precipf.day", "swdown.day", "lwdown.day", "press.day", "qair.day", "wind.day")
+  vars.next <- c("next.tmean", "next.tmax", "next.tmin", "next.precipf", "next.swdown", "next.lwdown", "next.press", "next.qair", "next.wind") 
+  
+  next.day <- dat.train[c("year", "doy", "time.day2", vars.day)]
+  names(next.day)[4:12] <- vars.next
+  # next.day$next.diff <- dat.train[dat.train$hour==6,"tair"] - next.day$next.day # Lag is the change in temp in the proximate 3 hours
+  next.day <- aggregate(next.day[,vars.next],
+                        by=next.day[,c("year", "doy", "time.day2")],
+                        FUN=mean)
+  next.day$time.day2 <- next.day$time.day2+1  
+  
+  dat.train <- merge(dat.train, next.day[,c("time.day2", vars.next)], all.x=T)
+}
 # ----------
 
 
-# Order the data just to help with my sanity when visualizing
-dat.train <- dat.train[order(dat.train$time.hr, decreasing=T),]
-summary(dat.train)
-
-# Lookign at max & min as departure from mean
-dat.train$max.dep <- dat.train$tmax.day - dat.train$tmean.day
-dat.train$min.dep <- dat.train$tmin.day - dat.train$tmean.day
-summary(dat.train)
+# ----------
+# 1.4 calculate tmin & tmax as departure from mean; order data
+# ----------
+{
+  # Lookign at max & min as departure from mean
+  dat.train$max.dep <- dat.train$tmax.day - dat.train$tmean.day
+  dat.train$min.dep <- dat.train$tmin.day - dat.train$tmean.day
+  summary(dat.train)
+  
+  # Order the data just to help with my sanity when visualizing
+  dat.train <- dat.train[order(dat.train$time.hr, decreasing=T),]
+  summary(dat.train)
+}
+# ----------
 # ------------------------------------------
+
+
+
+# ------------------------------------------
+# 2 Train the models for each variable and save them to be read in as needed
+# ------------------------------------------
+source("temporal_downscale_functions.R")
+
+# ---------
+# 2.2 Generating all the daily models, save the output as .Rdata files, then clear memory
+# Note: Could save Betas as .nc files that we pull from as needed to save memory; but for now just leaving it in the .Rdata file for eas
+# Note: To avoid propogating too much wonkiness in hourly data, any co-variates are at the daily level
+# ---------
+# Settings for the calculations
+n.beta=500
+resids=F
+paralell=F
+n.cores=4
+
+mod.tair.doy    <- model.tair   (dat.train=dat.train[,], resids=resids, parallel=F, n.cores=paralell, n.beta=n.beta)
+save(mod.tair.doy, file=file.path(mod.out, "tair_model.Rdata"))
+rm(mod.tair.doy)
+
+mod.precipf.doy <- model.precipf(dat.train=dat.train[,], resids=resids, parallel=F, n.cores=paralell, n.beta=n.beta)
+save(mod.precipf.doy, file=file.path(mod.out, "precipf_model.Rdata"))
+rm(mod.precipf.doy)
+
+mod.swdown.doy  <- model.swdown (dat.train=dat.train[,], resids=resids, parallel=F, n.cores=paralell, n.beta=n.beta)
+save(mod.swdown.doy, file=file.path(mod.out, "swdown_model.Rdata"))
+rm(mod.swdown.doy)
+
+mod.lwdown.doy  <- model.lwdown (dat.train=dat.train[,], resids=resids, parallel=F, n.cores=paralell, n.beta=n.beta)
+save(mod.lwdown.doy, file=file.path(mod.out, "lwdown_model.Rdata"))
+rm(mod.lwdown.doy)
+
+mod.qair.doy    <- model.qair   (dat.train=dat.train[,], resids=resids, parallel=F, n.cores=paralell, n.beta=n.beta)
+save(mod.qair.doy, file=file.path(mod.out, "qair_model.Rdata"))
+rm(mod.qair.doy)
+
+mod.press.doy   <- model.press  (dat.train=dat.train[,], resids=resids, parallel=F, n.cores=paralell, n.beta=n.beta)
+save(mod.press.doy, file=file.path(mod.out, "press_model.Rdata"))
+rm(mod.press.doy)
+
+mod.wind.doy    <- model.wind   (dat.train=dat.train[,], resids=resids, parallel=F, n.cores=paralell, n.beta=n.beta)
+save(mod.wind.doy, file=file.path(mod.out, "wind_model.Rdata"))
+rm(mod.wind.doy)
+# ---------
+
+# ------------------------------------------
+
+
+
+
+
+
+
+
 
 # ------------------------------------------
 # Set up data for modeling with uncertainty propogation
 # ------------------------------------------
+n.ens=30
+
+# ---------
+# 2.1 Load the prediction data
+# ---------
 # Set up data
 dat.mod <- dat.train[dat.train$year>=2014,]
 dat.mod[, "lag.tair"] <- NA
 dat.mod[, "mod.tair"] <- NA
 # head(dat.mod)
 
-n.ens=30
 dat.sim <- list() # Each variable needs to be a layer in a list so we can propogate that uncertainty
+# ---------
+
+
 # ------------------------------------------
 
 # ------------------------------------------
 # Modeling SWDOWN 
 # ------------------------------------------
 {
-  # ---------
-  # Generating all the daily models and storing it into an easy-to-find list
-  # ---------
-  source("temporal_downscale_functions.R")
-  tic()
-  # dat.train[dat.train$swdown==0, "swdown"] <- 1e-6
-  # dat.train[dat.train$swdown==0, "lag.swdown"] <- 1e-6
-  mod.swdown.doy <- model.swdown(dat.train=dat.train[,], resids=T, parallel=F, n.cores=4, n.beta=100)
-  toc()
-  length(mod.swdown.doy)
-  # ---------
-  
-  # ---------
-  # Looking at the residuals from the model
-  # ---------
-  {
-    for(i in names(mod.swdown.doy)){
-      if(as.numeric(i) == 365) next # 365 is weird, so lets skip it
-      hrs.day = unique(dat.train[dat.train$doy==as.numeric(i) & dat.train$swdown>quantile(dat.train[dat.train$swdown>0,"swdown"], 0.05), "hour"])
-      dat.train[dat.train$doy==as.numeric(i) & dat.train$hour %in% hrs.day, "resid"] <- resid(mod.swdown.doy[[i]]$model)
-      dat.train[dat.train$doy==as.numeric(i) & dat.train$hour %in% hrs.day, "predict"] <- predict(mod.swdown.doy[[i]]$model)
-      
-      dat.train[dat.train$doy==as.numeric(i) & !(dat.train$hour %in% hrs.day), "predict"] <- 0
-    }
-    summary(dat.train)
-  
-    png(file.path(fig.dir, "SWDOWN_Resid_vs_Hour.png"), height=8, width=8, units="in", res=180)
-    plot(resid ~ hour, data=dat.train, cex=0.5); abline(h=0, col="red")
-    dev.off()
-  
-    png(file.path(fig.dir, "SWDOWN_Resid_vs_DOY.png"), height=8, width=8, units="in", res=180)
-    plot(resid ~ doy, data=dat.train, cex=0.5); abline(h=0, col="red") # slightly better in summer, but no clear temporal over-dispersion
-    dev.off()
-  
-    png(file.path(fig.dir, "SWDOWN_Resid_vs_Predict.png"), height=8, width=8, units="in", res=180)
-    plot(resid ~ predict, data=dat.train); abline(h=0, col="red")
-    dev.off()
-  
-    png(file.path(fig.dir, "SWDOWN_Resid_vs_Obs.png"), height=8, width=8, units="in", res=180)
-    plot(resid ~ swdown, data=dat.train, cex=0.5); abline(h=0, col="red")
-    dev.off()
-  
-    png(file.path(fig.dir, "SWDOWN_Predict_vs_Obs.png"), height=8, width=8, units="in", res=180)
-    plot(predict ~ swdown, data=dat.train, cex=0.5); abline(a=0, b=1, col="red")
-    dev.off()
-  
-    # Looking at the daily maxes & mins
-    day.stats <- aggregate(dat.train[,c("swdown", "resid", "predict")],
-                           by=dat.train[,c("time.day2", "year", "doy")],
-                           FUN=mean, na.rm=T)
-    day.stats$mod.max <- aggregate(dat.train[,c("predict")],
-                                   by=dat.train[,c("time.day2", "year", "doy")],
-                                   FUN=max)[,"x"]
-    day.stats$mod.min <- aggregate(dat.train[,c("predict")],
-                                   by=dat.train[,c("time.day2", "year", "doy")],
-                                   FUN=min)[,"x"]
-  
-    png(file.path(fig.dir, "SWDOWN_Predict_vs_SWmean.png"), height=8, width=8, units="in", res=180)
-    plot(predict~ swdown, data=day.stats, cex=0.5); abline(a=0, b=1, col="red")
-    dev.off()
-  
-    png(file.path(fig.dir, "SWDOWN_ResidualHistograms.png"), height=6, width=8, units="in", res=180)
-    # par(mfrow=c(3,1))
-    par(mfrow=c(1,1))
-    hist(day.stats$resid, main="Daily Mean Residuals")
-    dev.off()
-  }
-  # ---------
   
   # ---------
   # Predict via Day filter
@@ -328,69 +355,6 @@ dat.sim <- list() # Each variable needs to be a layer in a list so we can propog
 # Modeling Temperature 
 # ------------------------------------------
 {
-  # ---------
-  # Generating all the daily models and storing it into an easy-to-find list
-  # ---------
-  source("temporal_downscale_functions.R")
-  tic()
-  mod.tair.doy <- model.tair(dat.train=dat.train[,], resids=T, parallel=F, n.cores=4, n.beta=100)
-  toc()
-  length(mod.tair.doy)
-  # ---------
-  
-  # ---------
-  # Looking at the residuals from the model
-  # ---------
-  {
-    for(i in names(mod.tair.doy)){
-      if(as.numeric(i) == 365) next # 365 is weird, so lets skip it
-      dat.train[dat.train$doy==as.numeric(i) & !is.na(dat.train$lag.tair), "resid"] <- resid(mod.tair.doy[[i]]$model)
-      dat.train[dat.train$doy==as.numeric(i) & !is.na(dat.train$lag.tair), "predict"] <- predict(mod.tair.doy[[i]]$model)
-    }
-    summary(dat.train)
-    
-    png(file.path(fig.dir, "TAIR_Resid_vs_Hour.png"), height=8, width=8, units="in", res=180)
-    plot(resid ~ hour, data=dat.train, cex=0.5); abline(h=0, col="red")
-    dev.off()
-    
-    png(file.path(fig.dir, "TAIR_Resid_vs_DOY.png"), height=8, width=8, units="in", res=180)
-    plot(resid ~ doy, data=dat.train, cex=0.5); abline(h=0, col="red") # slightly better in summer, but no clear temporal over-dispersion
-    dev.off()
-    
-    png(file.path(fig.dir, "TAIR_Resid_vs_Predict.png"), height=8, width=8, units="in", res=180)
-    plot(resid ~ predict, data=dat.train); abline(h=0, col="red")
-    dev.off()
-    
-    png(file.path(fig.dir, "TAIR_Resid_vs_Obs.png"), height=8, width=8, units="in", res=180)
-    plot(resid ~ tair, data=dat.train, cex=0.5); abline(h=0, col="red")
-    dev.off()
-    
-    png(file.path(fig.dir, "TAIR_Predict_vs_Obs.png"), height=8, width=8, units="in", res=180)
-    plot(predict ~ tair, data=dat.train, cex=0.5); abline(a=0, b=1, col="red")
-    dev.off()
-    
-    # Looking at the daily maxes & mins
-    day.stats <- aggregate(dat.train[,c("tair", "resid", "predict")],
-                           by=dat.train[,c("time.day2", "year", "doy")],
-                           FUN=mean, na.rm=T)
-    day.stats$mod.max <- aggregate(dat.train[,c("predict")],
-                                   by=dat.train[,c("time.day2", "year", "doy")],
-                                   FUN=max)[,"x"]
-    day.stats$mod.min <- aggregate(dat.train[,c("predict")],
-                                   by=dat.train[,c("time.day2", "year", "doy")],
-                                   FUN=min)[,"x"]
-    
-    png(file.path(fig.dir, "TAIR_Predict_vs_SWmean.png"), height=8, width=8, units="in", res=180)
-    plot(predict~ tair, data=day.stats, cex=0.5); abline(a=0, b=1, col="red")
-    dev.off()
-    
-    png(file.path(fig.dir, "TAIR_ResidualHistograms.png"), height=6, width=8, units="in", res=180)
-    # par(mfrow=c(3,1))
-    par(mfrow=c(1,1))
-    hist(day.stats$resid, main="Daily Mean Residuals")
-    dev.off()
-  }
-  # ---------
   
   # ---------
   # Predict via Day filter
@@ -400,7 +364,7 @@ dat.sim <- list() # Each variable needs to be a layer in a list so we can propog
     
     dat.sim[["tair"]] <- data.frame(array(dim=c(nrow(dat.mod), n.ens)))
     dat.sim[["tair"]][1,] <- dat.mod[1,"tair"]
-  
+    
     pb <- txtProgressBar(min=abs(max(dat.mod$time.day2)), max=abs(min(dat.mod$time.day2)), style=3)
     set.seed(138)
     tic()
@@ -421,7 +385,7 @@ dat.sim <- list() # Each variable needs to be a layer in a list so we can propog
         
         sim.lag$lag.tmin <- stack(data.frame(array(min(dat.mod[which(dat.mod$time.day2==i ),"tair"]), dim=c(1, ncol(dat.sim$tair)))))[,1]
         sim.lag$lag.tmax <- stack(data.frame(array(max(dat.mod[which(dat.mod$time.day2==i ),"tair"]), dim=c(1, ncol(dat.sim$tair)))))[,1]
-  
+        
         # sim.lag <- stack(data.frame(array(mean(dat.mod[which(dat.mod$time.day2==i & dat.mod$hour<=2),"tair"]), dim=c(1, ncol(dat.sim)))))
       } else {
         sim.lag <- stack(data.frame(array(dat.sim[["tair"]][dat.mod$time.day2==(i+1)  & dat.mod$hour==0,], dim=c(1, ncol(dat.sim$tair)))))
@@ -472,76 +436,76 @@ dat.sim <- list() # Each variable needs to be a layer in a list so we can propog
   # Graph the output
   # ---------
   {
-  for(y in unique(dat.mod$year)){
-    png(file.path(fig.dir, paste0("Tair_", y, "_year.png")), height=8, width=10, units="in", res=220)
-    print(
-      ggplot(data=dat.mod[dat.mod$year==y,]) +
-        # geom_point(aes(x=date, y=tmax, color=as.factor(doy)), size=0.25, alpha=0.5) +
-        # geom_point(aes(x=date, y=tmin, color=as.factor(doy)), size=0.25, alpha=0.5) +
-        geom_ribbon(aes(x=date, ymin=mod.tair.025, ymax=mod.tair.975), alpha=0.5, fill="blue") +
-        geom_line(aes(x=date, y=mod.tair), color="blue") +
-        geom_point(aes(x=date, y=mod.tair), color="blue", size=0.5) +
-        geom_line(aes(x=date, y=tair), color="black") +
-        geom_point(aes(x=date, y=tair), color="black", size=0.5) +
-        # geom_vline(xintercept=seq(min(dat.mod$time.hr), max(dat.mod$time.hr), by=24)-0.5, linetype="dashed", color="gray50") +
-        scale_x_datetime(expand=c(0,0)) +
-        ggtitle(y) +
-        theme_bw()
-    )
-    dev.off()
+    for(y in unique(dat.mod$year)){
+      png(file.path(fig.dir, paste0("Tair_", y, "_year.png")), height=8, width=10, units="in", res=220)
+      print(
+        ggplot(data=dat.mod[dat.mod$year==y,]) +
+          # geom_point(aes(x=date, y=tmax, color=as.factor(doy)), size=0.25, alpha=0.5) +
+          # geom_point(aes(x=date, y=tmin, color=as.factor(doy)), size=0.25, alpha=0.5) +
+          geom_ribbon(aes(x=date, ymin=mod.tair.025, ymax=mod.tair.975), alpha=0.5, fill="blue") +
+          geom_line(aes(x=date, y=mod.tair), color="blue") +
+          geom_point(aes(x=date, y=mod.tair), color="blue", size=0.5) +
+          geom_line(aes(x=date, y=tair), color="black") +
+          geom_point(aes(x=date, y=tair), color="black", size=0.5) +
+          # geom_vline(xintercept=seq(min(dat.mod$time.hr), max(dat.mod$time.hr), by=24)-0.5, linetype="dashed", color="gray50") +
+          scale_x_datetime(expand=c(0,0)) +
+          ggtitle(y) +
+          theme_bw()
+      )
+      dev.off()
+      
+      png(file.path(fig.dir, paste0("Tair_", y, "_year_scatter.png")), height=8, width=10, units="in", res=220)
+      print(
+        ggplot(data=dat.mod[dat.mod$year==y,]) +
+          geom_point(aes(x=tair, y=mod.tair), color="black", size=0.5) +
+          geom_abline(slope=1, intercept=0, color="red") +
+          ggtitle(y) +
+          theme_bw()
+      )
+      dev.off()
+      
+    }  
     
-    png(file.path(fig.dir, paste0("Tair_", y, "_year_scatter.png")), height=8, width=10, units="in", res=220)
-    print(
-      ggplot(data=dat.mod[dat.mod$year==y,]) +
-        geom_point(aes(x=tair, y=mod.tair), color="black", size=0.5) +
-        geom_abline(slope=1, intercept=0, color="red") +
-        ggtitle(y) +
-        theme_bw()
-    )
-    dev.off()
     
-  }  
+    dat.graph1 <- dat.mod[dat.mod$doy>=32 & dat.mod$doy<=(32+14),]
+    dat.graph1$season <- as.factor("winter")
+    dat.graph2 <- dat.mod[dat.mod$doy>=123 & dat.mod$doy<=(123+14),]
+    dat.graph2$season <- as.factor("spring")
+    dat.graph3 <- dat.mod[dat.mod$doy>=214 & dat.mod$doy<=(213+14),]
+    dat.graph3$season <- as.factor("summer")
+    dat.graph4 <- dat.mod[dat.mod$doy>=305 & dat.mod$doy<=(305+14),]
+    dat.graph4$season <- as.factor("fall")
     
+    tair.graph <- rbind(dat.graph1, dat.graph2, dat.graph3, dat.graph4)
     
-  dat.graph1 <- dat.mod[dat.mod$doy>=32 & dat.mod$doy<=(32+14),]
-  dat.graph1$season <- as.factor("winter")
-  dat.graph2 <- dat.mod[dat.mod$doy>=123 & dat.mod$doy<=(123+14),]
-  dat.graph2$season <- as.factor("spring")
-  dat.graph3 <- dat.mod[dat.mod$doy>=214 & dat.mod$doy<=(213+14),]
-  dat.graph3$season <- as.factor("summer")
-  dat.graph4 <- dat.mod[dat.mod$doy>=305 & dat.mod$doy<=(305+14),]
-  dat.graph4$season <- as.factor("fall")
-  
-  tair.graph <- rbind(dat.graph1, dat.graph2, dat.graph3, dat.graph4)
-  
-  for(y in unique(tair.graph$year)){
-    png(file.path(fig.dir, paste0("Tair_",y,"_examples.png")), height=8, width=10, units="in", res=220)
-    print(
-    ggplot(data=tair.graph[tair.graph$year==y,]) +
-      facet_wrap(~season, scales="free") +
-      geom_line(aes(x=date, y=tair), color="black") +
-      geom_point(aes(x=date, y=tair), color="black", size=0.5) +
-      geom_ribbon(aes(x=date, ymin=mod.tair.025, ymax=mod.tair.975), alpha=0.5, fill="blue") +
-      geom_line(aes(x=date, y=mod.tair), color="blue") +
-      geom_point(aes(x=date, y=mod.tair), color="blue", size=0.5) +
-      scale_y_continuous(name="Hourly Air Temperature") +
-      scale_x_datetime(expand=c(0,0)) +
-      ggtitle(y) +
-      theme_bw()
-    )
-    dev.off()
-    png(file.path(fig.dir, paste0("Tair_",y,"_examples_scatter.png")), height=8, width=10, units="in", res=220)
-    print(
-      ggplot(data=tair.graph[tair.graph$year==y,]) +
-        facet_wrap(~season, scales="free") +
-        geom_point(aes(x=tair, y=mod.tair), color="black", size=0.5) +
-        geom_abline(intercept=0, slope=1, color="red") +
-        ggtitle(y) +
-        theme_bw()
-    )
-    dev.off()
-    
-  }
+    for(y in unique(tair.graph$year)){
+      png(file.path(fig.dir, paste0("Tair_",y,"_examples.png")), height=8, width=10, units="in", res=220)
+      print(
+        ggplot(data=tair.graph[tair.graph$year==y,]) +
+          facet_wrap(~season, scales="free") +
+          geom_line(aes(x=date, y=tair), color="black") +
+          geom_point(aes(x=date, y=tair), color="black", size=0.5) +
+          geom_ribbon(aes(x=date, ymin=mod.tair.025, ymax=mod.tair.975), alpha=0.5, fill="blue") +
+          geom_line(aes(x=date, y=mod.tair), color="blue") +
+          geom_point(aes(x=date, y=mod.tair), color="blue", size=0.5) +
+          scale_y_continuous(name="Hourly Air Temperature") +
+          scale_x_datetime(expand=c(0,0)) +
+          ggtitle(y) +
+          theme_bw()
+      )
+      dev.off()
+      png(file.path(fig.dir, paste0("Tair_",y,"_examples_scatter.png")), height=8, width=10, units="in", res=220)
+      print(
+        ggplot(data=tair.graph[tair.graph$year==y,]) +
+          facet_wrap(~season, scales="free") +
+          geom_point(aes(x=tair, y=mod.tair), color="black", size=0.5) +
+          geom_abline(intercept=0, slope=1, color="red") +
+          ggtitle(y) +
+          theme_bw()
+      )
+      dev.off()
+      
+    }
   }
   # ---------
   
@@ -554,70 +518,6 @@ dat.sim <- list() # Each variable needs to be a layer in a list so we can propog
 # Modeling LWDOWN 
 # ------------------------------------------
 {
-  # ---------
-  # Generating all the daily models and storing it into an easy-to-find list
-  # ---------
-  source("temporal_downscale_functions.R")
-  tic()
-  mod.lwdown.doy <- model.lwdown(dat.train=dat.train[,], resids=T, parallel=F, n.cores=4, n.beta=100)
-  toc()
-  length(mod.lwdown.doy)
-  # ---------
-  
-  # ---------
-  # Looking at the residuals from the model
-  # ---------
-  {
-    for(i in names(mod.lwdown.doy)){
-      if(as.numeric(i) == 365) next # 365 is weird, so lets skip it
-      dat.train[dat.train$doy==as.numeric(i) & !is.na(dat.train$lag.lwdown), "resid"] <- resid(mod.lwdown.doy[[i]]$model)
-      dat.train[dat.train$doy==as.numeric(i) & !is.na(dat.train$lag.lwdown), "predict"] <- predict(mod.lwdown.doy[[i]]$model)
-    }
-    summary(dat.train)
-    
-    png(file.path(fig.dir, "LWDOWN_Resid_vs_Hour.png"), height=8, width=8, units="in", res=180)
-    plot(resid ~ hour, data=dat.train, cex=0.5); abline(h=0, col="red")
-    dev.off()
-    
-    png(file.path(fig.dir, "LWDOWN_Resid_vs_DOY.png"), height=8, width=8, units="in", res=180)
-    plot(resid ~ doy, data=dat.train, cex=0.5); abline(h=0, col="red") # slightly better in summer, but no clear temporal over-dispersion
-    dev.off()
-    
-    png(file.path(fig.dir, "LWDOWN_Resid_vs_Predict.png"), height=8, width=8, units="in", res=180)
-    plot(resid ~ predict, data=dat.train); abline(h=0, col="red")
-    dev.off()
-    
-    png(file.path(fig.dir, "LWDOWN_Resid_vs_Obs.png"), height=8, width=8, units="in", res=180)
-    plot(resid ~ lwdown, data=dat.train, cex=0.5); abline(h=0, col="red")
-    dev.off()
-    
-    png(file.path(fig.dir, "LWDOWN_Predict_vs_Obs.png"), height=8, width=8, units="in", res=180)
-    plot(predict ~ lwdown, data=dat.train, cex=0.5); abline(a=0, b=1, col="red")
-    dev.off()
-    
-    # Looking at the daily maxes & mins
-    day.stats <- aggregate(dat.train[,c("lwdown", "resid", "predict")],
-                           by=dat.train[,c("time.day2", "year", "doy")],
-                           FUN=mean, na.rm=T)
-    day.stats$mod.max <- aggregate(dat.train[,c("predict")],
-                                   by=dat.train[,c("time.day2", "year", "doy")],
-                                   FUN=max)[,"x"]
-    day.stats$mod.min <- aggregate(dat.train[,c("predict")],
-                                   by=dat.train[,c("time.day2", "year", "doy")],
-                                   FUN=min)[,"x"]
-    
-    png(file.path(fig.dir, "LWDOWN_Predict_vs_SWmean.png"), height=8, width=8, units="in", res=180)
-    plot(predict~ lwdown, data=day.stats, cex=0.5); abline(a=0, b=1, col="red")
-    dev.off()
-    
-    png(file.path(fig.dir, "LWDOWN_ResidualHistograms.png"), height=6, width=8, units="in", res=180)
-    # par(mfrow=c(3,1))
-    par(mfrow=c(1,1))
-    hist(day.stats$resid, main="Daily Mean Residuals")
-    dev.off()
-  }
-  # ---------
-  
   # ---------
   # Predict via Day filter
   # ---------
@@ -779,70 +679,6 @@ dat.sim <- list() # Each variable needs to be a layer in a list so we can propog
 # ------------------------------------------
 {
   # ---------
-  # Generating all the daily models and storing it into an easy-to-find list
-  # ---------
-  source("temporal_downscale_functions.R")
-  tic()
-  mod.press.doy <- model.press(dat.train=dat.train[,], resids=T, parallel=F, n.cores=4, n.beta=100)
-  toc()
-  length(mod.press.doy)
-  # ---------
-  
-  # ---------
-  # Looking at the residuals from the model
-  # ---------
-  {
-    for(i in names(mod.press.doy)){
-      if(as.numeric(i) == 365) next # 365 is weird, so lets skip it
-      dat.train[dat.train$doy==as.numeric(i) & !is.na(dat.train$lag.press) & !is.na(dat.train$next.press), "resid"] <- resid(mod.press.doy[[i]]$model)
-      dat.train[dat.train$doy==as.numeric(i) & !is.na(dat.train$lag.press) & !is.na(dat.train$next.press), "predict"] <- predict(mod.press.doy[[i]]$model)
-    }
-    summary(dat.train)
-    
-    png(file.path(fig.dir, "PRESS_Resid_vs_Hour.png"), height=8, width=8, units="in", res=180)
-    plot(resid ~ hour, data=dat.train, cex=0.5); abline(h=0, col="red")
-    dev.off()
-    
-    png(file.path(fig.dir, "PRESS_Resid_vs_DOY.png"), height=8, width=8, units="in", res=180)
-    plot(resid ~ doy, data=dat.train, cex=0.5); abline(h=0, col="red") # slightly better in summer, but no clear temporal over-dispersion
-    dev.off()
-    
-    png(file.path(fig.dir, "PRESS_Resid_vs_Predict.png"), height=8, width=8, units="in", res=180)
-    plot(resid ~ predict, data=dat.train); abline(h=0, col="red")
-    dev.off()
-    
-    png(file.path(fig.dir, "PRESS_Resid_vs_Obs.png"), height=8, width=8, units="in", res=180)
-    plot(resid ~ press, data=dat.train, cex=0.5); abline(h=0, col="red")
-    dev.off()
-    
-    png(file.path(fig.dir, "PRESS_Predict_vs_Obs.png"), height=8, width=8, units="in", res=180)
-    plot(predict ~ press, data=dat.train, cex=0.5); abline(a=0, b=1, col="red")
-    dev.off()
-    
-    # Looking at the daily maxes & mins
-    day.stats <- aggregate(dat.train[,c("press", "resid", "predict")],
-                           by=dat.train[,c("time.day2", "year", "doy")],
-                           FUN=mean, na.rm=T)
-    day.stats$mod.max <- aggregate(dat.train[,c("predict")],
-                                   by=dat.train[,c("time.day2", "year", "doy")],
-                                   FUN=max)[,"x"]
-    day.stats$mod.min <- aggregate(dat.train[,c("predict")],
-                                   by=dat.train[,c("time.day2", "year", "doy")],
-                                   FUN=min)[,"x"]
-    
-    png(file.path(fig.dir, "PRESS_Predict_vs_Mean.png"), height=8, width=8, units="in", res=180)
-    plot(predict~ press, data=day.stats, cex=0.5); abline(a=0, b=1, col="red")
-    dev.off()
-    
-    png(file.path(fig.dir, "PRESS_ResidualHistograms.png"), height=6, width=8, units="in", res=180)
-    # par(mfrow=c(3,1))
-    par(mfrow=c(1,1))
-    hist(day.stats$resid, main="Daily Mean Residuals")
-    dev.off()
-  }
-  # ---------
-  
-  # ---------
   # Predict via Day filter
   # ---------
   {
@@ -1002,69 +838,6 @@ dat.sim <- list() # Each variable needs to be a layer in a list so we can propog
 # Modeling WIND 
 # ------------------------------------------
 {
-  # ---------
-  # Generating all the daily models and storing it into an easy-to-find list
-  # ---------
-  source("temporal_downscale_functions.R")
-  tic()
-  mod.wind.doy <- model.wind(dat.train=dat.train[,], resids=T, parallel=F, n.cores=4, n.beta=100)
-  toc()
-  length(mod.wind.doy)
-  # ---------
-  
-  # ---------
-  # Looking at the residuals from the model
-  # ---------
-  {
-    for(i in names(mod.wind.doy)){
-      if(as.numeric(i) == 365) next # 365 is weird, so lets skip it
-      dat.train[dat.train$doy==as.numeric(i) & !is.na(dat.train$lag.wind) & !is.na(dat.train$next.wind), "resid"] <- resid(mod.wind.doy[[i]]$model)
-      dat.train[dat.train$doy==as.numeric(i) & !is.na(dat.train$lag.wind) & !is.na(dat.train$next.wind), "predict"] <- predict(mod.wind.doy[[i]]$model)
-    }
-    summary(dat.train)
-    
-    png(file.path(fig.dir, "WIND_Resid_vs_Hour.png"), height=8, width=8, units="in", res=180)
-    plot(resid ~ hour, data=dat.train, cex=0.5); abline(h=0, col="red")
-    dev.off()
-    
-    png(file.path(fig.dir, "WIND_Resid_vs_DOY.png"), height=8, width=8, units="in", res=180)
-    plot(resid ~ doy, data=dat.train, cex=0.5); abline(h=0, col="red") # slightly better in summer, but no clear temporal over-dispersion
-    dev.off()
-    
-    png(file.path(fig.dir, "WIND_Resid_vs_Predict.png"), height=8, width=8, units="in", res=180)
-    plot(resid ~ predict, data=dat.train); abline(h=0, col="red")
-    dev.off()
-    
-    png(file.path(fig.dir, "WIND_Resid_vs_Obs.png"), height=8, width=8, units="in", res=180)
-    plot(resid ~ wind, data=dat.train, cex=0.5); abline(h=0, col="red")
-    dev.off()
-    
-    png(file.path(fig.dir, "WIND_Predict_vs_Obs.png"), height=8, width=8, units="in", res=180)
-    plot(predict ~ wind, data=dat.train, cex=0.5); abline(a=0, b=1, col="red")
-    dev.off()
-    
-    # Looking at the daily maxes & mins
-    day.stats <- aggregate(dat.train[,c("wind", "resid", "predict")],
-                           by=dat.train[,c("time.day2", "year", "doy")],
-                           FUN=mean, na.rm=T)
-    day.stats$mod.max <- aggregate(dat.train[,c("predict")],
-                                   by=dat.train[,c("time.day2", "year", "doy")],
-                                   FUN=max)[,"x"]
-    day.stats$mod.min <- aggregate(dat.train[,c("predict")],
-                                   by=dat.train[,c("time.day2", "year", "doy")],
-                                   FUN=min)[,"x"]
-    
-    png(file.path(fig.dir, "WIND_Predict_vs_Mean.png"), height=8, width=8, units="in", res=180)
-    plot(predict~ wind, data=day.stats, cex=0.5); abline(a=0, b=1, col="red")
-    dev.off()
-    
-    png(file.path(fig.dir, "WIND_ResidualHistograms.png"), height=6, width=8, units="in", res=180)
-    # par(mfrow=c(3,1))
-    par(mfrow=c(1,1))
-    hist(day.stats$resid, main="Daily Mean Residuals")
-    dev.off()
-  }
-  # ---------
   
   # ---------
   # Predict via Day filter
@@ -1481,69 +1254,6 @@ dat.sim <- list() # Each variable needs to be a layer in a list so we can propog
 # Modeling QAIR 
 # ------------------------------------------
 {
-  # ---------
-  # Generating all the daily models and storing it into an easy-to-find list
-  # ---------
-  source("temporal_downscale_functions.R")
-  tic()
-  mod.qair.doy <- model.qair(dat.train=dat.train[,], resids=T, parallel=F, n.cores=4, n.beta=100)
-  toc()
-  length(mod.qair.doy)
-  # ---------
-  
-  # ---------
-  # Looking at the residuals from the model
-  # ---------
-  {
-    for(i in names(mod.qair.doy)){
-      if(as.numeric(i) == 365) next # 365 is weird, so lets skip it
-      dat.train[dat.train$doy==as.numeric(i) & !is.na(dat.train$lag.qair) & !is.na(dat.train$next.qair), "resid"] <- resid(mod.qair.doy[[i]]$model)
-      dat.train[dat.train$doy==as.numeric(i) & !is.na(dat.train$lag.qair) & !is.na(dat.train$next.qair), "predict"] <- predict(mod.qair.doy[[i]]$model)
-    }
-    summary(dat.train)
-    
-    png(file.path(fig.dir, "QAIR_Resid_vs_Hour.png"), height=8, width=8, units="in", res=180)
-    plot(resid ~ hour, data=dat.train, cex=0.5); abline(h=0, col="red")
-    dev.off()
-    
-    png(file.path(fig.dir, "QAIR_Resid_vs_DOY.png"), height=8, width=8, units="in", res=180)
-    plot(resid ~ doy, data=dat.train, cex=0.5); abline(h=0, col="red") # slightly better in summer, but no clear temporal over-dispersion
-    dev.off()
-    
-    png(file.path(fig.dir, "QAIR_Resid_vs_Predict.png"), height=8, width=8, units="in", res=180)
-    plot(resid ~ predict, data=dat.train); abline(h=0, col="red")
-    dev.off()
-    
-    png(file.path(fig.dir, "QAIR_Resid_vs_Obs.png"), height=8, width=8, units="in", res=180)
-    plot(resid ~ qair, data=dat.train, cex=0.5); abline(h=0, col="red")
-    dev.off()
-    
-    png(file.path(fig.dir, "QAIR_Predict_vs_Obs.png"), height=8, width=8, units="in", res=180)
-    plot(predict ~ qair, data=dat.train, cex=0.5); abline(a=0, b=1, col="red")
-    dev.off()
-    
-    # Looking at the daily maxes & mins
-    day.stats <- aggregate(dat.train[,c("qair", "resid", "predict")],
-                           by=dat.train[,c("time.day2", "year", "doy")],
-                           FUN=mean, na.rm=T)
-    day.stats$mod.max <- aggregate(dat.train[,c("predict")],
-                                   by=dat.train[,c("time.day2", "year", "doy")],
-                                   FUN=max)[,"x"]
-    day.stats$mod.min <- aggregate(dat.train[,c("predict")],
-                                   by=dat.train[,c("time.day2", "year", "doy")],
-                                   FUN=min)[,"x"]
-    
-    png(file.path(fig.dir, "QAIR_Predict_vs_Mean.png"), height=8, width=8, units="in", res=180)
-    plot(predict~ qair, data=day.stats, cex=0.5); abline(a=0, b=1, col="red")
-    dev.off()
-    
-    png(file.path(fig.dir, "QAIR_ResidualHistograms.png"), height=6, width=8, units="in", res=180)
-    # par(mfrow=c(3,1))
-    par(mfrow=c(1,1))
-    hist(day.stats$resid, main="Daily Mean Residuals")
-    dev.off()
-  }
-  # ---------
   
   # ---------
   # Predict via Day filter
