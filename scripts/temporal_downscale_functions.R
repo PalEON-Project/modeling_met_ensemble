@@ -340,8 +340,6 @@ model.wind <- function(dat.train, n.cores=4, n.beta=1000, resids=F, parallel=F, 
   return(mod.out)
 }
 
-test <- gam(precipf ~ s(hour) + precipf.day, data=dat.train)
-
 model.precipf <- function(dat.train, n.cores=4, n.beta=1000, resids=F, parallel=F, ncores=NULL, seed=341){
   library(MASS)
   library(fitdistrplus)
@@ -369,6 +367,73 @@ model.precipf <- function(dat.train, n.cores=4, n.beta=1000, resids=F, parallel=
       # dat.subset[!is.na(dat.subset$lag.precipf) & !is.na(dat.subset$next.precipf),"resid"] <- resid(mod.doy)
       dat.subset[,"resid"] <- resid(mod.doy)
       resid.model <- lm(resid ~ as.factor(hour)*precipf.day-1, data=dat.subset[,])
+      res.coef <- coef(resid.model)
+      res.cov  <- vcov(resid.model)
+      res.piv <- as.numeric(which(!is.na(res.coef)))
+      
+      beta.resid <- mvrnorm(n=n.beta, res.coef[res.piv], res.cov)
+      
+      list.out[["model.resid"]] <- resid.model
+      list.out[["betas.resid"]] <- beta.resid
+    }
+    
+    return(list.out)
+  }
+  
+  dat.list <- list()
+  mod.out <- list()
+  
+  # Make the data into a list
+  for(i in unique(dat.train$doy)){
+    if(i == 365){ # Lump leap day in with non-leap Dec 31
+      dat.list[[paste(i)]] <- dat.train[dat.train$doy>=364,]
+    } else {
+      dat.list[[paste(i)]] <- dat.train[dat.train$doy==i,]
+    }
+  }
+  
+  # Do the computation and save a list
+  # Final list will have 2 layers per DOY: the model, and a bunch of simulated betas
+  if(parallel==T){
+    library(parallel)
+    mod.out <- mclapply(dat.list, model.train, mc.cores=n.cores, n.beta=n.beta, resids=resids)
+  } else {
+    for(i in names(dat.list)){
+      mod.out[[i]] <- model.train(dat.subset=dat.list[[i]], n.beta=n.beta, resids=resids)
+    }
+  }
+  
+  return(mod.out)
+}
+
+model.qair <- function(dat.train, n.cores=4, n.beta=1000, resids=F, parallel=F, ncores=NULL, seed=341){
+  library(MASS)
+  set.seed(seed)
+  
+  # The model we're going to use
+  model.train <- function(dat.subset, n.beta, resids=resids){ 
+    
+    # mod.doy <- lm(qair ~ as.factor(hour)*qair.day*(lag.qair + next.qair)-1-as.factor(hour), data=dat.subset) ###
+    # mod.doy0 <- lm(qair ~ as.factor(hour)*qair.day-1-as.factor(hour), data=dat.subset) ###
+    # mod.doy1 <- lm(qair ~ as.factor(hour)*qair.day*(lag.qair)-1-as.factor(hour), data=dat.subset) ###
+    # mod.doy2 <- lm(qair ~ as.factor(hour)*qair.day*(lag.qair + next.qair)-1-as.factor(hour), data=dat.subset) ###
+    # mod.doy3 <- lm(qair ~ as.factor(hour)*qair.day*(lag.qair + next.qair)-1-as.factor(hour)- next.qair - lag.qair, data=dat.subset) ###
+    # mod.doy4 <- lm(qair ~ as.factor(hour)*qair.day*(lag.qair + next.qair + tmean.day + max.dep + min.dep + precipf.day)-1-as.factor(hour)- next.qair - lag.qair, data=dat.subset) ###
+    mod.doy <- lm(log(qair) ~ as.factor(hour)*log(qair.day)*(log(lag.qair) + log(next.qair) + precipf.day + min.dep + max.dep)-as.factor(hour)-1 - precipf.day - min.dep - max.dep - log(qair.day)*precipf.day - log(qair.day)*min.dep- log(qair.day)*max.dep - as.factor(hour)*min.dep - as.factor(hour)*max.dep - as.factor(hour)*precipf.day, data=dat.subset) ###
+    
+    # Generate a bunch of random coefficients that we can pull from 
+    # without needing to do this step every day
+    mod.coef <- coef(mod.doy)
+    mod.cov  <- vcov(mod.doy)
+    piv <- as.numeric(which(!is.na(mod.coef)))
+    Rbeta <- mvrnorm(n=n.beta, mod.coef[piv], mod.cov)
+    
+    list.out <- list(model=mod.doy, 
+                     betas=Rbeta)
+    # Model residuals as a function of hour so we can increase our uncertainty
+    if(resids==T){
+      dat.subset[!is.na(dat.subset$lag.qair) & !is.na(dat.subset$next.qair),"resid"] <- resid(mod.doy)
+      resid.model <- lm(resid ~ as.factor(hour)*qair.day-1, data=dat.subset[,])
       res.coef <- coef(resid.model)
       res.cov  <- vcov(resid.model)
       res.piv <- as.numeric(which(!is.na(res.coef)))

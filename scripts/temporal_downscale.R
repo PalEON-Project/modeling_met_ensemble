@@ -1478,45 +1478,227 @@ dat.sim <- list() # Each variable needs to be a layer in a list so we can propog
 
 
 # ------------------------------------------
-# Remaining vars
+# Modeling QAIR 
 # ------------------------------------------
-# # These variables have a strong diurnal trend
-# test.swdown <- gam(swdown ~ s(hour) -1, data=dat.train)
-# plot(test.swdown)
-# 
-# test.tair <- gam(tair ~ s(hour) -1, data=dat.train)
-# plot(test.tair)
-# 
-# test.lwdown <- gam(lwdown ~ s(hour) -1, data=dat.train)
-# plot(test.lwdown)
-
-test.qair <- gam(qair ~ s(hour) -1, data=dat.train)
-plot(test.qair)
-
-# test.wind <- gam(wind ~ s(hour) -1, data=dat.train)
-# plot(test.wind)
-
-# Those below don't have a strong diurnal trend
-# test.precipf <- gam(precipf ~ s(hour) -1, data=dat.train)
-# plot(test.precipf)
-# 
-# test.press <- gam(press ~ s(hour) -1, data=dat.train)
-# plot(test.press)
+{
+  # ---------
+  # Generating all the daily models and storing it into an easy-to-find list
+  # ---------
+  source("temporal_downscale_functions.R")
+  tic()
+  mod.qair.doy <- model.qair(dat.train=dat.train[,], resids=T, parallel=F, n.cores=4, n.beta=100)
+  toc()
+  length(mod.qair.doy)
+  # ---------
+  
+  # ---------
+  # Looking at the residuals from the model
+  # ---------
+  {
+    for(i in names(mod.qair.doy)){
+      if(as.numeric(i) == 365) next # 365 is weird, so lets skip it
+      dat.train[dat.train$doy==as.numeric(i) & !is.na(dat.train$lag.qair) & !is.na(dat.train$next.qair), "resid"] <- resid(mod.qair.doy[[i]]$model)
+      dat.train[dat.train$doy==as.numeric(i) & !is.na(dat.train$lag.qair) & !is.na(dat.train$next.qair), "predict"] <- predict(mod.qair.doy[[i]]$model)
+    }
+    summary(dat.train)
+    
+    png(file.path(fig.dir, "QAIR_Resid_vs_Hour.png"), height=8, width=8, units="in", res=180)
+    plot(resid ~ hour, data=dat.train, cex=0.5); abline(h=0, col="red")
+    dev.off()
+    
+    png(file.path(fig.dir, "QAIR_Resid_vs_DOY.png"), height=8, width=8, units="in", res=180)
+    plot(resid ~ doy, data=dat.train, cex=0.5); abline(h=0, col="red") # slightly better in summer, but no clear temporal over-dispersion
+    dev.off()
+    
+    png(file.path(fig.dir, "QAIR_Resid_vs_Predict.png"), height=8, width=8, units="in", res=180)
+    plot(resid ~ predict, data=dat.train); abline(h=0, col="red")
+    dev.off()
+    
+    png(file.path(fig.dir, "QAIR_Resid_vs_Obs.png"), height=8, width=8, units="in", res=180)
+    plot(resid ~ qair, data=dat.train, cex=0.5); abline(h=0, col="red")
+    dev.off()
+    
+    png(file.path(fig.dir, "QAIR_Predict_vs_Obs.png"), height=8, width=8, units="in", res=180)
+    plot(predict ~ qair, data=dat.train, cex=0.5); abline(a=0, b=1, col="red")
+    dev.off()
+    
+    # Looking at the daily maxes & mins
+    day.stats <- aggregate(dat.train[,c("qair", "resid", "predict")],
+                           by=dat.train[,c("time.day2", "year", "doy")],
+                           FUN=mean, na.rm=T)
+    day.stats$mod.max <- aggregate(dat.train[,c("predict")],
+                                   by=dat.train[,c("time.day2", "year", "doy")],
+                                   FUN=max)[,"x"]
+    day.stats$mod.min <- aggregate(dat.train[,c("predict")],
+                                   by=dat.train[,c("time.day2", "year", "doy")],
+                                   FUN=min)[,"x"]
+    
+    png(file.path(fig.dir, "QAIR_Predict_vs_Mean.png"), height=8, width=8, units="in", res=180)
+    plot(predict~ qair, data=day.stats, cex=0.5); abline(a=0, b=1, col="red")
+    dev.off()
+    
+    png(file.path(fig.dir, "QAIR_ResidualHistograms.png"), height=6, width=8, units="in", res=180)
+    # par(mfrow=c(3,1))
+    par(mfrow=c(1,1))
+    hist(day.stats$resid, main="Daily Mean Residuals")
+    dev.off()
+  }
+  # ---------
+  
+  # ---------
+  # Predict via Day filter
+  # ---------
+  {
+    library(MASS)
+    
+    dat.sim[["qair"]] <- data.frame(array(dim=c(nrow(dat.mod), n.ens)))
+    dat.sim[["qair"]][1,] <- dat.mod[1,"qair"]
+    
+    pb <- txtProgressBar(min=abs(max(dat.mod$time.day2)), max=abs(min(dat.mod$time.day2)), style=3)
+    set.seed(138)
+    tic()
+    for(i in max(dat.mod$time.day2):min(dat.mod$time.day2)){
+      setTxtProgressBar(pb, abs(i))
+      
+      rows.now = which(dat.mod$time.day2==i)
+      dat.temp <- dat.mod[rows.now,c("time.day2", "year", "doy", "hour", "tmax.day", "tmin.day", "tmean.day", "max.dep", "min.dep", "precipf.day", "swdown.day", "press.day", "lwdown.day", "qair.day", "wind.day", "next.qair")]
+      dat.temp$qair = 99999 # Dummy value so there's a column
+      dat.temp <- dat.temp[complete.cases(dat.temp),]
+      # day.now = dat.temp$doy
+      day.now = unique(dat.temp$doy)
+      
+      # Set up the lags
+      if(i==max(dat.mod$time.day2)){
+        sim.lag <- stack(data.frame(array(dat.mod[which(dat.mod$time.day2==i & dat.mod$hour==0),"qair"], dim=c(1, ncol(dat.sim$qair)))))
+        names(sim.lag) <- c("lag.qair", "ens")
+        
+        # sim.lag$lag.tmin <- stack(data.frame(array(min(dat.mod[which(dat.mod$time.day2==i ),"qair"]), dim=c(1, ncol(dat.sim$qair)))))[,1]
+        # sim.lag$lag.tmax <- stack(data.frame(array(max(dat.mod[which(dat.mod$time.day2==i ),"qair"]), dim=c(1, ncol(dat.sim$qair)))))[,1]
+        
+        # sim.lag <- stack(data.frame(array(mean(dat.mod[which(dat.mod$time.day2==i & dat.mod$hour<=2),"qair"]), dim=c(1, ncol(dat.sim)))))
+      } else {
+        sim.lag <- stack(data.frame(array(dat.sim[["qair"]][dat.mod$time.day2==(i+1)  & dat.mod$hour==0,], dim=c(1, ncol(dat.sim$qair)))))
+        names(sim.lag) <- c("lag.qair", "ens")
+        # sim.lag$lag.tmin <- stack(apply(dat.sim[["qair"]][dat.mod$time.day2==(i+1),], 2, min))[,1]
+        # sim.lag$lag.tmax <- stack(apply(dat.sim[["qair"]][dat.mod$time.day2==(i+1),], 2, max))[,1]
+        
+        # sim.lag <- stack(apply(dat.sim[dat.mod$time.day2==(i+1)  & dat.mod$hour<=2,],2, mean))
+      }
+      dat.temp <- merge(dat.temp, sim.lag, all.x=T)
+      
+      # dat.temp$swdown <- stack(dat.sim$swdown[rows.now,])[,1]
+      # dat.temp$tair <- stack(dat.sim$tair[rows.now,])[,1]
+      
+      dat.pred <- predict.met(newdata=dat.temp, 
+                              model.predict=mod.qair.doy[[paste(day.now)]]$model, 
+                              betas=mod.qair.doy[[paste(day.now)]]$betas, 
+                              resid.err=F,
+                              model.resid=mod.qair.doy[[paste(day.now)]]$model.resid, 
+                              betas.resid=mod.qair.doy[[paste(day.now)]]$betas.resid, 
+                              n.ens=n.ens)
+      dat.pred <- exp(dat.pred) # because log-transformed
+      
+      # Randomly pick which values to save & propogate
+      cols.prop <- sample(1:n.ens, ncol(dat.sim$qair), replace=T)
+      # pred.prop <- array(dim=c(1,ncol(dat.sim)))
+      for(j in 1:ncol(dat.sim$qair)){
+        dat.sim[["qair"]][rows.now,j] <- dat.pred[dat.temp$ens==paste0("X", j),cols.prop[j]]
+      }
+      
+      dat.mod[rows.now,"mod.qair"] <- apply(dat.sim[["qair"]][rows.now,],1, mean)
+      # dat.sim[i,] <- dat.pred
+      # dat.mod[i,"mod.hr"] <- predict(mod.fill, dat.mod[i,])
+      if(i>min(dat.mod$time.day2)){ 
+        dat.mod[dat.mod$time.day2==i-1,"lag.qair" ] <- dat.mod[dat.mod$time.day2==i & dat.mod$hour==0,"mod.qair"] 
+      }
+      # if(i>min(dat.mod$time.day2)) dat.mod[dat.mod$time.day2==i-1,"lag.day"] <- mean(dat.mod[dat.mod$time.day2==i & dat.mod$hour<=2,"mod.qair"])
+    }
+    # dat.mod$mod.qair.mean <- apply(dat.sim[["qair"]], 1, mean)
+    dat.mod$mod.qair.025   <- apply(dat.sim[["qair"]], 1, quantile, 0.025)
+    dat.mod$mod.qair.975   <- apply(dat.sim[["qair"]], 1, quantile, 0.975)
+    summary(dat.mod)
+  }
+  toc()
+  # ---------
+  
+  # ---------
+  # Graph the output
+  # ---------
+  {
+    for(y in unique(dat.mod$year)){
+      png(file.path(fig.dir, paste0("qair_", y, "_year.png")), height=8, width=10, units="in", res=220)
+      print(
+        ggplot(data=dat.mod[dat.mod$year==y,]) +
+          # geom_point(aes(x=date, y=tmax, color=as.factor(doy)), size=0.25, alpha=0.5) +
+          # geom_point(aes(x=date, y=tmin, color=as.factor(doy)), size=0.25, alpha=0.5) +
+          geom_ribbon(aes(x=date, ymin=mod.qair.025, ymax=mod.qair.975), alpha=0.5, fill="blue") +
+          geom_line(aes(x=date, y=mod.qair), color="blue") +
+          geom_point(aes(x=date, y=mod.qair), color="blue", size=0.5) +
+          geom_line(aes(x=date, y=qair), color="black") +
+          geom_point(aes(x=date, y=qair), color="black", size=0.5) +
+          # geom_vline(xintercept=seq(min(dat.mod$time.hr), max(dat.mod$time.hr), by=24)-0.5, linetype="dashed", color="gray50") +
+          scale_x_datetime(expand=c(0,0)) +
+          ggtitle(y) +
+          theme_bw()
+      )
+      dev.off()
+      
+      png(file.path(fig.dir, paste0("qair_", y, "_year_scatter.png")), height=8, width=10, units="in", res=220)
+      print(
+        ggplot(data=dat.mod[dat.mod$year==y,]) +
+          geom_point(aes(x=qair, y=mod.qair), color="black", size=0.5) +
+          geom_abline(slope=1, intercept=0, color="red") +
+          ggtitle(y) +
+          theme_bw()
+      )
+      dev.off()
+      
+    }  
+    
+    
+    dat.graph1 <- dat.mod[dat.mod$doy>=32 & dat.mod$doy<=(32+14),]
+    dat.graph1$season <- as.factor("winter")
+    dat.graph2 <- dat.mod[dat.mod$doy>=123 & dat.mod$doy<=(123+14),]
+    dat.graph2$season <- as.factor("spring")
+    dat.graph3 <- dat.mod[dat.mod$doy>=214 & dat.mod$doy<=(213+14),]
+    dat.graph3$season <- as.factor("summer")
+    dat.graph4 <- dat.mod[dat.mod$doy>=305 & dat.mod$doy<=(305+14),]
+    dat.graph4$season <- as.factor("fall")
+    
+    qair.graph <- rbind(dat.graph1, dat.graph2, dat.graph3, dat.graph4)
+    
+    for(y in unique(qair.graph$year)){
+      png(file.path(fig.dir, paste0("qair_",y,"_examples.png")), height=8, width=10, units="in", res=220)
+      print(
+        ggplot(data=qair.graph[qair.graph$year==y,]) +
+          facet_wrap(~season, scales="free") +
+          geom_line(aes(x=date, y=qair), color="black") +
+          geom_point(aes(x=date, y=qair), color="black", size=0.5) +
+          geom_ribbon(aes(x=date, ymin=mod.qair.025, ymax=mod.qair.975), alpha=0.5, fill="blue") +
+          geom_line(aes(x=date, y=mod.qair), color="blue") +
+          geom_point(aes(x=date, y=mod.qair), color="blue", size=0.5) +
+          scale_y_continuous(name="Hourly Air Temperature") +
+          scale_x_datetime(expand=c(0,0)) +
+          ggtitle(y) +
+          theme_bw()
+      )
+      dev.off()
+      png(file.path(fig.dir, paste0("qair_",y,"_examples_scatter.png")), height=8, width=10, units="in", res=220)
+      print(
+        ggplot(data=qair.graph[qair.graph$year==y,]) +
+          facet_wrap(~season, scales="free") +
+          geom_point(aes(x=qair, y=mod.qair), color="black", size=0.5) +
+          geom_abline(intercept=0, slope=1, color="red") +
+          ggtitle(y) +
+          theme_bw()
+      )
+      dev.off()
+      
+    }
+  }
+  # ---------
+  
+  rm(mod.qair.doy) # Clear out the model to save memory
+}
 # ------------------------------------------
-
-
-# ------------------------------------------
-# ------------------------------------------
-# ------------------------------------------
-
-
-# ------------------------------------------
-# ------------------------------------------
-# ------------------------------------------
-
-
-# ------------------------------------------
-# ------------------------------------------
-# ------------------------------------------
-
 
