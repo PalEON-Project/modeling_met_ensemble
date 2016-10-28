@@ -550,7 +550,6 @@ dat.sim <- list() # Each variable needs to be a layer in a list so we can propog
 # ------------------------------------------
 
 
-
 # ------------------------------------------
 # Modeling LWDOWN 
 # ------------------------------------------
@@ -683,8 +682,6 @@ dat.sim <- list() # Each variable needs to be a layer in a list so we can propog
       # dat.mod[i,"mod.hr"] <- predict(mod.fill, dat.mod[i,])
       if(i>min(dat.mod$time.day2)){ 
         dat.mod[dat.mod$time.day2==i-1,"lag.lwdown" ] <- dat.mod[dat.mod$time.day2==i & dat.mod$hour==0,"mod.lwdown"] 
-        dat.mod[dat.mod$time.day2==i-1,"lag.tmin" ] <- min(dat.mod[dat.mod$time.day2==i,"mod.lwdown"] )
-        dat.mod[dat.mod$time.day2==i-1,"lag.tmax" ] <- max(dat.mod[dat.mod$time.day2==i,"mod.lwdown"] )
       }
       # if(i>min(dat.mod$time.day2)) dat.mod[dat.mod$time.day2==i-1,"lag.day"] <- mean(dat.mod[dat.mod$time.day2==i & dat.mod$hour<=2,"mod.lwdown"])
     }
@@ -909,8 +906,6 @@ dat.sim <- list() # Each variable needs to be a layer in a list so we can propog
       # dat.mod[i,"mod.hr"] <- predict(mod.fill, dat.mod[i,])
       if(i>min(dat.mod$time.day2)){ 
         dat.mod[dat.mod$time.day2==i-1,"lag.press" ] <- dat.mod[dat.mod$time.day2==i & dat.mod$hour==0,"mod.press"] 
-        dat.mod[dat.mod$time.day2==i-1,"lag.tmin" ] <- min(dat.mod[dat.mod$time.day2==i,"mod.press"] )
-        dat.mod[dat.mod$time.day2==i-1,"lag.tmax" ] <- max(dat.mod[dat.mod$time.day2==i,"mod.press"] )
       }
       # if(i>min(dat.mod$time.day2)) dat.mod[dat.mod$time.day2==i-1,"lag.day"] <- mean(dat.mod[dat.mod$time.day2==i & dat.mod$hour<=2,"mod.press"])
     }
@@ -1003,6 +998,484 @@ dat.sim <- list() # Each variable needs to be a layer in a list so we can propog
 }
 # ------------------------------------------
 
+# ------------------------------------------
+# Modeling WIND 
+# ------------------------------------------
+{
+  # ---------
+  # Generating all the daily models and storing it into an easy-to-find list
+  # ---------
+  source("temporal_downscale_functions.R")
+  tic()
+  mod.wind.doy <- model.wind(dat.train=dat.train[,], resids=T, parallel=F, n.cores=4, n.beta=100)
+  toc()
+  length(mod.wind.doy)
+  # ---------
+  
+  # ---------
+  # Looking at the residuals from the model
+  # ---------
+  {
+    for(i in names(mod.wind.doy)){
+      if(as.numeric(i) == 365) next # 365 is weird, so lets skip it
+      dat.train[dat.train$doy==as.numeric(i) & !is.na(dat.train$lag.wind) & !is.na(dat.train$next.wind), "resid"] <- resid(mod.wind.doy[[i]]$model)
+      dat.train[dat.train$doy==as.numeric(i) & !is.na(dat.train$lag.wind) & !is.na(dat.train$next.wind), "predict"] <- predict(mod.wind.doy[[i]]$model)
+    }
+    summary(dat.train)
+    
+    png(file.path(fig.dir, "WIND_Resid_vs_Hour.png"), height=8, width=8, units="in", res=180)
+    plot(resid ~ hour, data=dat.train, cex=0.5); abline(h=0, col="red")
+    dev.off()
+    
+    png(file.path(fig.dir, "WIND_Resid_vs_DOY.png"), height=8, width=8, units="in", res=180)
+    plot(resid ~ doy, data=dat.train, cex=0.5); abline(h=0, col="red") # slightly better in summer, but no clear temporal over-dispersion
+    dev.off()
+    
+    png(file.path(fig.dir, "WIND_Resid_vs_Predict.png"), height=8, width=8, units="in", res=180)
+    plot(resid ~ predict, data=dat.train); abline(h=0, col="red")
+    dev.off()
+    
+    png(file.path(fig.dir, "WIND_Resid_vs_Obs.png"), height=8, width=8, units="in", res=180)
+    plot(resid ~ wind, data=dat.train, cex=0.5); abline(h=0, col="red")
+    dev.off()
+    
+    png(file.path(fig.dir, "WIND_Predict_vs_Obs.png"), height=8, width=8, units="in", res=180)
+    plot(predict ~ wind, data=dat.train, cex=0.5); abline(a=0, b=1, col="red")
+    dev.off()
+    
+    # Looking at the daily maxes & mins
+    day.stats <- aggregate(dat.train[,c("wind", "resid", "predict")],
+                           by=dat.train[,c("time.day2", "year", "doy")],
+                           FUN=mean, na.rm=T)
+    day.stats$mod.max <- aggregate(dat.train[,c("predict")],
+                                   by=dat.train[,c("time.day2", "year", "doy")],
+                                   FUN=max)[,"x"]
+    day.stats$mod.min <- aggregate(dat.train[,c("predict")],
+                                   by=dat.train[,c("time.day2", "year", "doy")],
+                                   FUN=min)[,"x"]
+    
+    png(file.path(fig.dir, "WIND_Predict_vs_Mean.png"), height=8, width=8, units="in", res=180)
+    plot(predict~ wind, data=day.stats, cex=0.5); abline(a=0, b=1, col="red")
+    dev.off()
+    
+    png(file.path(fig.dir, "WIND_ResidualHistograms.png"), height=6, width=8, units="in", res=180)
+    # par(mfrow=c(3,1))
+    par(mfrow=c(1,1))
+    hist(day.stats$resid, main="Daily Mean Residuals")
+    dev.off()
+  }
+  # ---------
+  
+  # ---------
+  # Predict via Day filter
+  # ---------
+  {
+    library(MASS)
+    
+    dat.sim[["wind"]] <- data.frame(array(dim=c(nrow(dat.mod), n.ens)))
+    dat.sim[["wind"]][1,] <- dat.mod[1,"wind"]
+    
+    pb <- txtProgressBar(min=abs(max(dat.mod$time.day2)), max=abs(min(dat.mod$time.day2)), style=3)
+    set.seed(138)
+    tic()
+    for(i in max(dat.mod$time.day2):min(dat.mod$time.day2)){
+      setTxtProgressBar(pb, abs(i))
+      
+      rows.now = which(dat.mod$time.day2==i)
+      dat.temp <- dat.mod[rows.now,c("time.day2", "year", "doy", "hour", "tmax.day", "tmin.day", "tmean.day", "max.dep", "min.dep", "precipf.day", "swdown.day", "press.day", "wind.day", "qair.day", "wind.day", "next.wind")]
+      dat.temp$wind = 99999 # Dummy value so there's a column
+      dat.temp <- dat.temp[complete.cases(dat.temp),]
+      # day.now = dat.temp$doy
+      day.now = unique(dat.temp$doy)
+      
+      # Set up the lags
+      if(i==max(dat.mod$time.day2)){
+        sim.lag <- stack(data.frame(array(dat.mod[which(dat.mod$time.day2==i & dat.mod$hour==0),"wind"], dim=c(1, ncol(dat.sim$wind)))))
+        names(sim.lag) <- c("lag.wind", "ens")
+        
+        # sim.lag$lag.tmin <- stack(data.frame(array(min(dat.mod[which(dat.mod$time.day2==i ),"wind"]), dim=c(1, ncol(dat.sim$wind)))))[,1]
+        # sim.lag$lag.tmax <- stack(data.frame(array(max(dat.mod[which(dat.mod$time.day2==i ),"wind"]), dim=c(1, ncol(dat.sim$wind)))))[,1]
+        
+        # sim.lag <- stack(data.frame(array(mean(dat.mod[which(dat.mod$time.day2==i & dat.mod$hour<=2),"wind"]), dim=c(1, ncol(dat.sim)))))
+      } else {
+        sim.lag <- stack(data.frame(array(dat.sim[["wind"]][dat.mod$time.day2==(i+1)  & dat.mod$hour==0,], dim=c(1, ncol(dat.sim$wind)))))
+        names(sim.lag) <- c("lag.wind", "ens")
+        # sim.lag$lag.tmin <- stack(apply(dat.sim[["wind"]][dat.mod$time.day2==(i+1),], 2, min))[,1]
+        # sim.lag$lag.tmax <- stack(apply(dat.sim[["wind"]][dat.mod$time.day2==(i+1),], 2, max))[,1]
+        
+        # sim.lag <- stack(apply(dat.sim[dat.mod$time.day2==(i+1)  & dat.mod$hour<=2,],2, mean))
+      }
+      dat.temp <- merge(dat.temp, sim.lag, all.x=T)
+      
+      # dat.temp$swdown <- stack(dat.sim$swdown[rows.now,])[,1]
+      # dat.temp$tair <- stack(dat.sim$tair[rows.now,])[,1]
+      
+      dat.pred <- predict.met(newdata=dat.temp, 
+                              model.predict=mod.wind.doy[[paste(day.now)]]$model, 
+                              betas=mod.wind.doy[[paste(day.now)]]$betas, 
+                              resid.err=F,
+                              model.resid=mod.wind.doy[[paste(day.now)]]$model.resid, 
+                              betas.resid=mod.wind.doy[[paste(day.now)]]$betas.resid, 
+                              n.ens=n.ens)
+      dat.pred <- exp(dat.pred) # because log-transformed
+      
+      # Randomly pick which values to save & propogate
+      cols.prop <- sample(1:n.ens, ncol(dat.sim$wind), replace=T)
+      # pred.prop <- array(dim=c(1,ncol(dat.sim)))
+      for(j in 1:ncol(dat.sim$wind)){
+        dat.sim[["wind"]][rows.now,j] <- dat.pred[dat.temp$ens==paste0("X", j),cols.prop[j]]
+      }
+      
+      dat.mod[rows.now,"mod.wind"] <- apply(dat.sim[["wind"]][rows.now,],1, mean)
+      # dat.sim[i,] <- dat.pred
+      # dat.mod[i,"mod.hr"] <- predict(mod.fill, dat.mod[i,])
+      if(i>min(dat.mod$time.day2)){ 
+        dat.mod[dat.mod$time.day2==i-1,"lag.wind" ] <- dat.mod[dat.mod$time.day2==i & dat.mod$hour==0,"mod.wind"] 
+      }
+      # if(i>min(dat.mod$time.day2)) dat.mod[dat.mod$time.day2==i-1,"lag.day"] <- mean(dat.mod[dat.mod$time.day2==i & dat.mod$hour<=2,"mod.wind"])
+    }
+    # dat.mod$mod.wind.mean <- apply(dat.sim[["wind"]], 1, mean)
+    dat.mod$mod.wind.025   <- apply(dat.sim[["wind"]], 1, quantile, 0.025)
+    dat.mod$mod.wind.975   <- apply(dat.sim[["wind"]], 1, quantile, 0.975)
+    summary(dat.mod)
+  }
+  toc()
+  # ---------
+  
+  # ---------
+  # Graph the output
+  # ---------
+  {
+    for(y in unique(dat.mod$year)){
+      png(file.path(fig.dir, paste0("wind_", y, "_year.png")), height=8, width=10, units="in", res=220)
+      print(
+        ggplot(data=dat.mod[dat.mod$year==y,]) +
+          # geom_point(aes(x=date, y=tmax, color=as.factor(doy)), size=0.25, alpha=0.5) +
+          # geom_point(aes(x=date, y=tmin, color=as.factor(doy)), size=0.25, alpha=0.5) +
+          geom_ribbon(aes(x=date, ymin=mod.wind.025, ymax=mod.wind.975), alpha=0.5, fill="blue") +
+          geom_line(aes(x=date, y=mod.wind), color="blue") +
+          geom_point(aes(x=date, y=mod.wind), color="blue", size=0.5) +
+          geom_line(aes(x=date, y=wind), color="black") +
+          geom_point(aes(x=date, y=wind), color="black", size=0.5) +
+          # geom_vline(xintercept=seq(min(dat.mod$time.hr), max(dat.mod$time.hr), by=24)-0.5, linetype="dashed", color="gray50") +
+          scale_x_datetime(expand=c(0,0)) +
+          ggtitle(y) +
+          theme_bw()
+      )
+      dev.off()
+      
+      png(file.path(fig.dir, paste0("wind_", y, "_year_scatter.png")), height=8, width=10, units="in", res=220)
+      print(
+        ggplot(data=dat.mod[dat.mod$year==y,]) +
+          geom_point(aes(x=wind, y=mod.wind), color="black", size=0.5) +
+          geom_abline(slope=1, intercept=0, color="red") +
+          ggtitle(y) +
+          theme_bw()
+      )
+      dev.off()
+      
+    }  
+    
+    
+    dat.graph1 <- dat.mod[dat.mod$doy>=32 & dat.mod$doy<=(32+14),]
+    dat.graph1$season <- as.factor("winter")
+    dat.graph2 <- dat.mod[dat.mod$doy>=123 & dat.mod$doy<=(123+14),]
+    dat.graph2$season <- as.factor("spring")
+    dat.graph3 <- dat.mod[dat.mod$doy>=214 & dat.mod$doy<=(213+14),]
+    dat.graph3$season <- as.factor("summer")
+    dat.graph4 <- dat.mod[dat.mod$doy>=305 & dat.mod$doy<=(305+14),]
+    dat.graph4$season <- as.factor("fall")
+    
+    wind.graph <- rbind(dat.graph1, dat.graph2, dat.graph3, dat.graph4)
+    
+    for(y in unique(wind.graph$year)){
+      png(file.path(fig.dir, paste0("wind_",y,"_examples.png")), height=8, width=10, units="in", res=220)
+      print(
+        ggplot(data=wind.graph[wind.graph$year==y,]) +
+          facet_wrap(~season, scales="free") +
+          geom_line(aes(x=date, y=wind), color="black") +
+          geom_point(aes(x=date, y=wind), color="black", size=0.5) +
+          geom_ribbon(aes(x=date, ymin=mod.wind.025, ymax=mod.wind.975), alpha=0.5, fill="blue") +
+          geom_line(aes(x=date, y=mod.wind), color="blue") +
+          geom_point(aes(x=date, y=mod.wind), color="blue", size=0.5) +
+          scale_y_continuous(name="Hourly Air Temperature") +
+          scale_x_datetime(expand=c(0,0)) +
+          ggtitle(y) +
+          theme_bw()
+      )
+      dev.off()
+      png(file.path(fig.dir, paste0("wind_",y,"_examples_scatter.png")), height=8, width=10, units="in", res=220)
+      print(
+        ggplot(data=wind.graph[wind.graph$year==y,]) +
+          facet_wrap(~season, scales="free") +
+          geom_point(aes(x=wind, y=mod.wind), color="black", size=0.5) +
+          geom_abline(intercept=0, slope=1, color="red") +
+          ggtitle(y) +
+          theme_bw()
+      )
+      dev.off()
+      
+    }
+  }
+  # ---------
+  
+  rm(mod.wind.doy) # Clear out the model to save memory
+}
+# ------------------------------------------
+
+# ------------------------------------------
+# Modeling PRECIPF 
+# NOTE: For Precipf, we're doing this differently:
+#       We're basicallly modeling the proportion of that day's precipitation as a function of 
+#       the hour of day.  Because our beta fitting method leverages the covariance among betas,
+#       we'll end up with a daily sum that's pretty close to our daily total (90-110%)
+# ------------------------------------------
+{
+  # ---------
+  # Generating all the daily models and storing it into an easy-to-find list
+  # NOTE: These are probabilities of precipitation occuring
+  # ---------
+  source("temporal_downscale_functions.R")
+  tic()
+  mod.precipf.doy <- model.precipf(dat.train=dat.train[,], resids=T, parallel=F, n.cores=4, n.beta=100)
+  toc()
+  length(mod.precipf.doy)
+  # ---------
+  
+  # ---------
+  # Looking at the residuals from the model
+  # ---------
+  {
+    for(i in names(mod.precipf.doy)){
+      if(as.numeric(i) == 365) next # 365 is weird, so lets skip it
+      dat.train[dat.train$doy==as.numeric(i) & !is.na(dat.train$lag.precipf) & !is.na(dat.train$next.precipf), "resid"] <- resid(mod.precipf.doy[[i]]$model)
+      dat.train[dat.train$doy==as.numeric(i) & !is.na(dat.train$lag.precipf) & !is.na(dat.train$next.precipf), "predict"] <- predict(mod.precipf.doy[[i]]$model)
+    }
+    summary(dat.train)
+    
+    png(file.path(fig.dir, "PRECIPF_Resid_vs_Hour.png"), height=8, width=8, units="in", res=180)
+    plot(resid ~ hour, data=dat.train, cex=0.5); abline(h=0, col="red")
+    dev.off()
+    
+    png(file.path(fig.dir, "PRECIPF_Resid_vs_DOY.png"), height=8, width=8, units="in", res=180)
+    plot(resid ~ doy, data=dat.train, cex=0.5); abline(h=0, col="red") # slightly better in summer, but no clear temporal over-dispersion
+    dev.off()
+    
+    png(file.path(fig.dir, "PRECIPF_Resid_vs_Predict.png"), height=8, width=8, units="in", res=180)
+    plot(resid ~ predict, data=dat.train); abline(h=0, col="red")
+    dev.off()
+    
+    png(file.path(fig.dir, "PRECIPF_Resid_vs_Obs.png"), height=8, width=8, units="in", res=180)
+    plot(resid ~ precipf, data=dat.train, cex=0.5); abline(h=0, col="red")
+    dev.off()
+    
+    png(file.path(fig.dir, "PRECIPF_Predict_vs_Obs.png"), height=8, width=8, units="in", res=180)
+    plot(predict ~ precipf, data=dat.train, cex=0.5); abline(a=0, b=1, col="red")
+    dev.off()
+    
+    # Looking at the daily maxes & mins
+    day.stats <- aggregate(dat.train[,c("precipf", "resid", "predict")],
+                           by=dat.train[,c("time.day2", "year", "doy")],
+                           FUN=mean, na.rm=T)
+    day.stats$mod.max <- aggregate(dat.train[,c("predict")],
+                                   by=dat.train[,c("time.day2", "year", "doy")],
+                                   FUN=max)[,"x"]
+    day.stats$mod.min <- aggregate(dat.train[,c("predict")],
+                                   by=dat.train[,c("time.day2", "year", "doy")],
+                                   FUN=min)[,"x"]
+    
+    png(file.path(fig.dir, "PRECIPF_Predict_vs_Mean.png"), height=8, width=8, units="in", res=180)
+    plot(predict~ precipf, data=day.stats, cex=0.5); abline(a=0, b=1, col="red")
+    dev.off()
+    
+    png(file.path(fig.dir, "PRECIPF_ResidualHistograms.png"), height=6, width=8, units="in", res=180)
+    # par(mfrow=c(3,1))
+    par(mfrow=c(1,1))
+    hist(day.stats$resid, main="Daily Mean Residuals")
+    dev.off()
+  }
+  # ---------
+  
+  # ---------
+  # Predict via Day filter
+  # ---------
+  {
+    library(MASS)
+    # dat.mod[dat.mod$precipf==0, "precipf"] <- 1e-12
+    # dat.mod[dat.mod$precipf.day==0, "precipf.day"] <- 1e-12
+    # dat.mod[dat.mod$lag.precipf==0 & !is.na(dat.mod$lag.precipf), "lag.precipf"] <- 1e-12
+    # dat.mod[dat.mod$next.precipf==0 & !is.na(dat.mod$next.precipf), "next.precipf"] <- 1e-12
+    
+    
+    dat.sim[["precipf"]] <- data.frame(array(dim=c(nrow(dat.mod), n.ens)))
+    dat.sim[["precipf"]][1,] <- dat.mod[1,"precipf"]
+    
+    pb <- txtProgressBar(min=abs(max(dat.mod$time.day2)), max=abs(min(dat.mod$time.day2)), style=3)
+    set.seed(138)
+    tic()
+    for(i in max(dat.mod$time.day2):min(dat.mod$time.day2)){
+      setTxtProgressBar(pb, abs(i))
+      
+      rows.now = which(dat.mod$time.day2==i)
+      dat.temp <- dat.mod[rows.now,c("time.day2", "year", "doy", "hour", "tmax.day", "tmin.day", "tmean.day", "max.dep", "min.dep", "precipf.day", "swdown.day", "press.day", "wind.day", "qair.day", "next.precipf")]
+      dat.temp$precipf = 99999 # Dummy value so there's a column
+      dat.temp$rain.prop = 99999 # Dummy value so there's a column
+      dat.temp <- dat.temp[complete.cases(dat.temp),]
+      # day.now = dat.temp$doy
+      day.now = unique(dat.temp$doy)
+      
+      # # Set up the lags
+      # if(i==max(dat.mod$time.day2)){
+      #   sim.lag <- stack(data.frame(array(dat.mod[which(dat.mod$time.day2==i & dat.mod$hour==0),"precipf"], dim=c(1, ncol(dat.sim$precipf)))))
+      #   names(sim.lag) <- c("lag.precipf", "ens")
+      #   
+      #   # sim.lag$lag.tmin <- stack(data.frame(array(min(dat.mod[which(dat.mod$time.day2==i ),"precipf"]), dim=c(1, ncol(dat.sim$precipf)))))[,1]
+      #   # sim.lag$lag.tmax <- stack(data.frame(array(max(dat.mod[which(dat.mod$time.day2==i ),"precipf"]), dim=c(1, ncol(dat.sim$precipf)))))[,1]
+      #   
+      #   # sim.lag <- stack(data.frame(array(mean(dat.mod[which(dat.mod$time.day2==i & dat.mod$hour<=2),"precipf"]), dim=c(1, ncol(dat.sim)))))
+      # } else {
+      #   sim.lag <- stack(data.frame(array(dat.sim[["precipf"]][dat.mod$time.day2==(i+1)  & dat.mod$hour==0,], dim=c(1, ncol(dat.sim$precipf)))))
+      #   names(sim.lag) <- c("lag.precipf", "ens")
+      #   # sim.lag$lag.tmin <- stack(apply(dat.sim[["precipf"]][dat.mod$time.day2==(i+1),], 2, min))[,1]
+      #   # sim.lag$lag.tmax <- stack(apply(dat.sim[["precipf"]][dat.mod$time.day2==(i+1),], 2, max))[,1]
+      #   
+      #   # sim.lag <- stack(apply(dat.sim[dat.mod$time.day2==(i+1)  & dat.mod$hour<=2,],2, mean))
+      # }
+      # sim.lag[sim.lag$lag.precipf==0,"lag.precipf"] <- 1e-12
+      # dat.temp <- merge(dat.temp, sim.lag, all.x=T)
+      
+      # dat.temp$swdown <- stack(dat.sim$swdown[rows.now,])[,1]
+      # dat.temp$tair <- stack(dat.sim$tair[rows.now,])[,1]
+      
+      dat.pred <- predict.met(newdata=dat.temp, 
+                              model.predict=mod.precipf.doy[[paste(day.now)]]$model, 
+                              betas=mod.precipf.doy[[paste(day.now)]]$betas, 
+                              resid.err=T,
+                              model.resid=mod.precipf.doy[[paste(day.now)]]$model.resid, 
+                              betas.resid=mod.precipf.doy[[paste(day.now)]]$betas.resid, 
+                              n.ens=n.ens)
+      # Re-distribute negative probabilities -- add randomly to make more peaky
+      tmp <- 1:nrow(dat.pred) # A dummy vector of the 
+      for(j in 1:ncol(dat.pred)){
+        if(min(dat.pred[,j])>=0) next
+        rows.neg <- which(dat.pred[,j]<0)
+        rows.add <- sample(tmp[!tmp %in% rows.neg],length(rows.neg), replace=T)
+        
+        for(z in 1:length(rows.neg)){
+          dat.pred[rows.add[z],j] <- dat.pred[rows.add[z],j] - dat.pred[rows.neg[z],j]
+          dat.pred[rows.neg[z],j] <- 0  
+        }
+        
+      }
+      dat.pred <- dat.pred/rowSums(dat.pred)
+      
+      # Convert precip into real units
+      dat.pred <- dat.pred*(dat.temp$precipf.day*24)
+      
+      # Randomly pick which values to save & propogate
+      cols.prop <- sample(1:n.ens, ncol(dat.sim$precipf), replace=T)
+      # pred.prop <- array(dim=c(1,ncol(dat.sim)))
+      for(j in 1:ncol(dat.sim$precipf)){
+        dat.sim[["precipf"]][rows.now,j] <- dat.pred[,cols.prop[j]]
+      }
+      
+      dat.mod[rows.now,"mod.precipf"] <- apply(dat.sim[["precipf"]][rows.now,],1, mean)
+      # dat.sim[i,] <- dat.pred
+      # dat.mod[i,"mod.hr"] <- predict(mod.fill, dat.mod[i,])
+      if(i>min(dat.mod$time.day2)){ 
+        dat.mod[dat.mod$time.day2==i-1,"lag.precipf" ] <- dat.mod[dat.mod$time.day2==i & dat.mod$hour==0,"mod.precipf"] 
+      }
+      # if(i>min(dat.mod$time.day2)) dat.mod[dat.mod$time.day2==i-1,"lag.day"] <- mean(dat.mod[dat.mod$time.day2==i & dat.mod$hour<=2,"mod.precipf"])
+    }
+    # dat.mod$mod.precipf.mean <- apply(dat.sim[["precipf"]], 1, mean)
+    dat.mod$mod.precipf.025   <- apply(dat.sim[["precipf"]], 1, quantile, 0.025)
+    dat.mod$mod.precipf.975   <- apply(dat.sim[["precipf"]], 1, quantile, 0.975)
+    summary(dat.mod)
+  }
+  toc()
+  # ---------
+  
+  # ---------
+  # Graph the output
+  # ---------
+  {
+    for(y in unique(dat.mod$year)){
+      png(file.path(fig.dir, paste0("precipf_", y, "_year.png")), height=8, width=10, units="in", res=220)
+      print(
+        ggplot(data=dat.mod[dat.mod$year==y,]) +
+          # geom_point(aes(x=date, y=tmax, color=as.factor(doy)), size=0.25, alpha=0.5) +
+          # geom_point(aes(x=date, y=tmin, color=as.factor(doy)), size=0.25, alpha=0.5) +
+          geom_ribbon(aes(x=date, ymin=mod.precipf.025, ymax=mod.precipf.975), alpha=0.5, fill="blue") +
+          geom_line(aes(x=date, y=mod.precipf), color="blue") +
+          geom_point(aes(x=date, y=mod.precipf), color="blue", size=0.5) +
+          geom_line(aes(x=date, y=precipf), color="black") +
+          geom_point(aes(x=date, y=precipf), color="black", size=0.5) +
+          # geom_vline(xintercept=seq(min(dat.mod$time.hr), max(dat.mod$time.hr), by=24)-0.5, linetype="dashed", color="gray50") +
+          scale_x_datetime(expand=c(0,0)) +
+          ggtitle(y) +
+          theme_bw()
+      )
+      dev.off()
+      
+      png(file.path(fig.dir, paste0("precipf_", y, "_year_scatter.png")), height=8, width=10, units="in", res=220)
+      print(
+        ggplot(data=dat.mod[dat.mod$year==y,]) +
+          geom_point(aes(x=precipf, y=mod.precipf), color="black", size=0.5) +
+          geom_abline(slope=1, intercept=0, color="red") +
+          ggtitle(y) +
+          theme_bw()
+      )
+      dev.off()
+      
+    }  
+    
+    
+    dat.graph1 <- dat.mod[dat.mod$doy>=32 & dat.mod$doy<=(32+14),]
+    dat.graph1$season <- as.factor("winter")
+    dat.graph2 <- dat.mod[dat.mod$doy>=123 & dat.mod$doy<=(123+14),]
+    dat.graph2$season <- as.factor("spring")
+    dat.graph3 <- dat.mod[dat.mod$doy>=214 & dat.mod$doy<=(213+14),]
+    dat.graph3$season <- as.factor("summer")
+    dat.graph4 <- dat.mod[dat.mod$doy>=305 & dat.mod$doy<=(305+14),]
+    dat.graph4$season <- as.factor("fall")
+    
+    precipf.graph <- rbind(dat.graph1, dat.graph2, dat.graph3, dat.graph4)
+    
+    for(y in unique(precipf.graph$year)){
+      png(file.path(fig.dir, paste0("precipf_",y,"_examples.png")), height=8, width=10, units="in", res=220)
+      print(
+        ggplot(data=precipf.graph[precipf.graph$year==y,]) +
+          facet_wrap(~season, scales="free") +
+          geom_line(aes(x=date, y=precipf), color="black") +
+          geom_point(aes(x=date, y=precipf), color="black", size=0.5) +
+          geom_ribbon(aes(x=date, ymin=mod.precipf.025, ymax=mod.precipf.975), alpha=0.5, fill="blue") +
+          geom_line(aes(x=date, y=mod.precipf), color="blue") +
+          geom_point(aes(x=date, y=mod.precipf), color="blue", size=0.5) +
+          scale_y_continuous(name="Hourly Air Temperature") +
+          scale_x_datetime(expand=c(0,0)) +
+          ggtitle(y) +
+          theme_bw()
+      )
+      dev.off()
+      png(file.path(fig.dir, paste0("precipf_",y,"_examples_scatter.png")), height=8, width=10, units="in", res=220)
+      print(
+        ggplot(data=precipf.graph[precipf.graph$year==y,]) +
+          facet_wrap(~season, scales="free") +
+          geom_point(aes(x=precipf, y=mod.precipf), color="black", size=0.5) +
+          geom_abline(intercept=0, slope=1, color="red") +
+          ggtitle(y) +
+          theme_bw()
+      )
+      dev.off()
+      
+    }
+  }
+  # ---------
+  
+  rm(mod.precipf.doy) # Clear out the model to save memory
+}
+# ------------------------------------------
+
 
 # ------------------------------------------
 # Remaining vars
@@ -1020,15 +1493,15 @@ dat.sim <- list() # Each variable needs to be a layer in a list so we can propog
 test.qair <- gam(qair ~ s(hour) -1, data=dat.train)
 plot(test.qair)
 
-test.wind <- gam(wind ~ s(hour) -1, data=dat.train)
-plot(test.wind)
+# test.wind <- gam(wind ~ s(hour) -1, data=dat.train)
+# plot(test.wind)
 
 # Those below don't have a strong diurnal trend
-test.precipf <- gam(precipf ~ s(hour) -1, data=dat.train)
-plot(test.precipf)
-
-test.press <- gam(press ~ s(hour) -1, data=dat.train)
-plot(test.press)
+# test.precipf <- gam(precipf ~ s(hour) -1, data=dat.train)
+# plot(test.precipf)
+# 
+# test.press <- gam(press ~ s(hour) -1, data=dat.train)
+# plot(test.press)
 # ------------------------------------------
 
 
