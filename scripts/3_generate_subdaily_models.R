@@ -191,7 +191,7 @@ source("temporal_downscale_functions.R")
 # Settings for the calculations
 n.beta=1000
 resids=F
-paralell=F
+parallel=F
 n.cores=4
 
 mod.tair.doy    <- model.tair   (dat.train=dat.train[,], resids=resids, parallel=parallel, n.cores=n.cores, n.beta=n.beta)
