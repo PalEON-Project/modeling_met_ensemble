@@ -36,7 +36,7 @@ predict.subdaily <- function(dat.mod, n.ens, path.model){
       # setTxtProgressBar(pb, abs(i))
       
       rows.now = which(dat.mod$time.day2==i)
-      dat.temp <- dat.mod[rows.now,c("time.day2", "year", "doy", "hour", "tmax.day", "tmin.day", "tmean.day", "max.dep", "min.dep", "precipf.day", "swdown.day", "lwdown.day", "press.day", "qair.day", "wind.day")]
+      dat.temp <- dat.mod[rows.now,c("time.day2", "year", "doy", "hour", "tmax.day", "tmin.day", "precipf.day", "swdown.day", "lwdown.day", "press.day", "qair.day", "wind.day")]
       dat.temp$tair = -99999 # Dummy value so there's a column
       dat.temp <- dat.temp[complete.cases(dat.temp),]
       # day.now = dat.temp$doy
@@ -115,7 +115,7 @@ predict.subdaily <- function(dat.mod, n.ens, path.model){
       setTxtProgressBar(pb, abs(i))
       
       rows.now = which(dat.mod$time.day2==i)
-      dat.temp <- dat.mod[rows.now,c("time.day2", "year", "doy", "hour", "tmax.day", "tmin.day", "tmean.day", "max.dep", "min.dep", "precipf.day", "swdown.day", "press.day", "wind.day", "qair.day", "next.precipf")]
+      dat.temp <- dat.mod[rows.now,c("time.day2", "year", "doy", "hour", "tmax.day", "tmin.day", "precipf.day", "swdown.day", "press.day", "wind.day", "qair.day", "next.precipf")]
       dat.temp$precipf = 99999 # Dummy value so there's a column
       dat.temp$rain.prop = 99999 # Dummy value so there's a column
       dat.temp <- dat.temp[complete.cases(dat.temp),]
@@ -218,7 +218,7 @@ predict.subdaily <- function(dat.mod, n.ens, path.model){
       rows.now = which(dat.mod$doy==i)
       rows.mod = which(dat.mod$doy==i & dat.mod$hour %in% hrs.day)
       
-      dat.temp <- dat.mod[rows.mod,c("time.day2", "year", "doy", "hour", "tmax.day", "tmin.day", "tmean.day", "max.dep", "min.dep", "precipf.day", "swdown.day", "lwdown.day", "press.day", "qair.day", "wind.day")]
+      dat.temp <- dat.mod[rows.mod,c("time.day2", "year", "doy", "hour", "tmax.day", "tmin.day", "precipf.day", "swdown.day", "lwdown.day", "press.day", "qair.day", "wind.day")]
       dat.temp$swdown = 99999 # Dummy value so there's a column
       dat.temp <- dat.temp[complete.cases(dat.temp),]
       
@@ -268,7 +268,7 @@ predict.subdaily <- function(dat.mod, n.ens, path.model){
       # setTxtProgressBar(pb, abs(i))
       
       rows.now = which(dat.mod$time.day2==i)
-      dat.temp <- dat.mod[rows.now,c("time.day2", "year", "doy", "hour", "tmax.day", "tmin.day", "tmean.day", "max.dep", "min.dep", "precipf.day", "swdown.day", "lwdown.day", "press.day", "qair.day", "wind.day")]
+      dat.temp <- dat.mod[rows.now,c("time.day2", "year", "doy", "hour", "tmax.day", "tmin.day", "precipf.day", "swdown.day", "lwdown.day", "press.day", "qair.day", "wind.day")]
       dat.temp$lwdown = -99999 # Dummy value so there's a column
       dat.temp <- dat.temp[complete.cases(dat.temp),]
       # day.now = dat.temp$doy
@@ -342,7 +342,7 @@ predict.subdaily <- function(dat.mod, n.ens, path.model){
       # setTxtProgressBar(pb, abs(i))
       
       rows.now = which(dat.mod$time.day2==i)
-      dat.temp <- dat.mod[rows.now,c("time.day2", "year", "doy", "hour", "tmax.day", "tmin.day", "tmean.day", "max.dep", "min.dep", "precipf.day", "swdown.day", "press.day", "press.day", "qair.day", "wind.day", "next.press")]
+      dat.temp <- dat.mod[rows.now,c("time.day2", "year", "doy", "hour", "tmax.day", "tmin.day", "precipf.day", "swdown.day", "press.day", "press.day", "qair.day", "wind.day", "next.press")]
       dat.temp$press = -99999 # Dummy value so there's a column
       dat.temp <- dat.temp[complete.cases(dat.temp),]
       # day.now = dat.temp$doy
@@ -419,7 +419,7 @@ predict.subdaily <- function(dat.mod, n.ens, path.model){
       setTxtProgressBar(pb, abs(i))
       
       rows.now = which(dat.mod$time.day2==i)
-      dat.temp <- dat.mod[rows.now,c("time.day2", "year", "doy", "hour", "tmax.day", "tmin.day", "tmean.day", "max.dep", "min.dep", "precipf.day", "swdown.day", "press.day", "lwdown.day", "qair.day", "wind.day", "next.qair")]
+      dat.temp <- dat.mod[rows.now,c("time.day2", "year", "doy", "hour", "tmax.day", "tmin.day", "precipf.day", "swdown.day", "press.day", "lwdown.day", "qair.day", "wind.day", "next.qair")]
       dat.temp$qair = 99999 # Dummy value so there's a column
       dat.temp <- dat.temp[complete.cases(dat.temp),]
       # day.now = dat.temp$doy
@@ -493,7 +493,7 @@ predict.subdaily <- function(dat.mod, n.ens, path.model){
       # setTxtProgressBar(pb, abs(i))
       
       rows.now = which(dat.mod$time.day2==i)
-      dat.temp <- dat.mod[rows.now,c("time.day2", "year", "doy", "hour", "tmax.day", "tmin.day", "tmean.day", "max.dep", "min.dep", "precipf.day", "swdown.day", "press.day", "wind.day", "qair.day", "wind.day", "next.wind")]
+      dat.temp <- dat.mod[rows.now,c("time.day2", "year", "doy", "hour", "tmax.day", "tmin.day", "precipf.day", "swdown.day", "press.day", "wind.day", "qair.day", "wind.day", "next.wind")]
       dat.temp$wind = 99999 # Dummy value so there's a column
       dat.temp <- dat.temp[complete.cases(dat.temp),]
       # day.now = dat.temp$doy
@@ -549,10 +549,10 @@ predict.subdaily <- function(dat.mod, n.ens, path.model){
     # dat.mod$mod.wind.025   <- apply(dat.sim[["wind"]], 1, quantile, 0.025)
     # dat.mod$mod.wind.975   <- apply(dat.sim[["wind"]], 1, quantile, 0.975)
     # summary(dat.mod)
-
     rm(mod.wind.doy) # Clear out the model to save memory
   }
   # ------------------------------------------
   
+  return(dat.sim)
 
 }

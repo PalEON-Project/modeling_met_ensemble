@@ -7,7 +7,7 @@ model.tair <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NUL
     dat.subset$year <- as.ordered(dat.subset$year)  
     # day model works pretty good
       # Note: Tried fitting with hourly swdown & it didn't improve things (visually or with AIC), so for the sake of simplicity, using swdown.day
-      mod.doy <- lm(tair ~ as.ordered(hour)*tmean.day*(lag.tair + lag.tmin + next.tmax + max.dep*min.dep) + as.ordered(hour)*swdown.day*(max.dep + min.dep) - 1 - as.ordered(hour) - swdown.day - tmean.day - lag.tair - lag.tmin - next.tmax - min.dep - max.dep - min.dep*max.dep - tmean.day*max.dep*min.dep - swdown.day*max.dep*min.dep, data=dat.subset) #
+      mod.doy <- lm(tair ~ as.ordered(hour)*tmax.day*(lag.tair + lag.tmin + tmin.day) +  as.ordered(hour)*tmin.day*next.tmax + as.ordered(hour)*swdown.day*(tmax.day + tmind.ay) - 1 - as.ordered(hour) - swdown.day - lag.tair - lag.tmin - next.tmax - tmax.day - tmin.day - tmin.day*tmax.day - swdown.day*tmax.day*tmin.day, data=dat.subset) #
 
       # Generate a bunch of random coefficients that we can pull from 
       # without needing to do this step every day
@@ -23,7 +23,7 @@ model.tair <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NUL
       # Model residuals as a function of hour so we can increase our uncertainty
       if(resids==T){
         dat.subset[!is.na(dat.subset$lag.tair) & !is.na(dat.subset$next.tmax),"resid"] <- resid(mod.doy)
-        resid.model <- lm(resid ~ as.factor(hour)*(tmean.day + max.dep + min.dep)-1, data=dat.subset[!is.na(dat.subset$lag.tair),])
+        resid.model <- lm(resid ~ as.factor(hour)*(tmax.day*tmin.day)-1, data=dat.subset[!is.na(dat.subset$lag.tair),])
         res.coef <- coef(resid.model)
         res.cov  <- vcov(resid.model)
         res.piv <- as.numeric(which(!is.na(res.coef)))
@@ -137,7 +137,7 @@ model.lwdown <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=N
   # The model we're going to use
   model.train <- function(dat.subset, n.beta, resids=resids){ 
     
-    mod.doy <- lm(lwdown ~ as.factor(hour)*lwdown.day*(lag.lwdown + next.lwdown + tmean.day + swdown.day + tmax.day + tmin.day) - as.factor(hour) - tmean.day - tmax.day - tmin.day - swdown.day - 1, data=dat.subset) ###
+    mod.doy <- lm(lwdown ~ as.factor(hour)*lwdown.day*(lag.lwdown + next.lwdown + swdown.day + tmax.day + tmin.day) - as.factor(hour) - tmax.day - tmin.day - swdown.day - 1, data=dat.subset) ###
     # mod.doy <- lm(lwdown ~ as.factor(hour)*lwdown.day*(lag.lwdown + tair + swdown), data=dat.subset) ###
     # mod.doy0 <- lm(lwdown ~ as.factor(hour)*lwdown.day, data=dat.subset) ###
     # mod.doy1 <- lm(lwdown ~ as.factor(hour)*lwdown.day*(tmean.day + swdown.day), data=dat.subset) ###
@@ -212,8 +212,8 @@ model.press <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NU
     # mod.doy2 <- lm(press ~ as.factor(hour)*press.day*(lag.press + next.press)-1-as.factor(hour), data=dat.subset) ###
     # mod.doy3 <- lm(press ~ as.factor(hour)*press.day*(lag.press + next.press)-1-as.factor(hour)- next.press - lag.press, data=dat.subset) ###
     # mod.doy4 <- lm(press ~ as.factor(hour)*press.day*(lag.press + next.press + tmean.day)-1-as.factor(hour)- next.press - lag.press, data=dat.subset) ###
-    # mod.doy5 <- lm(press ~ as.factor(hour)*press.day*(lag.press + next.press + max.dep)-1-as.factor(hour)- next.press - lag.press, data=dat.subset) ###
-    # mod.doy6 <- lm(press ~ as.factor(hour)*press.day*(lag.press + next.press + min.dep)-1-as.factor(hour)- next.press - lag.press - press.day - min.dep, data=dat.subset) ###
+    # mod.doy5 <- lm(press ~ as.factor(hour)*press.day*(lag.press + next.press + tmax.day)-1-as.factor(hour)- next.press - lag.press, data=dat.subset) ###
+    # mod.doy6 <- lm(press ~ as.factor(hour)*press.day*(lag.press + next.press + tmin.day)-1-as.factor(hour)- next.press - lag.press - press.day - tmin.day, data=dat.subset) ###
     mod.doy <- lm(press ~ as.factor(hour)*(press.day + lag.press + next.press)-as.factor(hour)-1, data=dat.subset) ###
 
     # Generate a bunch of random coefficients that we can pull from 
@@ -281,12 +281,12 @@ model.wind <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NUL
     # mod.doy2 <- lm(wind ~ as.factor(hour)*wind.day*(lag.wind + next.wind)-1-as.factor(hour), data=dat.subset) ###
     # mod.doy3 <- lm(wind ~ as.factor(hour)*wind.day*(lag.wind + next.wind)-1-as.factor(hour)- next.wind - lag.wind, data=dat.subset) ###
     # mod.doy4 <- lm(wind ~ as.factor(hour)*wind.day*(lag.wind + next.wind + tmean.day)-1-as.factor(hour)- next.wind - lag.wind, data=dat.subset) ###
-    # mod.doy5 <- lm(wind ~ as.factor(hour)*wind.day*(lag.wind + next.wind + max.dep)-1-as.factor(hour)- next.wind - lag.wind, data=dat.subset) ###
-    # mod.doy6 <- lm(wind ~ as.factor(hour)*wind.day*(lag.wind + next.wind + min.dep)-1-as.factor(hour)- next.wind - lag.wind - wind.day - min.dep, data=dat.subset) ###
-    # mod.doy <- lm(log(wind) ~ as.factor(hour)*log(wind.day)*(log(lag.wind) + log(next.wind) + press.day + min.dep + max.dep)-as.factor(hour)-1 - press.day - min.dep - max.dep - log(wind.day)*press.day - log(wind.day)*max.dep - log(wind.day), data=dat.subset) ###
-    # mod.doy <- lm(log(wind) ~ as.factor(hour)*wind.day*(log(lag.wind) + next.wind + press.day + min.dep + max.dep)-as.factor(hour)-1 - press.day - min.dep - max.dep - wind.day*press.day - wind.day*max.dep - wind.day*min.dep, data=dat.subset) ###
-    # mod.doy <- lm(log(wind) ~ as.factor(hour)*log(wind.day)*(log(lag.wind) + log(next.wind) + press.day + min.dep)-as.factor(hour)-1 - press.day - min.dep - log(wind.day)*press.day - log(wind.day)*min.dep, data=dat.subset) ###
-    mod.doy <- lm(log(wind) ~ as.factor(hour)*log(wind.day)*(log(lag.wind) + log(next.wind) + press.day + min.dep + max.dep)-as.factor(hour)-1 - press.day - min.dep - max.dep - log(wind.day)*press.day - log(wind.day)*min.dep- log(wind.day)*max.dep - as.factor(hour)*min.dep - as.factor(hour)*max.dep - as.factor(hour)*press.day, data=dat.subset) ###
+    # mod.doy5 <- lm(wind ~ as.factor(hour)*wind.day*(lag.wind + next.wind + tmax.day)-1-as.factor(hour)- next.wind - lag.wind, data=dat.subset) ###
+    # mod.doy6 <- lm(wind ~ as.factor(hour)*wind.day*(lag.wind + next.wind + tmin.day)-1-as.factor(hour)- next.wind - lag.wind - wind.day - tmin.day, data=dat.subset) ###
+    # mod.doy <- lm(log(wind) ~ as.factor(hour)*log(wind.day)*(log(lag.wind) + log(next.wind) + press.day + tmin.day + tmax.day)-as.factor(hour)-1 - press.day - tmin.day - tmax.day - log(wind.day)*press.day - log(wind.day)*tmax.day - log(wind.day), data=dat.subset) ###
+    # mod.doy <- lm(log(wind) ~ as.factor(hour)*wind.day*(log(lag.wind) + next.wind + press.day + tmin.day + tmax.day)-as.factor(hour)-1 - press.day - tmin.day - tmax.day - wind.day*press.day - wind.day*tmax.day - wind.day*tmin.day, data=dat.subset) ###
+    # mod.doy <- lm(log(wind) ~ as.factor(hour)*log(wind.day)*(log(lag.wind) + log(next.wind) + press.day + tmin.day)-as.factor(hour)-1 - press.day - tmin.day - log(wind.day)*press.day - log(wind.day)*tmin.day, data=dat.subset) ###
+    mod.doy <- lm(log(wind) ~ as.factor(hour)*log(wind.day)*(log(lag.wind) + log(next.wind) + press.day + tmin.day + tmax.day)-as.factor(hour)-1 - press.day - tmin.day - tmax.day - log(wind.day)*press.day - log(wind.day)*tmin.day- log(wind.day)*tmax.day - as.factor(hour)*tmin.day - as.factor(hour)*tmax.day - as.factor(hour)*press.day, data=dat.subset) ###
     
     # Generate a bunch of random coefficients that we can pull from 
     # without needing to do this step every day
@@ -342,7 +342,7 @@ model.wind <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NUL
 
 model.precipf <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NULL, seed=1562){
   library(MASS)
-  library(fitdistrplus)
+  # library(fitdistrplus)
   set.seed(seed)
   
   # The model we're going to use
@@ -418,8 +418,8 @@ model.qair <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NUL
     # mod.doy1 <- lm(qair ~ as.factor(hour)*qair.day*(lag.qair)-1-as.factor(hour), data=dat.subset) ###
     # mod.doy2 <- lm(qair ~ as.factor(hour)*qair.day*(lag.qair + next.qair)-1-as.factor(hour), data=dat.subset) ###
     # mod.doy3 <- lm(qair ~ as.factor(hour)*qair.day*(lag.qair + next.qair)-1-as.factor(hour)- next.qair - lag.qair, data=dat.subset) ###
-    # mod.doy4 <- lm(qair ~ as.factor(hour)*qair.day*(lag.qair + next.qair + tmean.day + max.dep + min.dep + precipf.day)-1-as.factor(hour)- next.qair - lag.qair, data=dat.subset) ###
-    mod.doy <- lm(log(qair) ~ as.factor(hour)*log(qair.day)*(log(lag.qair) + log(next.qair) + precipf.day + min.dep + max.dep)-as.factor(hour)-1 - precipf.day - min.dep - max.dep - log(qair.day)*precipf.day - log(qair.day)*min.dep- log(qair.day)*max.dep - as.factor(hour)*min.dep - as.factor(hour)*max.dep - as.factor(hour)*precipf.day, data=dat.subset) ###
+    # mod.doy4 <- lm(qair ~ as.factor(hour)*qair.day*(lag.qair + next.qair + tmean.day + tmax.day + tmin.day + precipf.day)-1-as.factor(hour)- next.qair - lag.qair, data=dat.subset) ###
+    mod.doy <- lm(log(qair) ~ as.factor(hour)*log(qair.day)*(log(lag.qair) + log(next.qair) + precipf.day + tmin.day + tmax.day)-as.factor(hour)-1 - precipf.day - tmin.day - tmax.day - log(qair.day)*precipf.day - log(qair.day)*tmin.day- log(qair.day)*tmax.day - as.factor(hour)*tmin.day - as.factor(hour)*tmax.day - as.factor(hour)*precipf.day, data=dat.subset) ###
     
     # Generate a bunch of random coefficients that we can pull from 
     # without needing to do this step every day
