@@ -473,7 +473,7 @@ model.qair <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NUL
   return(mod.out)
 }
 
-predict.met <- function(newdata, model.predict, betas, resid.err=F, model.resid=NULL, betas.resid=NULL, n.ens, seed=9321){
+predict.met <- function(newdata, model.predict, Rbeta, resid.err=F, model.resid=NULL, Rbeta.resid=NULL, n.ens, seed=9321){
   set.seed(9321)
   err.resid = 0 # dummy residual error term; if we want to add residual error, we're modeling it by hour
 
@@ -486,10 +486,6 @@ predict.met <- function(newdata, model.predict, betas, resid.err=F, model.resid=
   m <- model.frame(mod.terms, newdata, xlev = model.predict$xlevels)
   Xp <- model.matrix(mod.terms, m, contrasts.arg = model.predict$contrasts)
   
-  rows.beta <- sample(1:nrow(betas), n.ens, replace=T)
-
-  Rbeta <- as.matrix(betas[rows.beta,], nrow=length(rows.beta), ncol=ncol(betas))
-  
   if(resid.err==T){
     newdata$resid <- 99999
     resid.terms <- terms(model.resid)
@@ -501,11 +497,7 @@ predict.met <- function(newdata, model.predict, betas, resid.err=F, model.resid=
     m2 <- model.frame(resid.terms, newdata, xlev = model.resid$xlevels)
     Xp.res <- model.matrix(resid.terms, m2, contrasts.arg = model.resid$contrasts)
     
-    rows.beta2 <- sample(1:nrow(betas.resid), n.ens, replace=T)
-    
-    Rbeta.res <- as.matrix(betas.resid[rows.beta2,], nrow=length(rows.beta2), ncol=ncol(betas.resid))
-    
-    err.resid <- Xp.res[,resid.piv] %*% t(Rbeta.res)
+    err.resid <- Xp.res[,resid.piv] %*% t(Rbeta.resid)
   }
   
   dat.sim <- Xp[,piv] %*% t(Rbeta) + err.resid
@@ -513,6 +505,50 @@ predict.met <- function(newdata, model.predict, betas, resid.err=F, model.resid=
   return(dat.sim)
   
 }
+
+save.betas <- function(model.out, betas, outfile){
+  # Function to save betas as a .nc file
+  # model.out = the model output list
+  # betas = the name of the layer of betas to save (e.g. "betas", or "betas.resid")
+  
+  # Save a vector of the dimnames
+  # names.coefs <- dimnames(model.out[[1]][[betas]])[[2]]
+  
+  var.list <- list()
+  for(v in names(model.out)){
+    # Note: Need a separate list of coefficients for each variable to make my life easier if the is swdown which has varying
+    #       predictors by day
+    dimY <- ncdim_def( paste0("coeffs_", v), units="unitless", longname="model.out coefficients", vals=1:ncol(model.out[[v]][[betas]]))
+    dimX <- ncdim_def( "random", units="unitless", longname="random betas", vals=1:nrow(model.out[[v]][[betas]]))
+    
+    var.list[[v]] <- ncvar_def(v, units="coefficients", dim=list(dimX, dimY), longname=paste0("day ", v, " model.out coefficients"))
+  }
+  
+  # dim.string <- ncdim_def("names", "", 1:max(nchar(names.coefs)), create_dimvar=FALSE)
+  # var.list[["names.coefs"]] <- ncvar_def("names.coefs", units="", dim=list(dim.string, dimY), longname="model coefficient names", prec="char")
+  
+  nc <- nc_create(outfile, var.list)
+  # ncvar_put(nc, var.list$names.coefs, names.coefs)
+  for(v in names(model.out)) {
+    ncvar_put(nc, var.list[[v]], model.out[[v]][[betas]])
+  }
+  nc_close(nc)    
+  
+  
+} 
+
+save.model <- function(model.out, model, outfile){
+  # Function to save linear models as a .Rdata file
+  # model.out = the model output list
+  # model = the name of the layer of betas to save (e.g. "model", or "model.resid")
+  
+  mod.list <- list()
+  for(v in names(model.out)){
+    mod.list[[v]] <- model.out[[v]][[model]]
+  }
+  
+  save(mod.list, file=outfile)
+} 
 
 graph.resids <- function(var, dat.train, model.var, fig.dir){
   dat.train$var <- dat.train[,var]

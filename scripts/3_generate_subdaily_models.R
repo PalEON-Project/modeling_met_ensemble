@@ -46,8 +46,8 @@ library(ggplot2)
 # library(tictoc)
 rm(list=ls())
 
-# mod.out <- "../data/met_ensembles/HARVARD/subday_models"
-mod.out <- "~/Desktop/met_ensembles/HARVARD/subday_models"
+mod.out <- "/projectnb/dietzelab/paleon/met_ensemble/data/met_ensembles/HARVARD/subday_models"
+# mod.out <- "~/Desktop/met_ensembles/HARVARD/subday_models"
 fig.dir <- file.path(mod.out, "model_qaqc")
 
 if(!dir.exists(mod.out)) dir.create(mod.out, recursive = T)
@@ -189,37 +189,44 @@ source("temporal_downscale_functions.R")
 # Note: To avoid propogating too much wonkiness in hourly data, any co-variates are at the daily level
 # ---------
 # Settings for the calculations
-n.beta=500
+n.beta=1000
 resids=F
 paralell=F
 n.cores=4
 
-mod.tair.doy    <- model.tair   (dat.train=dat.train[,], resids=resids, parallel=F, n.cores=paralell, n.beta=n.beta)
-save(mod.tair.doy, file=file.path(mod.out, "tair_model.Rdata"))
+mod.tair.doy    <- model.tair   (dat.train=dat.train[,], resids=resids, parallel=parallel, n.cores=n.cores, n.beta=n.beta)
+save.betas(model.out=mod.tair.doy, betas="betas", outfile=file.path(mod.out, "betas_tair.nc"))
+save.model(model.out=mod.tair.doy, model="model", outfile=file.path(mod.out, "model_tair.Rdata"))
 rm(mod.tair.doy)
 
-mod.precipf.doy <- model.precipf(dat.train=dat.train[,], resids=resids, parallel=F, n.cores=paralell, n.beta=n.beta)
-save(mod.precipf.doy, file=file.path(mod.out, "precipf_model.Rdata"))
+mod.precipf.doy <- model.precipf(dat.train=dat.train[,], resids=resids, parallel=parallel, n.cores=n.cores, n.beta=n.beta)
+save.betas(model.out=mod.precipf.doy, betas="betas", outfile=file.path(mod.out, "betas_precipf.nc"))
+save.model(model.out=mod.precipf.doy, model="model", outfile=file.path(mod.out, "model_precipf.Rdata"))
 rm(mod.precipf.doy)
 
-mod.swdown.doy  <- model.swdown (dat.train=dat.train[,], resids=resids, parallel=F, n.cores=paralell, n.beta=n.beta)
-save(mod.swdown.doy, file=file.path(mod.out, "swdown_model.Rdata"))
+mod.swdown.doy  <- model.swdown (dat.train=dat.train[,], resids=resids, parallel=parallel, n.cores=n.cores, n.beta=n.beta)
+save.betas(model.out=mod.swdown.doy, betas="betas", outfile=file.path(mod.out, "betas_swdown.nc"))
+save.model(model.out=mod.swdown.doy, model="model", outfile=file.path(mod.out, "model_swdown.Rdata"))
 rm(mod.swdown.doy)
 
-mod.lwdown.doy  <- model.lwdown (dat.train=dat.train[,], resids=resids, parallel=F, n.cores=paralell, n.beta=n.beta)
-save(mod.lwdown.doy, file=file.path(mod.out, "lwdown_model.Rdata"))
+mod.lwdown.doy  <- model.lwdown (dat.train=dat.train[,], resids=resids, parallel=parallel, n.cores=n.cores, n.beta=n.beta)
+save.betas(model.out=mod.lwdown.doy, betas="betas", outfile=file.path(mod.out, "betas_lwdown.nc"))
+save.model(model.out=mod.lwdown.doy, model="model", outfile=file.path(mod.out, "model_lwdown.Rdata"))
 rm(mod.lwdown.doy)
 
-mod.qair.doy    <- model.qair   (dat.train=dat.train[,], resids=resids, parallel=F, n.cores=paralell, n.beta=n.beta)
-save(mod.qair.doy, file=file.path(mod.out, "qair_model.Rdata"))
-rm(mod.qair.doy)
-
-mod.press.doy   <- model.press  (dat.train=dat.train[,], resids=resids, parallel=F, n.cores=paralell, n.beta=n.beta)
-save(mod.press.doy, file=file.path(mod.out, "press_model.Rdata"))
+mod.press.doy   <- model.press  (dat.train=dat.train[,], resids=resids, parallel=parallel, n.cores=n.cores, n.beta=n.beta)
+save.betas(model.out=mod.press.doy, betas="betas", outfile=file.path(mod.out, "betas_press.nc"))
+save.model(model.out=mod.press.doy, model="model", outfile=file.path(mod.out, "model_press.Rdata"))
 rm(mod.press.doy)
 
-mod.wind.doy    <- model.wind   (dat.train=dat.train[,], resids=resids, parallel=F, n.cores=paralell, n.beta=n.beta)
-save(mod.wind.doy, file=file.path(mod.out, "wind_model.Rdata"))
+mod.qair.doy    <- model.qair   (dat.train=dat.train[,], resids=resids, parallel=parallel, n.cores=n.cores, n.beta=n.beta)
+save.betas(model.out=mod.qair.doy, betas="betas", outfile=file.path(mod.out, "betas_qair.nc"))
+save.model(model.out=mod.qair.doy, model="model", outfile=file.path(mod.out, "model_qair.Rdata"))
+rm(mod.qair.doy)
+
+mod.wind.doy    <- model.wind   (dat.train=dat.train[,], resids=resids, parallel=parallel, n.cores=n.cores, n.beta=n.beta)
+save.betas(model.out=mod.wind.doy, betas="betas", outfile=file.path(mod.out, "betas_wind.nc"))
+save.model(model.out=mod.wind.doy, model="model", outfile=file.path(mod.out, "model_wind.Rdata"))
 rm(mod.wind.doy)
 # ---------
 
