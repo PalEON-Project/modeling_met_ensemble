@@ -26,7 +26,7 @@
 # ----- Loop through by ensemble member ----------
 #    1. Load and format prediction data (1 file from step 2)
 #       1.1 Load output file from bias correction (bias ensemble member)
-#       1.2 select year we're working with (single file for output)
+#       1.2 select year we're working with
 #    ----- Loop through by year ----------
 #      2. Predict subdaily values for whole year, filtering backwards in time
 #      3. Write annual output into .nc files 
@@ -44,13 +44,18 @@
 library(ncdf4)
 library(mgcv)
 library(MASS)
-# library(lubridate)
+library(lubridate)
 library(ggplot2)
+library(stringr)
 # library(tictoc)
 rm(list=ls())
 
+# Load the scripts that do all the heavy lifting
+load("temporal_downscale.R")
+load("temporal_downscale_functions.R")
 
-dir.base <- "/projectnb/dietzelab/paleon/met_ensemble/data/met_ensembles/HARVARD/"
+dat.base <- "/projectnb/dietzelab/paleon/met_ensemble/data/met_ensembles/HARVARD/"
+# path.mod <- "../data/met_ensembles/HARVARD/subday_models"
 # mod.out <- "../data/met_ensembles/HARVARD/subday_models"
 # mod.out <- "~/Desktop/met_ensembles/HARVARD/subday_models"
 # fig.dir <- file.path(mod.out, "model_qaqc")
@@ -58,48 +63,149 @@ dir.base <- "/projectnb/dietzelab/paleon/met_ensemble/data/met_ensembles/HARVARD
 # if(!dir.exists(mod.out)) dir.create(mod.out, recursive = T)
 # if(!dir.exists(fig.dir)) dir.create(fig.dir, recursive = T)
 
+# Hard-coding numbers for Harvard
+site.name="HARVARD"
+site.lat=42.54
+site.lon=-72.18
+
 GCM.list = c("CCSM4", "MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1")
+ens.hr  <- 5 # Number of hourly ensemble members to create
+ens.day <- 5 # Number of daily ensemble members to process
+
+
+# Defining variable names, longname & units
+vars.info <- data.frame(name=c("tair", "precipf", "swdown", "lwdown", "press", "qair", "wind"),
+                        longname=c("2 meter mean air temperature", 
+                                   "cumulative precipitation (water equivalent)",
+                                   "incident (downwelling) showtwave radiation",
+                                   "incident (downwelling) longwave radiation",
+                                   'Pressure at the surface',
+                                   'Specific humidity measured at the lowest level of the atmosphere',
+                                   'Wind speed' 
+                                   ),
+                        units= c("K", "kg m-2 s-1", "W m-2", "W m-2", "Pa", "kg kg-1", "m s-1")
+)
+# Make a few dimensions we can use
+dimY <- ncdim_def( "lon", units="degrees", longname="latitude", vals=site.lat )
+dimX <- ncdim_def( "lat", units="degrees", longname="longitude", vals=site.lon )
 # -----------------------------------
 
 for(GCM in GCM.list){
-  path.gcm <- file.path(dir.base, GCM, "day")
-  setwd(path.gcm)
+  path.gcm <- file.path(dat.base, GCM, "day")
+  # setwd(path.gcm)
   # All of the daily ensembles should be zipped to save space
-  ens.day <- dir(".", ".tar.bz2")
+  dat.day <- dir(path.gcm, ".Rdata")
   
-  for(i in 1:length(ens.day)){
-    # Extract the base name of this ensemble member
-    ens.name <- substr(ens.day[i], 1, nchar(ens.day[i])-8)
+  load(file.path(path.gcm, dat.day)) # Loads dat.out.full
 
-    # uncompress the ensemble member
-    system(paste0("tar -jxvf ", ens.day[i])) 
+  # -----------------------------------
+  # 1. Format output so all ensemble members can be run at once
+  # NOTE: Need to start with the last and work to the first
+  # -----------------------------------
+  years.sim <- max(dat.out.full$tmax$sims$year):min(dat.out.full$tmax$sims$year)
+  
+  # Initialize the lags
+  lags.init <- list() # Need to initialize lags first outside of the loop and then they'll get updated internally
+  for(e in 1:ens.day){
+    tair.init    <- dat.out.full$met.bias[dat.out.full$met.bias$year==max(years.sim) & dat.out.full$met.bias$doy==364,"tair"]
+    precipf.init <- dat.out.full$met.bias[dat.out.full$met.bias$year==max(years.sim) & dat.out.full$met.bias$doy==364,"precipf"]
+    swdown.init  <- dat.out.full$met.bias[dat.out.full$met.bias$year==max(years.sim) & dat.out.full$met.bias$doy==364,"swdown"]
+    lwdown.init  <- dat.out.full$met.bias[dat.out.full$met.bias$year==max(years.sim) & dat.out.full$met.bias$doy==364,"lwdown"]
+    press.init   <- dat.out.full$met.bias[dat.out.full$met.bias$year==max(years.sim) & dat.out.full$met.bias$doy==364,"press"]
+    qair.init    <- dat.out.full$met.bias[dat.out.full$met.bias$year==max(years.sim) & dat.out.full$met.bias$doy==364,"qair"]
+    wind.init    <- dat.out.full$met.bias[dat.out.full$met.bias$year==max(years.sim) & dat.out.full$met.bias$doy==364,"wind"]
     
-    # Get list of files
-    files.day <- dir(ens.name, ".nc")
+    lags.init[[paste0("X", e)]][["tair"   ]] <- data.frame(array(tair.init   , dim=c(1, ens.hr)))
+    lags.init[[paste0("X", e)]][["precipf"]] <- data.frame(array(precipf.init, dim=c(1, ens.hr)))
+    lags.init[[paste0("X", e)]][["swdown" ]] <- data.frame(array(swdown.init , dim=c(1, ens.hr)))
+    lags.init[[paste0("X", e)]][["lwdown" ]] <- data.frame(array(lwdown.init , dim=c(1, ens.hr)))
+    lags.init[[paste0("X", e)]][["press"  ]] <- data.frame(array(press.init  , dim=c(1, ens.hr)))
+    lags.init[[paste0("X", e)]][["qair"   ]] <- data.frame(array(qair.init   , dim=c(1, ens.hr)))
+    lags.init[[paste0("X", e)]][["wind"   ]] <- data.frame(array(wind.init   , dim=c(1, ens.hr)))
+  }
+  
+  for(y in years.sim){
+    # Create a list with just the data from that year
+    dat.yr <- list()
+    dat.yr$tmax    <- dat.out.full$tmax   $sims[dat.out.full$tmax   $sims$year==y,]
+    dat.yr$tmin    <- dat.out.full$tmin   $sims[dat.out.full$tmin   $sims$year==y,]
+    dat.yr$precipf <- dat.out.full$precipf$sims[dat.out.full$precipf$sims$year==y,]
+    dat.yr$swdown  <- dat.out.full$swdown $sims[dat.out.full$swdown $sims$year==y,]
+    dat.yr$lwdown  <- dat.out.full$lwdown $sims[dat.out.full$lwdown $sims$year==y,]
+    dat.yr$qair    <- dat.out.full$qair   $sims[dat.out.full$qair   $sims$year==y,]
+    dat.yr$press   <- dat.out.full$press  $sims[dat.out.full$press  $sims$year==y,]
+    dat.yr$wind    <- dat.out.full$wind   $sims[dat.out.full$wind   $sims$year==y,]
+    
+    dat.ens <- list() # a new list for each ensemble member as a new layer
+    df.hour <- data.frame(hour=0:23)
+    
+    # Create a list layer for each ensemble member
+    for(e in 1:ens.day){
+      dat.ens[[paste0("X", e)]] <- data.frame(dataset =dat.yr$tmax   $dataset,
+                                              year    =dat.yr$tmax   $year,
+                                              doy     =dat.yr$tmax   $doy,
+                                              date    =dat.yr$tmax   $time,
+                                              tmax    =dat.yr$tmax   [,paste0("X", e)],
+                                              tmin    =dat.yr$tmin   [,paste0("X", e)],
+                                              precipf =dat.yr$precipf[,paste0("X", e)],
+                                              swdown  =dat.yr$swdown [,paste0("X", e)],
+                                              lwdown  =dat.yr$lwdown [,paste0("X", e)],
+                                              qair    =dat.yr$qair   [,paste0("X", e)],
+                                              press   =dat.yr$press  [,paste0("X", e)],
+                                              wind    =dat.yr$wind   [,paste0("X", e)]
+                                             )
+      dat.ens[[paste0("X", e)]]$time.day <- as.numeric(difftime(dat.ens[[paste0("X", e)]]$date, "2016-01-01", tz="GMT", units="day"))
+      dat.ens[[paste0("X", e)]] <- merge(dat.ens[[paste0("X", e)]], df.hour, all=T)
+      
+      dat.ens[[paste0("X", e)]]$date <- strptime(paste(dat.ens[[paste0("X", e)]]$year, dat.ens[[paste0("X", e)]]$doy+1, dat.ens[[paste0("X", e)]]$hour, sep="-"), "%Y-%j-%H", tz="GMT")
+      dat.ens[[paste0("X", e)]]$time.hr <- as.numeric(difftime(dat.ens[[paste0("X", e)]]$date, "2016-01-01", tz="GMT", units="hour"))
+      dat.ens[[paste0("X", e)]] <- dat.ens[[paste0("X", e)]][order(dat.ens[[paste0("X", e)]]$time.hr, decreasing=F),]
+    }
+    
+    # Set up the time dimension for this year
+    hrs.now <- as.numeric(difftime(dat.ens$X1$date, "0850-01-01", tz="GMT", units="hour"))
+    dim.t <- ncdim_def(name = "time",
+                       units = paste0("hours since 0850-01-01 00:00:00:"),
+                       vals = hrs.now, # calculating the number of months in this run
+                       calendar = "standard", unlim = TRUE)
+    
     
     # -----------------------------------
-    # 1. Load bias-correction file
-    # NOTE: Need to start with the last and work to the first
+    # 2. Predict met vars for each ensemble member
+    # Note: Using a loop for each ensemble member for now, but this will get 
+    #       parallelized to speed it up soon, but we'll prototype in parallel
     # -----------------------------------
-    for(j in length(files.day):1){
-      ncT <- nc_open(file.path(ens.name, files.day[j]))
+    for(e in 1:length(dat.ens)){
+      ens.sims <- predict.subdaily(dat.ens[[paste0("X", e)]], ens.hr, path.model=file.path(dat.base, "subday_models"), lags.init=lags.init)
       
-      dat.nc <- data.frame(time        = ncvar_get(ncT, "time"   ),
-                           tmax.day    = ncvar_get(ncT, "tmax"   ),
-                           tmin.day    = ncvar_get(ncT, "tmin"   ),
-                           precipf.day = ncvar_get(ncT, "precipf"),
-                           swdown.day  = ncvar_get(ncT, "swdown" ),
-                           lwdown.day  = ncvar_get(ncT, "lwdown" ),
-                           qair.day    = ncvar_get(ncT, "qair"   ),
-                           press.day   = ncvar_get(ncT, "press"  ),
-                           wind.day    = ncvar_get(ncT, "wind"   )
-                           )
-      nc_close(ncT)
+
+      # Update the initial lags for next year
+      for(v in names(ens.sims)){
+        lags.init[[paste0("X",e)]][[v]] <- data.frame(ens.sims[[v]][length(ens.sims[[v]]),])
+      }
       
-      dat.nc$date <- date(dat.nc$time, )
+      # -----------------------------------
+      # Write each year for each ensemble member into its own .nc file
+      # -----------------------------------
+      for(i in 1:ens.hr){
+        var.list <- list()
+        dat.list <- list()
+        for(v in names(ens.sims)){
+          var.list[[v]] <- ncvar_def(v, units=paste(vars.info[vars.info$name==v, "units"]), dim=list(dimX, dimY, dim.t), longname=paste(vars.info[vars.info$name==v, "longname"]))
+          dat.list[[v]] <- array(ens.sims[[v]][,i], dim=c(1,1,length(hours.now)))
+        }
+        
+        # Naming convention: [SITE]_[GCM]_1hr_[bias_ens_member]-[subday_ens_member]_[YEAR].nc
+        nc <- nc_create(file.path(new.dir, paste0(site.name, "_", GCM, "_1hr_", strpad(e, 3, pad=0), "-", strpad(i, 3, pad=0),  "_", str_pad(y, 4, pad=0), ".nc")), var.list)
+        for(v in 1:length(var)) {
+          ncvar_put(nc, var.list[[v]], dat.list[[v]])
+        }
+        nc_close(nc)    
+      }
+      # -----------------------------------
       
     }
     # -----------------------------------
-      
   }
+  # -----------------------------------
 }
