@@ -567,3 +567,76 @@ graph.resids <- function(var, dat.train, model.var, fig.dir){
   dev.off()
 }
 
+graph.predict <- function(){
+  # ---------
+  # Graph the output
+  # ---------
+  {
+    for(y in unique(dat.mod$year)){
+      png(file.path(fig.dir, paste0("swdown_", y, "_year.png")), height=8, width=10, units="in", res=220)
+      print(
+        ggplot(data=dat.mod[dat.mod$year==y,]) +
+          geom_ribbon(aes(x=date, ymin=mod.swdown.025, ymax=mod.swdown.975), alpha=0.5, fill="blue") +
+          geom_line(aes(x=date, y=mod.swdown), color="blue") +
+          geom_point(aes(x=date, y=mod.swdown), color="blue", size=0.5) +
+          geom_line(aes(x=date, y=swdown), color="black", alpha=0.5) +
+          geom_point(aes(x=date, y=swdown), color="black", size=0.3, alpha=0.5) +
+          scale_x_datetime(expand=c(0,0)) +
+          ggtitle(y) +
+          theme_bw()
+      )
+      dev.off()
+      
+      png(file.path(fig.dir, paste0("swdown_", y, "_year_scatter.png")), height=8, width=10, units="in", res=220)
+      print(
+        ggplot(data=dat.mod[dat.mod$year==y,]) +
+          geom_point(aes(x=swdown, y=mod.swdown), color="black", size=0.5) +
+          ggtitle(y) +
+          theme_bw()
+      )
+      dev.off()
+    }  
+    
+    
+    dat.graph1 <- dat.mod[dat.mod$doy>=32 & dat.mod$doy<=(32+14),]
+    dat.graph1$season <- as.factor("winter")
+    dat.graph2 <- dat.mod[dat.mod$doy>=123 & dat.mod$doy<=(123+14),]
+    dat.graph2$season <- as.factor("spring")
+    dat.graph3 <- dat.mod[dat.mod$doy>=214 & dat.mod$doy<=(213+14),]
+    dat.graph3$season <- as.factor("summer")
+    dat.graph4 <- dat.mod[dat.mod$doy>=305 & dat.mod$doy<=(305+14),]
+    dat.graph4$season <- as.factor("fall")
+    
+    dat.graph <- rbind(dat.graph1, dat.graph2, dat.graph3, dat.graph4)
+    
+    for(y in unique(dat.graph$year)){
+      png(file.path(fig.dir, paste0("swdown_",y,"_examples.png")), height=8, width=10, units="in", res=220)
+      print(
+        ggplot(data=dat.graph[dat.graph$year==y,]) +
+          facet_wrap(~season, scales="free") +
+          geom_line(aes(x=date, y=swdown), color="black") +
+          geom_point(aes(x=date, y=swdown), color="black", size=0.5) +
+          geom_ribbon(aes(x=date, ymin=mod.swdown.025, ymax=mod.swdown.975), alpha=0.5, fill="blue") +
+          geom_line(aes(x=date, y=mod.swdown), color="blue") +
+          geom_point(aes(x=date, y=mod.swdown), color="blue", size=0.5) +
+          scale_y_continuous(name="shortwave radiation") +
+          scale_x_datetime(expand=c(0,0)) +
+          ggtitle(y) +
+          theme_bw()
+      )
+      dev.off()
+      
+      png(file.path(fig.dir, paste0("swdown_", y, "_examp.es_scatter.png")), height=8, width=10, units="in", res=220)
+      print(
+        ggplot(data=dat.graph[dat.graph$year==y,]) +
+          facet_wrap(~season, scales="free") +
+          geom_point(aes(x=swdown, y=mod.swdown), color="black", size=0.5) +
+          ggtitle(y) +
+          theme_bw()
+      )
+      dev.off()
+    }
+  }
+  # ---------
+  
+}
