@@ -59,6 +59,7 @@ dat.base <- "/projectnb/dietzelab/paleon/met_ensemble/data/met_ensembles/HARVARD
 # mod.out <- "../data/met_ensembles/HARVARD/subday_models"
 # mod.out <- "~/Desktop/met_ensembles/HARVARD/subday_models"
 # fig.dir <- file.path(mod.out, "model_qaqc")
+dat.train <- read.csv("/projectnb/dietzelab/paleon/met_ensemble/data/paleon_sites/HARVARD/NLDAS_1980-2015.csv")
 
 # if(!dir.exists(mod.out)) dir.create(mod.out, recursive = T)
 # if(!dir.exists(fig.dir)) dir.create(fig.dir, recursive = T)
@@ -90,8 +91,16 @@ dimY <- ncdim_def( "lon", units="degrees", longname="latitude", vals=site.lat )
 dimX <- ncdim_def( "lat", units="degrees", longname="longitude", vals=site.lon )
 # -----------------------------------
 
+# NOTE: all precip needs to be converted precip back to kg/m2/s from kg/m2/day
+dat.mod[,c("precipf.day", "lag.precipf", "next.precipf")]/(60*60*24)
+
+
+
 for(GCM in GCM.list){
   path.gcm <- file.path(dat.base, GCM, "day")
+  path.out <- file.path(dat.base, GCM, "1hr")
+  
+  if(!dir.exists(path.out)) dir.create(path.out, recursive=T)
   # setwd(path.gcm)
   # All of the daily ensembles should be zipped to save space
   dat.day <- dir(path.gcm, ".Rdata")
@@ -110,7 +119,7 @@ for(GCM in GCM.list){
     tair.init    <- dat.out.full$met.bias[dat.out.full$met.bias$year==max(years.sim) & dat.out.full$met.bias$doy==364,"tair"]
     tmax.init    <- dat.out.full$met.bias[dat.out.full$met.bias$year==max(years.sim) & dat.out.full$met.bias$doy==364,"tmax"]
     tmin.init    <- dat.out.full$met.bias[dat.out.full$met.bias$year==max(years.sim) & dat.out.full$met.bias$doy==364,"tmin"]
-    precipf.init <- dat.out.full$met.bias[dat.out.full$met.bias$year==max(years.sim) & dat.out.full$met.bias$doy==364,"precipf"]
+    precipf.init <- dat.out.full$met.bias[dat.out.full$met.bias$year==max(years.sim) & dat.out.full$met.bias$doy==364,"precipf"]/(60*60*24)
     swdown.init  <- dat.out.full$met.bias[dat.out.full$met.bias$year==max(years.sim) & dat.out.full$met.bias$doy==364,"swdown"]
     lwdown.init  <- dat.out.full$met.bias[dat.out.full$met.bias$year==max(years.sim) & dat.out.full$met.bias$doy==364,"lwdown"]
     press.init   <- dat.out.full$met.bias[dat.out.full$met.bias$year==max(years.sim) & dat.out.full$met.bias$doy==364,"press"]
@@ -176,7 +185,7 @@ for(GCM in GCM.list){
                                               date         =dat.yr $tmax   $time,
                                               tmax.day     =dat.yr $tmax   [,paste0("X", e)],
                                               tmin.day     =dat.yr $tmin   [,paste0("X", e)],
-                                              precipf.day  =dat.yr $precipf[,paste0("X", e)],
+                                              precipf.day  =dat.yr $precipf[,paste0("X", e)]/(60*60*24),
                                               swdown.day   =dat.yr $swdown [,paste0("X", e)],
                                               lwdown.day   =dat.yr $lwdown [,paste0("X", e)],
                                               press.day    =dat.yr $press  [,paste0("X", e)],
@@ -184,7 +193,7 @@ for(GCM in GCM.list){
                                               wind.day     =dat.yr $wind   [,paste0("X", e)],
                                               next.tmax    =dat.nxt$tmax   [,paste0("X", e)],
                                               next.tmin    =dat.nxt$tmin   [,paste0("X", e)],
-                                              next.precipf =dat.nxt$precipf[,paste0("X", e)],
+                                              next.precipf =dat.nxt$precipf[,paste0("X", e)]/(60*60*24),
                                               next.swdown  =dat.nxt$swdown [,paste0("X", e)],
                                               next.lwdown  =dat.nxt$lwdown [,paste0("X", e)],
                                               next.press   =dat.nxt$press  [,paste0("X", e)],
@@ -213,7 +222,7 @@ for(GCM in GCM.list){
     #       parallelized to speed it up soon, but we'll prototype in parallel
     # -----------------------------------
     for(e in 1:length(dat.ens)){
-      ens.sims <- predict.subdaily(dat.mod=dat.ens[[paste0("X", e)]], n.ens=ens.hr, path.model=file.path(dat.base, "subday_models"), lags.init=lags.init[[paste0("X", e)]])
+      ens.sims <- predict.subdaily(dat.mod=dat.ens[[paste0("X", e)]], n.ens=ens.hr, path.model=file.path(dat.base, "subday_models"), lags.init=lags.init[[paste0("X", e)]], dat.train=dat.train)
       
 
       # Update the initial lags for next year
@@ -229,12 +238,12 @@ for(GCM in GCM.list){
         dat.list <- list()
         for(v in names(ens.sims)){
           var.list[[v]] <- ncvar_def(v, units=paste(vars.info[vars.info$name==v, "units"]), dim=list(dimX, dimY, dim.t), longname=paste(vars.info[vars.info$name==v, "longname"]))
-          dat.list[[v]] <- array(ens.sims[[v]][,i], dim=c(1,1,length(hours.now)))
+          dat.list[[v]] <- array(ens.sims[[v]][,i], dim=c(1,1,length(hrs.now)))
         }
         
         # Naming convention: [SITE]_[GCM]_1hr_[bias_ens_member]-[subday_ens_member]_[YEAR].nc
-        nc <- nc_create(file.path(new.dir, paste0(site.name, "_", GCM, "_1hr_", strpad(e, 3, pad=0), "-", strpad(i, 3, pad=0),  "_", str_pad(y, 4, pad=0), ".nc")), var.list)
-        for(v in 1:length(var)) {
+        nc <- nc_create(file.path(path.out, paste0(site.name, "_", GCM, "_1hr_", str_pad(e, 3, pad=0), "-", str_pad(i, 3, pad=0),  "_", str_pad(y, 4, pad=0), ".nc")), var.list)
+        for(v in 1:length(var.list)) {
           ncvar_put(nc, var.list[[v]], dat.list[[v]])
         }
         nc_close(nc)    
