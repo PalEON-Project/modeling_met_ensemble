@@ -532,7 +532,7 @@ for(i in 1:n){
     
     # Naming convention: [SITE]_[GCM]_day_[member]_[YEAR].nc
     nc <- nc_create(file.path(new.dir, paste0(out.name, "_", str_pad(year(date.start), 4, pad=0), ".nc")), var.list)
-    for(v in 1:length(var)) {
+    for(v in 1:length(var.list)) {
       ncvar_put(nc, var.list[[v]], dat.list[[v]])
     }
     nc_close(nc)    
