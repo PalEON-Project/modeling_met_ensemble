@@ -526,11 +526,11 @@ save.model <- function(model.out, model, outfile){
 
 graph.resids <- function(var, dat.train, model.var, fig.dir){
   dat.train$var     <- dat.train[,var]
-  dat.train$var.day <- dat.train[,paste0(var, ".day")]
   dat.train$lag.var <- dat.train[,paste0("lag.", var)]
   if(var=="tair"){
     dat.train$next.var <- dat.train[,paste0("next.", "tmax")]
   } else {
+    dat.train$var.day <- dat.train[,paste0(var, ".day")]
     dat.train$next.var <- dat.train[,paste0("next.", var)]
   }
   
