@@ -118,7 +118,8 @@ for(GCM in GCM.list){
   # -----------------------------------
   years.sim <- max(dat.out.full$tmax$sims$year):min(dat.out.full$tmax$sims$year)
   
-  ens.day <- sample(1:25, n.day, replace=F) # For now, randomly choose which ensemble members to downscale
+  tot.ens <- which(substr(names(dat.out.full$tmax$sims),1,1)=="X")
+  ens.day <- sample(1:length(tot.ens), n.day, replace=F) # For now, randomly choose which ensemble members to downscale
   # Initialize the lags
   lags.init <- list() # Need to initialize lags first outside of the loop and then they'll get updated internally
   for(e in ens.day){
@@ -227,7 +228,7 @@ for(GCM in GCM.list){
     # Note: Using a loop for each ensemble member for now, but this will get 
     #       parallelized to speed it up soon, but we'll prototype in parallel
     # -----------------------------------
-    for(e in 1:length(dat.ens)){
+    for(e in ens.day){
       # Do the prediction
       ens.sims <- predict.subdaily(dat.mod=dat.ens[[paste0("X", e)]], n.ens=ens.hr, path.model=file.path(dat.base, "subday_models"), lags.init=lags.init[[paste0("X", e)]], dat.train=dat.train)
       
