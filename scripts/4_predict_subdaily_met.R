@@ -95,9 +95,7 @@ dimX <- ncdim_def( "lat", units="degrees", longname="longitude", vals=site.lon )
 # -----------------------------------
 
 # NOTE: all precip needs to be converted precip back to kg/m2/s from kg/m2/day
-dat.mod[,c("precipf.day", "lag.precipf", "next.precipf")]/(60*60*24)
-
-
+# This gets done when formatting things for downscaling
 
 for(GCM in GCM.list){
   path.gcm <- file.path(dat.base, GCM, "day")
