@@ -47,6 +47,7 @@ library(MASS)
 library(lubridate)
 library(ggplot2)
 library(stringr)
+library(tictoc)
 # library(tictoc)
 rm(list=ls())
 
@@ -74,8 +75,8 @@ site.lat=42.54
 site.lon=-72.18
 
 GCM.list = c("CCSM4", "MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1")
-ens.hr  <- 5 # Number of hourly ensemble members to create
-ens.day <- 5 # Number of daily ensemble members to process
+ens.hr  <- 3 # Number of hourly ensemble members to create
+n.day <- 1 # Number of daily ensemble members to process
 
 
 # Defining variable names, longname & units
@@ -99,6 +100,7 @@ dimX <- ncdim_def( "lat", units="degrees", longname="longitude", vals=site.lon )
 # This gets done when formatting things for downscaling
 
 for(GCM in GCM.list){
+  tic()
   # Set the directory where the output is & load the file
   path.gcm <- file.path(dat.base, GCM, "day")
   dat.day <- dir(path.gcm, ".Rdata")
@@ -115,9 +117,10 @@ for(GCM in GCM.list){
   # -----------------------------------
   years.sim <- max(dat.out.full$tmax$sims$year):min(dat.out.full$tmax$sims$year)
   
+  ens.day <- sample(1:25, n.day, replace=F) # For now, randomly choose which ensemble members to downscale
   # Initialize the lags
   lags.init <- list() # Need to initialize lags first outside of the loop and then they'll get updated internally
-  for(e in 1:ens.day){
+  for(e in ens.day){
     tair.init    <- dat.out.full$met.bias[dat.out.full$met.bias$year==max(years.sim) & dat.out.full$met.bias$doy==364,"tair"]
     tmax.init    <- dat.out.full$met.bias[dat.out.full$met.bias$year==max(years.sim) & dat.out.full$met.bias$doy==364,"tmax"]
     tmin.init    <- dat.out.full$met.bias[dat.out.full$met.bias$year==max(years.sim) & dat.out.full$met.bias$doy==364,"tmin"]
@@ -272,4 +275,5 @@ for(GCM in GCM.list){
     system(paste0("rm -rf ", ens)) # remove the uncompressed folder
   }
   setwd(wd.base)
+  toc()
 } # End GCM loop
