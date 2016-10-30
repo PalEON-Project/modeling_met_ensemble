@@ -216,7 +216,7 @@ for(GCM in GCM.list){
     }
     
     # Set up the time dimension for this year
-    hrs.now <- as.numeric(difftime(dat.ens$X1$date, "0850-01-01", tz="GMT", units="hour"))
+    hrs.now <- as.numeric(difftime(dat.ens[[paste0("X", ens.day[1])]]$date, "0850-01-01", tz="GMT", units="hour"))
     dim.t <- ncdim_def(name = "time",
                        units = paste0("hours since 0850-01-01 00:00:00:"),
                        vals = hrs.now, # calculating the number of months in this run
