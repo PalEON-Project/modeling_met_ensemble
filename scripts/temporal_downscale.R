@@ -105,7 +105,7 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.init, dat.train){
       dat.temp <- dat.mod[rows.now,c("time.day", "year", "doy", "hour", 
                                      "tmax.day", "tmin.day", "precipf.day", "swdown.day", "lwdown.day", "press.day", "qair.day", "wind.day",
                                      "next.tmax", "next.tmin", "next.precipf", "next.swdown", "next.lwdown", "next.press", "next.qair", "next.wind")]
-      dat.temp$tair = -99999 # Dummy value so there's a column
+      dat.temp$tair = 999999 # Dummy value so there's a column
       day.now = unique(dat.temp$doy)
       
       # Set up the lags
@@ -123,7 +123,7 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.init, dat.train){
       }
       dat.temp <- merge(dat.temp, sim.lag, all.x=T)
       
-      dat.temp$swdown <- stack(dat.sim$swdown[rows.now,])[,1]
+      # dat.temp$swdown <- stack(dat.sim$swdown[rows.now,])[,1]
       
       rows.beta <- sample(1:n.betas, n.ens, replace=T)
       Rbeta <- as.matrix(ncvar_get(betas.tair, paste(day.now))[rows.beta,], nrow=length(rows.beta), ncol=ncol(betas))
@@ -244,7 +244,7 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.init, dat.train){
       dat.temp <- dat.mod[rows.now,c("time.day", "year", "doy", "hour", 
                                      "tmax.day", "tmin.day", "precipf.day", "swdown.day", "lwdown.day", "press.day", "qair.day", "wind.day",
                                      "next.tmax", "next.tmin", "next.precipf", "next.swdown", "next.lwdown", "next.press")]
-      dat.temp$lwdown = -99999 # Dummy value so there's a column
+      dat.temp$lwdown = 999999 # Dummy value so there's a column
       day.now = unique(dat.temp$doy)
       
       # Set up the lags
@@ -257,8 +257,8 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.init, dat.train){
       }
       dat.temp <- merge(dat.temp, sim.lag, all.x=T)
       
-      dat.temp$swdown <- stack(dat.sim$swdown[rows.now,])[,1]
-      dat.temp$tair <- stack(dat.sim$tair[rows.now,])[,1]
+      # dat.temp$swdown <- stack(dat.sim$swdown[rows.now,])[,1]
+      # dat.temp$tair <- stack(dat.sim$tair[rows.now,])[,1]
       
       rows.beta <- sample(1:n.betas, n.ens, replace=T)
       Rbeta <- as.matrix(ncvar_get(betas.lwdown, paste(day.now))[rows.beta,], nrow=length(rows.beta), ncol=ncol(betas))
@@ -309,7 +309,7 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.init, dat.train){
       dat.temp <- dat.mod[rows.now,c("time.day", "year", "doy", "hour", 
                                      "tmax.day", "tmin.day", "precipf.day", "swdown.day", "lwdown.day", "press.day", "qair.day", "wind.day",
                                      "next.tmax", "next.tmin", "next.precipf", "next.swdown", "next.lwdown", "next.press")]
-      dat.temp$press = -99999 # Dummy value so there's a column
+      dat.temp$press = 999999 # Dummy value so there's a column
       day.now = unique(dat.temp$doy)
       
       # Set up the lags

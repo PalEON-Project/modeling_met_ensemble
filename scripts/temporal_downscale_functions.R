@@ -448,8 +448,8 @@ model.qair <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NUL
   return(mod.out)
 }
 
-predict.met <- function(newdata, model.predict, Rbeta, resid.err=F, model.resid=NULL, Rbeta.resid=NULL, n.ens, seed=9321){
-  set.seed(9321)
+predict.met <- function(newdata, model.predict, Rbeta, resid.err=F, model.resid=NULL, Rbeta.resid=NULL, n.ens){
+  # set.seed(9321)
   err.resid = 0 # dummy residual error term; if we want to add residual error, we're modeling it by hour
 
   mod.terms <- terms(model.predict)
