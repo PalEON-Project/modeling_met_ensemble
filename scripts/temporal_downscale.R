@@ -270,6 +270,7 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.init, dat.train){
                               model.resid=NULL, 
                               Rbeta.resid=NULL, 
                               n.ens=n.ens)
+      dat.pred <- dat.pred^2 # because squared to prevent negative numbers
 
       # Randomly pick which values to save & propogate
       cols.prop <- sample(1:n.ens, ncol(dat.sim$lwdown), replace=T)
@@ -452,7 +453,7 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.init, dat.train){
                               model.resid=NULL, 
                               Rbeta.resid=NULL, 
                               n.ens=n.ens)
-       dat.pred <- exp(dat.pred) # because log-transformed
+      dat.pred <- dat.pred^2 # because squared to prevent negative numbers
       
       # Randomly pick which values to save & propogate
       cols.prop <- sample(1:n.ens, ncol(dat.sim$wind), replace=T)
