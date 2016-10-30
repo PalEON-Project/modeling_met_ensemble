@@ -53,6 +53,7 @@ rm(list=ls())
 set.seed(0017)
 
 wd.base <- "/projectnb/dietzelab/paleon/met_ensemble/"
+# wd.base <- "~/Desktop/Research/PalEON_CR/met_ensemble/"
 setwd(wd.base)
 
 # Load the scripts that do all the heavy lifting
@@ -61,11 +62,10 @@ source("scripts/temporal_downscale_functions.R")
 
 
 dat.base <- "/projectnb/dietzelab/paleon/met_ensemble/data/met_ensembles/HARVARD/"
-# path.mod <- "../data/met_ensembles/HARVARD/subday_models"
-# mod.out <- "../data/met_ensembles/HARVARD/subday_models"
-# mod.out <- "~/Desktop/met_ensembles/HARVARD/subday_models"
-# fig.dir <- file.path(mod.out, "model_qaqc")
 dat.train <- read.csv("/projectnb/dietzelab/paleon/met_ensemble/data/paleon_sites/HARVARD/NLDAS_1980-2015.csv")
+
+# dat.base <- "~/Desktop/met_ensembles/HARVARD/"
+# dat.train <- read.csv(file.pawd.base, "data/paleon_sites/HARVARD/NLDAS_1980-2015.csv")
 
 # if(!dir.exists(mod.out)) dir.create(mod.out, recursive = T)
 # if(!dir.exists(fig.dir)) dir.create(fig.dir, recursive = T)
@@ -237,7 +237,7 @@ for(GCM in GCM.list){
       if(y %in% yrs.plot){
         day.name <- paste0(site.name, "_", GCM, "_1hr_", str_pad(e, 3, pad=0))
         fig.ens <- file.path(path.out, "subdaily_qaqc", day.name)
-        if(!dir.exists(fig.gcm)) dir.create(fig.gcm, recursive=T)
+        if(!dir.exists(fig.ens)) dir.create(fig.ens, recursive=T)
         
         for(v in names(ens.sims)){
           graph.predict(dat.mod=dat.ens[[paste0("X", e)]], dat.ens=ens.sims, var=v, fig.dir=fig.ens)

@@ -171,8 +171,7 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.init, dat.train){
     dat.sim[["precipf"]] <- data.frame(array(dim=c(nrow(dat.mod), n.ens)))
     
     for(i in max(dat.mod$time.day):min(dat.mod$time.day)){
-      r
-      ows.now = which(dat.mod$time.day==i)
+      rows.now = which(dat.mod$time.day==i)
       dat.temp <- dat.mod[rows.now,c("time.day", "year", "doy", "hour", 
                                      "tmax.day", "tmin.day", "precipf.day", "swdown.day", "lwdown.day", "press.day", "qair.day", "wind.day",
                                      "next.tmax", "next.tmin", "next.precipf", "next.swdown", "next.lwdown", "next.press")]

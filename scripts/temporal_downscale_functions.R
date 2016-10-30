@@ -611,9 +611,9 @@ graph.predict <- function(dat.mod, dat.ens, var, fig.dir){
   # Graph the output
   # ---------
   {
-    dat.mod$var.pred <- apply(dat.ens[[var]],2,mean)
-    dat.mod$var.025 <- apply(dat.ens[[var]],2,quantile, 0.025)
-    dat.mod$var.975 <- apply(dat.ens[[var]],2,quantile, 0.975)
+    dat.mod$var.pred <- apply(dat.ens[[var]],1,mean)
+    dat.mod$var.025 <- apply(dat.ens[[var]],1,quantile, 0.025)
+    dat.mod$var.975 <- apply(dat.ens[[var]],1,quantile, 0.975)
     
     
     if(var=="tair"){
