@@ -50,6 +50,7 @@ library(stringr)
 library(tictoc)
 # library(tictoc)
 rm(list=ls())
+set.seed(0017)
 
 wd.base <- "/projectnb/dietzelab/paleon/met_ensemble/"
 setwd(wd.base)
@@ -183,7 +184,7 @@ for(GCM in GCM.list){
     df.hour <- data.frame(hour=0:23)
     
     # Create a list layer for each ensemble member
-    for(e in 1:ens.day){
+    for(e in ens.day){
       dat.ens[[paste0("X", e)]] <- data.frame(dataset      =dat.yr $tmax   $dataset,
                                               year         =dat.yr $tmax   $year,
                                               doy          =dat.yr $tmax   $doy,
