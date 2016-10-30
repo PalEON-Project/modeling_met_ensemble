@@ -209,7 +209,7 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.init, dat.train){
         dat.pred[is.na(dat.pred)] <- 0
       }
       # Convert precip into real units
-      dat.pred <- dat.pred*(dat.temp$precipf.day)
+      dat.pred <- dat.pred*(dat.temp$precipf.day*24)
       
       # Randomly pick which values to save & propogate
       cols.prop <- sample(1:n.ens, ncol(dat.sim$precipf), replace=T)

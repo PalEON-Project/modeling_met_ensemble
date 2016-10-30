@@ -43,7 +43,7 @@ library(mgcv)
 library(MASS)
 # library(lubridate)
 library(ggplot2)
-# library(tictoc)
+library(tictoc)
 rm(list=ls())
 
 # mod.out <- "/projectnb/dietzelab/paleon/met_ensemble/data/met_ensembles/HARVARD/subday_models"
@@ -199,6 +199,8 @@ ens.hr = 10
 
 dat.mod <- dat.train
 dat.mod$time.day <- dat.train$time.day2
+dat.mod <- dat.mod[!is.na(dat.mod$next.tmax),]
+
 dat.sim <- list()
 
 
@@ -218,115 +220,255 @@ lags.init[["wind"   ]] <- data.frame(array(dat.mod[dat.mod$time.hr==max(dat.mod$
 # ---------
 # Tair
 # ---------
-mod.tair.doy    <- model.tair   (dat.train=dat.train[,], resids=resids, parallel=parallel, n.cores=n.cores, n.beta=n.beta)
-
-# Doing the prediction 
-dat.sim[["tair"]] <- data.frame(array(dim=c(nrow(dat.mod), n.ens)))
-pb <- txtProgressBar(min=min(abs(dat.mod$time.day)), max=max(abs(dat.mod$time.day)), style=3)
-for(i in max(dat.mod$time.day):min(dat.mod$time.day)){
-  setTxtProgressBar(pb, abs(i))
-  rows.now = which(dat.mod$time.day==i)
-  dat.temp <- dat.mod[rows.now,c("time.day", "year", "doy", "hour", 
-                                 "tmax.day", "tmin.day", "precipf.day", "swdown.day", "lwdown.day", "press.day", "qair.day", "wind.day",
-                                 "next.tmax", "next.tmin", "next.precipf", "next.swdown", "next.lwdown", "next.press", "next.qair", "next.wind")]
-  dat.temp$tair = -99999 # Dummy value so there's a column
-  day.now = unique(dat.temp$doy)
+{
+  mod.tair.doy    <- model.tair   (dat.train=dat.train[,], resids=resids, parallel=parallel, n.cores=n.cores, n.beta=n.beta)
   
-  # Set up the lags
-  if(i==max(dat.mod$time.day)){
-    sim.lag <- stack(lags.init$tair)
-    names(sim.lag) <- c("lag.tair", "ens")
+  # Doing the prediction 
+  dat.sim[["tair"]] <- data.frame(array(dim=c(nrow(dat.mod), n.ens)))
+  pb <- txtProgressBar(min=min(abs(dat.mod$time.day)), max=max(abs(dat.mod$time.day)), style=3)
+  tic()
+  for(i in max(dat.mod$time.day):min(dat.mod$time.day)){
+    setTxtProgressBar(pb, abs(i))
+    rows.now = which(dat.mod$time.day==i)
+    dat.temp <- dat.mod[rows.now,c("time.day", "year", "doy", "hour", 
+                                   "tmax.day", "tmin.day", "precipf.day", "swdown.day", "lwdown.day", "press.day", "qair.day", "wind.day",
+                                   "next.tmax", "next.tmin", "next.precipf", "next.swdown", "next.lwdown", "next.press", "next.qair", "next.wind")]
+    dat.temp$tair = -99999 # Dummy value so there's a column
+    day.now = unique(dat.temp$doy)
     
-    sim.lag$lag.tmin <- stack(lags.init$tmin)[,1]
-    sim.lag$lag.tmax <- stack(lags.init$tmax)[,1]
-  } else {
-    sim.lag <- stack(data.frame(array(dat.sim[["tair"]][dat.mod$time.day==(i+1)  & dat.mod$hour==0,], dim=c(1, ncol(dat.sim$tair)))))
-    names(sim.lag) <- c("lag.tair", "ens")
-    sim.lag$lag.tmin <- stack(apply(dat.sim[["tair"]][dat.mod$time.day==(i+1),], 2, min))[,1]
-    sim.lag$lag.tmax <- stack(apply(dat.sim[["tair"]][dat.mod$time.day==(i+1),], 2, max))[,1]
+    # Set up the lags
+    if(i==max(dat.mod$time.day)){
+      sim.lag <- stack(lags.init$tair)
+      names(sim.lag) <- c("lag.tair", "ens")
+      
+      sim.lag$lag.tmin <- stack(lags.init$tmin)[,1]
+      sim.lag$lag.tmax <- stack(lags.init$tmax)[,1]
+    } else {
+      sim.lag <- stack(data.frame(array(dat.sim[["tair"]][dat.mod$time.day==(i+1)  & dat.mod$hour==0,], dim=c(1, ncol(dat.sim$tair)))))
+      names(sim.lag) <- c("lag.tair", "ens")
+      sim.lag$lag.tmin <- stack(apply(dat.sim[["tair"]][dat.mod$time.day==(i+1),], 2, min))[,1]
+      sim.lag$lag.tmax <- stack(apply(dat.sim[["tair"]][dat.mod$time.day==(i+1),], 2, max))[,1]
+    }
+    dat.temp <- merge(dat.temp, sim.lag, all.x=T)
+    
+    # dat.temp$swdown <- stack(dat.sim$swdown[rows.now,])[,1]
+    
+    rows.beta <- sample(1:n.beta, n.ens, replace=T)
+    Rbeta <- as.matrix(mod.tair.doy[[paste(day.now)]]$betas[rows.beta,], nrow=length(rows.beta), ncol=ncol(betas))
+    # dimnames(Rbeta)[[2]] <- names(coef(mod.tair.doy[[paste(day.now)]]))
+    
+    dat.pred <- predict.met(newdata=dat.temp, 
+                            model.predict=mod.tair.doy[[paste(day.now)]]$model, 
+                            Rbeta=Rbeta, 
+                            resid.err=F,
+                            model.resid=NULL, 
+                            Rbeta.resid=NULL, 
+                            n.ens=n.ens)
+    
+    # Randomly pick which values to save & propogate
+    cols.prop <- sample(1:n.ens, ncol(dat.sim$tair), replace=T)
+    
+    for(j in 1:ncol(dat.sim$tair)){
+      dat.sim[["tair"]][rows.now,j] <- dat.pred[dat.temp$ens==paste0("X", j),cols.prop[j]]
+    }
   }
-  dat.temp <- merge(dat.temp, sim.lag, all.x=T)
+  toc()
   
-  # dat.temp$swdown <- stack(dat.sim$swdown[rows.now,])[,1]
-  
-  rows.beta <- sample(1:n.beta, n.ens, replace=T)
-  Rbeta <- as.matrix(mod.tair.doy[[paste(day.now)]]$betas[rows.beta,], nrow=length(rows.beta), ncol=ncol(betas))
-  # dimnames(Rbeta)[[2]] <- names(coef(mod.tair.doy[[paste(day.now)]]))
-  
-  dat.pred <- predict.met(newdata=dat.temp, 
-                          model.predict=mod.tair.doy[[paste(day.now)]]$model, 
-                          Rbeta=Rbeta, 
-                          resid.err=F,
-                          model.resid=NULL, 
-                          Rbeta.resid=NULL, 
-                          n.ens=n.ens)
-  
-  # Randomly pick which values to save & propogate
-  cols.prop <- sample(1:n.ens, ncol(dat.sim$tair), replace=T)
-  
-  for(j in 1:ncol(dat.sim$tair)){
-    dat.sim[["tair"]][rows.now,j] <- dat.pred[dat.temp$ens==paste0("X", j),cols.prop[j]]
-  }
-}
-
-for(y in max(dat.mod$year):min(dat.mod$year)){
+  # Graphing
   fig.ens <- file.path(fig.dir, "model_validation", "tair")
   if(!dir.exists(fig.ens)) dir.create(fig.ens, recursive=T)
   
   var="tair"
-  dat.mod$var.pred <- apply(dat.ens[[var]],1,mean)
-  dat.mod$var.025 <- apply(dat.ens[[var]],1,quantile, 0.025)
-  dat.mod$var.975 <- apply(dat.ens[[var]],1,quantile, 0.975)
+  dat.mod$var.pred <- apply(dat.sim[[var]],1,mean)
+  dat.mod$var.025 <- apply(dat.sim[[var]],1,quantile, 0.025)
+  dat.mod$var.975 <- apply(dat.sim[[var]],1,quantile, 0.975)
   
-  dat.graph1 <- dat.mod[dat.mod$doy>=32 & dat.mod$doy<=(32+14) & dat.mod$year==y,]
-  dat.graph1$season <- as.factor("winter")
-  dat.graph2 <- dat.mod[dat.mod$doy>=123 & dat.mod$doy<=(123+14) & dat.mod$year==y,]
-  dat.graph2$season <- as.factor("spring")
-  dat.graph3 <- dat.mod[dat.mod$doy>=214 & dat.mod$doy<=(213+14) & dat.mod$year==y,]
-  dat.graph3$season <- as.factor("summer")
-  dat.graph4 <- dat.mod[dat.mod$doy>=305 & dat.mod$doy<=(305+14) & dat.mod$year==y,]
-  dat.graph4$season <- as.factor("fall")
-  
-  dat.graph <- rbind(dat.graph1, dat.graph2, dat.graph3, dat.graph4)
-  
-  png(file.path(fig.dir, paste0(var, y, "_year.png")), height=8, width=10, units="in", res=220)
-  print(
-    ggplot(data=dat.mod[dat.mod$year==y,]) +
-      geom_ribbon(aes(x=date, ymin=var.025, ymax=var.975), alpha=0.5, fill="blue") +
-      geom_line(aes(x=date, y=var.pred), color="blue") +
-      geom_point(aes(x=date, y=var.pred), color="blue", size=0.5) +
-      geom_point(aes(x=date, y=tair), color="black", size=0.1, alpha=0.5) +
-      geom_line(aes(x=date, y=tair), color="black", size=0.2, alpha=0.5) +
-      scale_x_datetime(expand=c(0,0)) +
-      ggtitle(paste0(var, ": ", y)) +
-      theme_bw()
-  )
-  dev.off()
-  
-  
-  png(file.path(fig.dir, paste0(var, "_examples_", y,".png")), height=8, width=10, units="in", res=220)
-  print(
-    ggplot(data=dat.graph[dat.graph$year==y,]) +
-      facet_wrap(~season, scales="free") +
-      geom_line(aes(x=date, y=tair), color="black") +
-      geom_point(aes(x=date, y=tair), color="black", size=0.5) +
-      geom_ribbon(aes(x=date, ymin=var.025, ymax=var.975), alpha=0.5, fill="blue") +
-      geom_line(aes(x=date, y=var.pred), color="blue") +
-      geom_point(aes(x=date, y=var.pred), color="blue", size=0.5) +
-      scale_y_continuous(name=var) +
-      scale_x_datetime(expand=c(0,0)) +
-      ggtitle(paste0(var, ": ", y)) +
-      theme_bw()
-  )
-  dev.off()
+  for(y in max(dat.mod$year):min(dat.mod$year)){
+    dat.graph1 <- dat.mod[dat.mod$doy>=32 & dat.mod$doy<=(32+14) & dat.mod$year==y,]
+    dat.graph1$season <- as.factor("winter")
+    dat.graph2 <- dat.mod[dat.mod$doy>=123 & dat.mod$doy<=(123+14) & dat.mod$year==y,]
+    dat.graph2$season <- as.factor("spring")
+    dat.graph3 <- dat.mod[dat.mod$doy>=214 & dat.mod$doy<=(213+14) & dat.mod$year==y,]
+    dat.graph3$season <- as.factor("summer")
+    dat.graph4 <- dat.mod[dat.mod$doy>=305 & dat.mod$doy<=(305+14) & dat.mod$year==y,]
+    dat.graph4$season <- as.factor("fall")
     
+    dat.graph <- rbind(dat.graph1, dat.graph2, dat.graph3, dat.graph4)
+    
+    png(file.path(fig.ens, paste0(var, y, "_year.png")), height=8, width=10, units="in", res=220)
+    print(
+      ggplot(data=dat.mod[dat.mod$year==y,]) +
+        geom_ribbon(aes(x=date, ymin=var.025, ymax=var.975), alpha=0.5, fill="blue") +
+        geom_line(aes(x=date, y=var.pred), color="blue") +
+        geom_point(aes(x=date, y=var.pred), color="blue", size=0.5) +
+        geom_point(aes(x=date, y=tair), color="black", size=0.1, alpha=0.5) +
+        geom_line(aes(x=date, y=tair), color="black", size=0.2, alpha=0.5) +
+        scale_x_datetime(expand=c(0,0)) +
+        ggtitle(paste0(var, ": ", y)) +
+        theme_bw()
+    )
+    dev.off()
+    
+    
+    png(file.path(fig.ens, paste0(var, "_examples_", y,".png")), height=8, width=10, units="in", res=220)
+    print(
+      ggplot(data=dat.graph[dat.graph$year==y,]) +
+        facet_wrap(~season, scales="free") +
+        geom_line(aes(x=date, y=tair), color="black") +
+        geom_point(aes(x=date, y=tair), color="black", size=0.5) +
+        geom_ribbon(aes(x=date, ymin=var.025, ymax=var.975), alpha=0.5, fill="blue") +
+        geom_line(aes(x=date, y=var.pred), color="blue") +
+        geom_point(aes(x=date, y=var.pred), color="blue", size=0.5) +
+        scale_y_continuous(name=var) +
+        scale_x_datetime(expand=c(0,0)) +
+        ggtitle(paste0(var, ": ", y)) +
+        theme_bw()
+    )
+    dev.off()
+      
+  }
+  
+  
+  graph.resids(var="tair", dat.train=dat.train, model.var=mod.tair.doy, fig.dir=fig.dir)
+  save.betas(model.out=mod.tair.doy, betas="betas", outfile=file.path(mod.out, "betas_tair.nc"))
+  save.model(model.out=mod.tair.doy, model="model", outfile=file.path(mod.out, "model_tair.Rdata"))
+  rm(mod.tair.doy)
 }
+# ---------
 
 
-# graph.resids(var="tair", dat.train=dat.train, model.var=mod.tair.doy, fig.dir=fig.dir)
-# save.betas(model.out=mod.tair.doy, betas="betas", outfile=file.path(mod.out, "betas_tair.nc"))
-# save.model(model.out=mod.tair.doy, model="model", outfile=file.path(mod.out, "model_tair.Rdata"))
-# rm(mod.tair.doy)
+# ---------
+# precipf
+# ---------
+{
+  mod.precipf.doy    <- model.precipf   (dat.train=dat.train[,], resids=resids, parallel=parallel, n.cores=n.cores, n.beta=n.beta)
+  
+  # Doing the prediction 
+  dat.sim[["precipf"]] <- data.frame(array(dim=c(nrow(dat.mod), n.ens)))
+  pb <- txtProgressBar(min=min(abs(dat.mod$time.day)), max=max(abs(dat.mod$time.day)), style=3)
+  tic()
+  for(i in max(dat.mod$time.day):min(dat.mod$time.day)){
+    setTxtProgressBar(pb, abs(i))
+    rows.now = which(dat.mod$time.day==i)
+    dat.temp <- dat.mod[rows.now,c("time.day", "year", "doy", "hour", 
+                                   "tmax.day", "tmin.day", "precipf.day", "swdown.day", "lwdown.day", "press.day", "qair.day", "wind.day",
+                                   "next.tmax", "next.tmin", "next.precipf", "next.swdown", "next.lwdown", "next.press", "next.qair", "next.wind")]
+    dat.temp$precipf = -99999 # Dummy value so there's a column
+    dat.temp$rain.prop = 99999 # Dummy value so there's a column
+    day.now = unique(dat.temp$doy)
+    
+    # Set up the lags
+    if(i==max(dat.mod$time.day)){
+      sim.lag <- stack(lags.init$precipf)
+      names(sim.lag) <- c("lag.precipf", "ens")
+    } else {
+      sim.lag <- stack(data.frame(array(dat.sim[["precipf"]][dat.mod$time.day==(i+1)  & dat.mod$hour==0,], dim=c(1, ncol(dat.sim$precipf)))))
+      names(sim.lag) <- c("lag.precipf", "ens")
+    }
+    dat.temp <- merge(dat.temp, sim.lag, all.x=T)
+    
+
+    rows.beta <- sample(1:n.beta, n.ens, replace=T)
+    Rbeta <- as.matrix(mod.precipf.doy[[paste(day.now)]]$betas[rows.beta,], nrow=length(rows.beta), ncol=ncol(betas))
+    # dimnames(Rbeta)[[2]] <- names(coef(mod.precipf.doy[[paste(day.now)]]))
+    
+    dat.pred <- predict.met(newdata=dat.temp, 
+                            model.predict=mod.precipf.doy[[paste(day.now)]]$model, 
+                            Rbeta=Rbeta, 
+                            resid.err=F,
+                            model.resid=NULL, 
+                            Rbeta.resid=NULL, 
+                            n.ens=n.ens)
+    # Re-distribute negative probabilities -- add randomly to make more peaky
+    if(max(dat.pred)>0){ # If there's no rain on this day, skip the re-proportioning
+      tmp <- 1:nrow(dat.pred) # A dummy vector of the 
+      for(j in 1:ncol(dat.pred)){
+        if(min(dat.pred[,j])>=0) next
+        rows.neg <- which(dat.pred[,j]<0)
+        rows.add <- sample(tmp[!tmp %in% rows.neg],length(rows.neg), replace=T)
+        
+        for(z in 1:length(rows.neg)){
+          dat.pred[rows.add[z],j] <- dat.pred[rows.add[z],j] - dat.pred[rows.neg[z],j]
+          dat.pred[rows.neg[z],j] <- 0  
+        }
+      }
+      dat.pred <- dat.pred/rowSums(dat.pred)
+      dat.pred[is.na(dat.pred)] <- 0
+    }
+    # Convert precip into real units
+    dat.pred <- dat.pred*(dat.temp$precipf.day*24)
+    
+    # Randomly pick which values to save & propogate
+    cols.prop <- sample(1:n.ens, ncol(dat.sim$precipf), replace=T)
+    
+    for(j in 1:ncol(dat.sim$precipf)){
+      dat.sim[["precipf"]][rows.now,j] <- dat.pred[dat.temp$ens==paste0("X", j),cols.prop[j]]
+    }
+  }
+  toc()
+  
+  dat.sim$precipf <- dat.sim$precipf*24
+  
+  # Graphing
+  fig.ens <- file.path(fig.dir, "model_validation", "precipf")
+  if(!dir.exists(fig.ens)) dir.create(fig.ens, recursive=T)
+  
+  var="precipf"
+  dat.mod$var.pred <- apply(dat.sim[[var]],1,mean)
+  dat.mod$var.025 <- apply(dat.sim[[var]],1,quantile, 0.025)
+  dat.mod$var.975 <- apply(dat.sim[[var]],1,quantile, 0.975)
+  
+  for(y in max(dat.mod$year):min(dat.mod$year)){
+    dat.graph1 <- dat.mod[dat.mod$doy>=32 & dat.mod$doy<=(32+14) & dat.mod$year==y,]
+    dat.graph1$season <- as.factor("winter")
+    dat.graph2 <- dat.mod[dat.mod$doy>=123 & dat.mod$doy<=(123+14) & dat.mod$year==y,]
+    dat.graph2$season <- as.factor("spring")
+    dat.graph3 <- dat.mod[dat.mod$doy>=214 & dat.mod$doy<=(213+14) & dat.mod$year==y,]
+    dat.graph3$season <- as.factor("summer")
+    dat.graph4 <- dat.mod[dat.mod$doy>=305 & dat.mod$doy<=(305+14) & dat.mod$year==y,]
+    dat.graph4$season <- as.factor("fall")
+    
+    dat.graph <- rbind(dat.graph1, dat.graph2, dat.graph3, dat.graph4)
+    
+    png(file.path(fig.ens, paste0(var, y, "_year.png")), height=8, width=10, units="in", res=220)
+    print(
+      ggplot(data=dat.mod[dat.mod$year==y,]) +
+        geom_ribbon(aes(x=date, ymin=var.025, ymax=var.975), alpha=0.5, fill="blue") +
+        geom_line(aes(x=date, y=var.pred), color="blue") +
+        geom_point(aes(x=date, y=var.pred), color="blue", size=0.5) +
+        geom_point(aes(x=date, y=precipf), color="black", size=0.1, alpha=0.5) +
+        geom_line(aes(x=date, y=precipf), color="black", size=0.2, alpha=0.5) +
+        scale_x_datetime(expand=c(0,0)) +
+        ggtitle(paste0(var, ": ", y)) +
+        theme_bw()
+    )
+    dev.off()
+    
+    
+    png(file.path(fig.ens, paste0(var, "_examples_", y,".png")), height=8, width=10, units="in", res=220)
+    print(
+      ggplot(data=dat.graph[dat.graph$year==y,]) +
+        facet_wrap(~season, scales="free") +
+        geom_line(aes(x=date, y=precipf), color="black") +
+        geom_point(aes(x=date, y=precipf), color="black", size=0.5) +
+        geom_ribbon(aes(x=date, ymin=var.025, ymax=var.975), alpha=0.5, fill="blue") +
+        geom_line(aes(x=date, y=var.pred), color="blue") +
+        geom_point(aes(x=date, y=var.pred), color="blue", size=0.5) +
+        scale_y_continuous(name=var) +
+        scale_x_datetime(expand=c(0,0)) +
+        ggtitle(paste0(var, ": ", y)) +
+        theme_bw()
+    )
+    dev.off()
+    
+  }
+  
+  
+  graph.resids(var="precipf", dat.train=dat.train, model.var=mod.precipf.doy, fig.dir=fig.dir)
+  save.betas(model.out=mod.precipf.doy, betas="betas", outfile=file.path(mod.out, "betas_precipf.nc"))
+  save.model(model.out=mod.precipf.doy, model="model", outfile=file.path(mod.out, "model_precipf.Rdata"))
+  rm(mod.precipf.doy)
+}
 # ---------
 
 mod.precipf.doy <- model.precipf(dat.train=dat.train[,], resids=resids, parallel=parallel, n.cores=n.cores, n.beta=n.beta)
