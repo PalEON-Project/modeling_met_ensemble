@@ -78,7 +78,7 @@ site.lon=-72.18
 GCM.list = c("CCSM4", "MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1")
 ens.hr  <- 3 # Number of hourly ensemble members to create
 n.day <- 1 # Number of daily ensemble members to process
-
+yrs.plot <- c(2015, 1985, 1920, 1875, 1800, 1000, 850)
 
 # Defining variable names, longname & units
 vars.info <- data.frame(name=c("tair", "precipf", "swdown", "lwdown", "press", "qair", "wind"),
@@ -233,6 +233,18 @@ for(GCM in GCM.list){
       ens.sims <- predict.subdaily(dat.mod=dat.ens[[paste0("X", e)]], n.ens=ens.hr, path.model=file.path(dat.base, "subday_models"), lags.init=lags.init[[paste0("X", e)]], dat.train=dat.train)
       
 
+      # If this is one of our designated QAQC years, makes some graphs
+      if(y %in% yrs.plot){
+        day.name <- paste0(site.name, "_", GCM, "_1hr_", str_pad(e, 3, pad=0))
+        fig.ens <- file.path(path.out, "subdaily_qaqc", day.name)
+        if(!dir.exists(fig.gcm)) dir.create(fig.gcm, recursive=T)
+        
+        for(v in names(ens.sims)){
+          graph.predict(dat.mod=dat.ens[[paste0("X", e)]], dat.ens=ens.sims, var=v, fig.dir=fig.ens)
+        }
+      }
+      
+      
       # Update the initial lags for next year
       for(v in names(ens.sims)){
         lags.init[[paste0("X",e)]][[v]] <- data.frame(ens.sims[[v]][length(ens.sims[[v]]),])
