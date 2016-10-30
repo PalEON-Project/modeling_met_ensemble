@@ -54,6 +54,9 @@ rm(list=ls())
 source("temporal_downscale.R")
 source("temporal_downscale_functions.R")
 
+wd.base <- "/projectnb/dietzelab/paleon/met_ensemble/"
+setwd(wd.base)
+
 dat.base <- "/projectnb/dietzelab/paleon/met_ensemble/data/met_ensembles/HARVARD/"
 # path.mod <- "../data/met_ensembles/HARVARD/subday_models"
 # mod.out <- "../data/met_ensembles/HARVARD/subday_models"
@@ -98,7 +101,6 @@ dat.mod[,c("precipf.day", "lag.precipf", "next.precipf")]/(60*60*24)
 
 for(GCM in GCM.list){
   path.gcm <- file.path(dat.base, GCM, "day")
-  path.out <- file.path(dat.base, GCM, "1hr")
   
   if(!dir.exists(path.out)) dir.create(path.out, recursive=T)
   # setwd(path.gcm)
@@ -234,6 +236,11 @@ for(GCM in GCM.list){
       # Write each year for each ensemble member into its own .nc file
       # -----------------------------------
       for(i in 1:ens.hr){
+        ens.name <- paste0(site.name, "_", GCM, "_1hr_", str_pad(e, 3, pad=0), "-", str_pad(i, 3, pad=0))
+        
+        if(!dir.exists(file.path(path.out, ens.name))) dir.create(file.path(path.out, ens.name), recursive=T)
+        path.out <- file.path(dat.base, GCM, "1hr")
+        
         var.list <- list()
         dat.list <- list()
         for(v in names(ens.sims)){
@@ -242,7 +249,7 @@ for(GCM in GCM.list){
         }
         
         # Naming convention: [SITE]_[GCM]_1hr_[bias_ens_member]-[subday_ens_member]_[YEAR].nc
-        nc <- nc_create(file.path(path.out, paste0(site.name, "_", GCM, "_1hr_", str_pad(e, 3, pad=0), "-", str_pad(i, 3, pad=0),  "_", str_pad(y, 4, pad=0), ".nc")), var.list)
+        nc <- nc_create(file.path(path.out, ens.name, paste0(ens.name,"_", str_pad(y, 4, pad=0), ".nc")), var.list)
         for(v in 1:length(var.list)) {
           ncvar_put(nc, var.list[[v]], dat.list[[v]])
         }
@@ -250,8 +257,18 @@ for(GCM in GCM.list){
       }
       # -----------------------------------
       
-    }
+    } # End ensemble member prediction for 1 year
     # -----------------------------------
-  }
+  } # End Year Loop
   # -----------------------------------
-}
+  
+  # Do some clean-up to save space
+  dir.compress <- dir(path.out, GCM)
+  
+  setwd(path.out)
+  for(ens in dir.compress){
+    system(paste0("tar -jcvf ", ens, ".tar.bz2 ", ens)) # Compress the folder
+    system(paste0("rm -rf ", ens)) # remove the uncompressed folder
+  }
+  setwd(wd.base)
+} # End GCM loop
