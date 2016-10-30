@@ -42,35 +42,35 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.init){
     n.betas <- nrow(ncvar_get(betas.tair, "1"))
     
     dat.sim[["tair"]] <- data.frame(array(dim=c(nrow(dat.mod), n.ens)))
-    dat.sim[["tair"]][1,] <- dat.mod[1,"tair"]
+    # dat.sim[["tair"]][1,] <- dat.mod[1,"tair"]
     
-    # pb <- txtProgressBar(min=abs(max(dat.mod$time.day2)), max=abs(min(dat.mod$time.day2)), style=3)
-    for(i in max(dat.mod$time.day2):min(dat.mod$time.day2)){
+    # pb <- txtProgressBar(min=abs(max(dat.mod$time.day)), max=abs(min(dat.mod$time.day)), style=3)
+    for(i in max(dat.mod$time.day):min(dat.mod$time.day)){
       # setTxtProgressBar(pb, abs(i))
       
-      rows.now = which(dat.mod$time.day2==i)
-      dat.temp <- dat.mod[rows.now,c("time.day2", "year", "doy", "hour", "tmax.day", "tmin.day", "precipf.day", "swdown.day", "lwdown.day", "press.day", "qair.day", "wind.day")]
+      rows.now = which(dat.mod$time.day==i)
+      dat.temp <- dat.mod[rows.now,c("time.day", "year", "doy", "hour", "tmax.day", "tmin.day", "precipf.day", "swdown.day", "lwdown.day", "press.day", "qair.day", "wind.day")]
       dat.temp$tair = -99999 # Dummy value so there's a column
       dat.temp <- dat.temp[complete.cases(dat.temp),]
       # day.now = dat.temp$doy
       day.now = unique(dat.temp$doy)
       
       # Set up the lags
-      if(i==max(dat.mod$time.day2)){
+      if(i==max(dat.mod$time.day)){
         sim.lag <- stack(lags.init$tair)
         names(sim.lag) <- c("lag.tair", "ens")
         
         sim.lag$lag.tmin <- stack(lags.init$tmin)[,1]
         sim.lag$lag.tmax <- stack(lags.init$tmax)[,1]
         
-        # sim.lag <- stack(data.frame(array(mean(dat.mod[which(dat.mod$time.day2==i & dat.mod$hour<=2),"tair"]), dim=c(1, ncol(dat.sim)))))
+        # sim.lag <- stack(data.frame(array(mean(dat.mod[which(dat.mod$time.day==i & dat.mod$hour<=2),"tair"]), dim=c(1, ncol(dat.sim)))))
       } else {
-        sim.lag <- stack(data.frame(array(dat.sim[["tair"]][dat.mod$time.day2==(i+1)  & dat.mod$hour==0,], dim=c(1, ncol(dat.sim$tair)))))
+        sim.lag <- stack(data.frame(array(dat.sim[["tair"]][dat.mod$time.day==(i+1)  & dat.mod$hour==0,], dim=c(1, ncol(dat.sim$tair)))))
         names(sim.lag) <- c("lag.tair", "ens")
-        sim.lag$lag.tmin <- stack(apply(dat.sim[["tair"]][dat.mod$time.day2==(i+1),], 2, min))[,1]
-        sim.lag$lag.tmax <- stack(apply(dat.sim[["tair"]][dat.mod$time.day2==(i+1),], 2, max))[,1]
+        sim.lag$lag.tmin <- stack(apply(dat.sim[["tair"]][dat.mod$time.day==(i+1),], 2, min))[,1]
+        sim.lag$lag.tmax <- stack(apply(dat.sim[["tair"]][dat.mod$time.day==(i+1),], 2, max))[,1]
         
-        # sim.lag <- stack(apply(dat.sim[dat.mod$time.day2==(i+1)  & dat.mod$hour<=2,],2, mean))
+        # sim.lag <- stack(apply(dat.sim[dat.mod$time.day==(i+1)  & dat.mod$hour<=2,],2, mean))
       }
       dat.temp <- merge(dat.temp, sim.lag, all.x=T)
       
@@ -98,12 +98,12 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.init){
       # dat.mod[rows.now,"mod.tair"] <- apply(dat.sim[["tair"]][rows.now,],1, mean)
       # dat.sim[i,] <- dat.pred
       # dat.mod[i,"mod.hr"] <- predict(mod.fill, dat.mod[i,])
-      if(i>min(dat.mod$time.day2)){ 
-        dat.mod[dat.mod$time.day2==i-1,"lag.tair" ] <- dat.mod[dat.mod$time.day2==i & dat.mod$hour==0,"mod.tair"] 
-        dat.mod[dat.mod$time.day2==i-1,"lag.tmin" ] <- min(dat.mod[dat.mod$time.day2==i,"mod.tair"] )
-        dat.mod[dat.mod$time.day2==i-1,"lag.tmax" ] <- max(dat.mod[dat.mod$time.day2==i,"mod.tair"] )
+      if(i>min(dat.mod$time.day)){ 
+        dat.mod[dat.mod$time.day==i-1,"lag.tair" ] <- dat.mod[dat.mod$time.day==i & dat.mod$hour==0,"mod.tair"] 
+        dat.mod[dat.mod$time.day==i-1,"lag.tmin" ] <- min(dat.mod[dat.mod$time.day==i,"mod.tair"] )
+        dat.mod[dat.mod$time.day==i-1,"lag.tmax" ] <- max(dat.mod[dat.mod$time.day==i,"mod.tair"] )
       }
-      # if(i>min(dat.mod$time.day2)) dat.mod[dat.mod$time.day2==i-1,"lag.day"] <- mean(dat.mod[dat.mod$time.day2==i & dat.mod$hour<=2,"mod.tair"])
+      # if(i>min(dat.mod$time.day)) dat.mod[dat.mod$time.day==i-1,"lag.day"] <- mean(dat.mod[dat.mod$time.day==i & dat.mod$hour<=2,"mod.tair"])
     }
     # dat.mod$mod.tair.mean <- apply(dat.sim[["tair"]], 1, mean)
     # dat.mod$mod.tair.025   <- apply(dat.sim[["tair"]], 1, quantile, 0.025)
@@ -135,12 +135,12 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.init){
     dat.sim[["precipf"]] <- data.frame(array(dim=c(nrow(dat.mod), n.ens)))
     dat.sim[["precipf"]][1,] <- dat.mod[1,"precipf"]
     
-    # pb <- txtProgressBar(min=abs(max(dat.mod$time.day2)), max=abs(min(dat.mod$time.day2)), style=3)
-    for(i in max(dat.mod$time.day2):min(dat.mod$time.day2)){
+    # pb <- txtProgressBar(min=abs(max(dat.mod$time.day)), max=abs(min(dat.mod$time.day)), style=3)
+    for(i in max(dat.mod$time.day):min(dat.mod$time.day)){
       # setTxtProgressBar(pb, abs(i))
       
-      rows.now = which(dat.mod$time.day2==i)
-      dat.temp <- dat.mod[rows.now,c("time.day2", "year", "doy", "hour", "tmax.day", "tmin.day", "precipf.day", "swdown.day", "press.day", "wind.day", "qair.day", "next.precipf")]
+      rows.now = which(dat.mod$time.day==i)
+      dat.temp <- dat.mod[rows.now,c("time.day", "year", "doy", "hour", "tmax.day", "tmin.day", "precipf.day", "swdown.day", "press.day", "wind.day", "qair.day", "next.precipf")]
       dat.temp$precipf = 99999 # Dummy value so there's a column
       dat.temp$rain.prop = 99999 # Dummy value so there's a column
       dat.temp <- dat.temp[complete.cases(dat.temp),]
@@ -148,21 +148,21 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.init){
       day.now = unique(dat.temp$doy)
       
       # # Set up the lags
-      # if(i==max(dat.mod$time.day2)){
-      #   sim.lag <- stack(data.frame(array(dat.mod[which(dat.mod$time.day2==i & dat.mod$hour==0),"precipf"], dim=c(1, ncol(dat.sim$precipf)))))
+      # if(i==max(dat.mod$time.day)){
+      #   sim.lag <- stack(data.frame(array(dat.mod[which(dat.mod$time.day==i & dat.mod$hour==0),"precipf"], dim=c(1, ncol(dat.sim$precipf)))))
       #   names(sim.lag) <- c("lag.precipf", "ens")
       #   
-      #   # sim.lag$lag.tmin <- stack(data.frame(array(min(dat.mod[which(dat.mod$time.day2==i ),"precipf"]), dim=c(1, ncol(dat.sim$precipf)))))[,1]
-      #   # sim.lag$lag.tmax <- stack(data.frame(array(max(dat.mod[which(dat.mod$time.day2==i ),"precipf"]), dim=c(1, ncol(dat.sim$precipf)))))[,1]
+      #   # sim.lag$lag.tmin <- stack(data.frame(array(min(dat.mod[which(dat.mod$time.day==i ),"precipf"]), dim=c(1, ncol(dat.sim$precipf)))))[,1]
+      #   # sim.lag$lag.tmax <- stack(data.frame(array(max(dat.mod[which(dat.mod$time.day==i ),"precipf"]), dim=c(1, ncol(dat.sim$precipf)))))[,1]
       #   
-      #   # sim.lag <- stack(data.frame(array(mean(dat.mod[which(dat.mod$time.day2==i & dat.mod$hour<=2),"precipf"]), dim=c(1, ncol(dat.sim)))))
+      #   # sim.lag <- stack(data.frame(array(mean(dat.mod[which(dat.mod$time.day==i & dat.mod$hour<=2),"precipf"]), dim=c(1, ncol(dat.sim)))))
       # } else {
-      #   sim.lag <- stack(data.frame(array(dat.sim[["precipf"]][dat.mod$time.day2==(i+1)  & dat.mod$hour==0,], dim=c(1, ncol(dat.sim$precipf)))))
+      #   sim.lag <- stack(data.frame(array(dat.sim[["precipf"]][dat.mod$time.day==(i+1)  & dat.mod$hour==0,], dim=c(1, ncol(dat.sim$precipf)))))
       #   names(sim.lag) <- c("lag.precipf", "ens")
-      #   # sim.lag$lag.tmin <- stack(apply(dat.sim[["precipf"]][dat.mod$time.day2==(i+1),], 2, min))[,1]
-      #   # sim.lag$lag.tmax <- stack(apply(dat.sim[["precipf"]][dat.mod$time.day2==(i+1),], 2, max))[,1]
+      #   # sim.lag$lag.tmin <- stack(apply(dat.sim[["precipf"]][dat.mod$time.day==(i+1),], 2, min))[,1]
+      #   # sim.lag$lag.tmax <- stack(apply(dat.sim[["precipf"]][dat.mod$time.day==(i+1),], 2, max))[,1]
       #   
-      #   # sim.lag <- stack(apply(dat.sim[dat.mod$time.day2==(i+1)  & dat.mod$hour<=2,],2, mean))
+      #   # sim.lag <- stack(apply(dat.sim[dat.mod$time.day==(i+1)  & dat.mod$hour<=2,],2, mean))
       # }
       # sim.lag[sim.lag$lag.precipf==0,"lag.precipf"] <- 1e-12
       # dat.temp <- merge(dat.temp, sim.lag, all.x=T)
@@ -209,10 +209,10 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.init){
       # dat.mod[rows.now,"mod.precipf"] <- apply(dat.sim[["precipf"]][rows.now,],1, mean)
       # dat.sim[i,] <- dat.pred
       # dat.mod[i,"mod.hr"] <- predict(mod.fill, dat.mod[i,])
-      if(i>min(dat.mod$time.day2)){ 
-        dat.mod[dat.mod$time.day2==i-1,"lag.precipf" ] <- dat.mod[dat.mod$time.day2==i & dat.mod$hour==0,"mod.precipf"] 
+      if(i>min(dat.mod$time.day)){ 
+        dat.mod[dat.mod$time.day==i-1,"lag.precipf" ] <- dat.mod[dat.mod$time.day==i & dat.mod$hour==0,"mod.precipf"] 
       }
-      # if(i>min(dat.mod$time.day2)) dat.mod[dat.mod$time.day2==i-1,"lag.day"] <- mean(dat.mod[dat.mod$time.day2==i & dat.mod$hour<=2,"mod.precipf"])
+      # if(i>min(dat.mod$time.day)) dat.mod[dat.mod$time.day==i-1,"lag.day"] <- mean(dat.mod[dat.mod$time.day==i & dat.mod$hour<=2,"mod.precipf"])
     }
     # dat.mod$mod.precipf.mean <- apply(dat.sim[["precipf"]], 1, mean)
     # dat.mod$mod.precipf.025   <- apply(dat.sim[["precipf"]], 1, quantile, 0.025)
@@ -256,7 +256,7 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.init){
       rows.now = which(dat.mod$doy==i)
       rows.mod = which(dat.mod$doy==i & dat.mod$hour %in% hrs.day)
       
-      dat.temp <- dat.mod[rows.mod,c("time.day2", "year", "doy", "hour", "tmax.day", "tmin.day", "precipf.day", "swdown.day", "lwdown.day", "press.day", "qair.day", "wind.day")]
+      dat.temp <- dat.mod[rows.mod,c("time.day", "year", "doy", "hour", "tmax.day", "tmin.day", "precipf.day", "swdown.day", "lwdown.day", "press.day", "qair.day", "wind.day")]
       dat.temp$swdown = 99999 # Dummy value so there's a column
       dat.temp <- dat.temp[complete.cases(dat.temp),]
       
@@ -313,23 +313,23 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.init){
     dat.sim[["lwdown"]] <- data.frame(array(dim=c(nrow(dat.mod), n.ens)))
     dat.sim[["lwdown"]][1,] <- dat.mod[1,"lwdown"]
     
-    # pb <- txtProgressBar(min=abs(max(dat.mod$time.day2)), max=abs(min(dat.mod$time.day2)), style=3)
-    for(i in max(dat.mod$time.day2):min(dat.mod$time.day2)){
+    # pb <- txtProgressBar(min=abs(max(dat.mod$time.day)), max=abs(min(dat.mod$time.day)), style=3)
+    for(i in max(dat.mod$time.day):min(dat.mod$time.day)){
       # setTxtProgressBar(pb, abs(i))
       
-      rows.now = which(dat.mod$time.day2==i)
-      dat.temp <- dat.mod[rows.now,c("time.day2", "year", "doy", "hour", "tmax.day", "tmin.day", "precipf.day", "swdown.day", "lwdown.day", "press.day", "qair.day", "wind.day")]
+      rows.now = which(dat.mod$time.day==i)
+      dat.temp <- dat.mod[rows.now,c("time.day", "year", "doy", "hour", "tmax.day", "tmin.day", "precipf.day", "swdown.day", "lwdown.day", "press.day", "qair.day", "wind.day")]
       dat.temp$lwdown = -99999 # Dummy value so there's a column
       dat.temp <- dat.temp[complete.cases(dat.temp),]
       # day.now = dat.temp$doy
       day.now = unique(dat.temp$doy)
       
       # Set up the lags
-      if(i==max(dat.mod$time.day2)){
+      if(i==max(dat.mod$time.day)){
         sim.lag <- stack(lags.init$lwdown)
         names(sim.lag) <- c("lag.lwdown", "ens")
       } else {
-        sim.lag <- stack(data.frame(array(dat.sim[["lwdown"]][dat.mod$time.day2==(i+1)  & dat.mod$hour==0,], dim=c(1, ncol(dat.sim$lwdown)))))
+        sim.lag <- stack(data.frame(array(dat.sim[["lwdown"]][dat.mod$time.day==(i+1)  & dat.mod$hour==0,], dim=c(1, ncol(dat.sim$lwdown)))))
         names(sim.lag) <- c("lag.lwdown", "ens")
       }
       dat.temp <- merge(dat.temp, sim.lag, all.x=T)
@@ -359,10 +359,10 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.init){
       dat.mod[rows.now,"mod.lwdown"] <- apply(dat.sim[["lwdown"]][rows.now,],1, mean)
       # dat.sim[i,] <- dat.pred
       # dat.mod[i,"mod.hr"] <- predict(mod.fill, dat.mod[i,])
-      if(i>min(dat.mod$time.day2)){ 
-        dat.mod[dat.mod$time.day2==i-1,"lag.lwdown" ] <- dat.mod[dat.mod$time.day2==i & dat.mod$hour==0,"mod.lwdown"] 
+      if(i>min(dat.mod$time.day)){ 
+        dat.mod[dat.mod$time.day==i-1,"lag.lwdown" ] <- dat.mod[dat.mod$time.day==i & dat.mod$hour==0,"mod.lwdown"] 
       }
-      # if(i>min(dat.mod$time.day2)) dat.mod[dat.mod$time.day2==i-1,"lag.day"] <- mean(dat.mod[dat.mod$time.day2==i & dat.mod$hour<=2,"mod.lwdown"])
+      # if(i>min(dat.mod$time.day)) dat.mod[dat.mod$time.day==i-1,"lag.day"] <- mean(dat.mod[dat.mod$time.day==i & dat.mod$hour<=2,"mod.lwdown"])
     }
     # dat.mod$mod.lwdown.mean <- apply(dat.sim[["lwdown"]], 1, mean)
     # dat.mod$mod.lwdown.025   <- apply(dat.sim[["lwdown"]], 1, quantile, 0.025)
@@ -390,23 +390,23 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.init){
     dat.sim[["press"]] <- data.frame(array(dim=c(nrow(dat.mod), n.ens)))
     dat.sim[["press"]][1,] <- dat.mod[1,"press"]
     
-    # pb <- txtProgressBar(min=abs(max(dat.mod$time.day2)), max=abs(min(dat.mod$time.day2)), style=3)
-    for(i in max(dat.mod$time.day2):min(dat.mod$time.day2)){
+    # pb <- txtProgressBar(min=abs(max(dat.mod$time.day)), max=abs(min(dat.mod$time.day)), style=3)
+    for(i in max(dat.mod$time.day):min(dat.mod$time.day)){
       # setTxtProgressBar(pb, abs(i))
       
-      rows.now = which(dat.mod$time.day2==i)
-      dat.temp <- dat.mod[rows.now,c("time.day2", "year", "doy", "hour", "tmax.day", "tmin.day", "precipf.day", "swdown.day", "press.day", "press.day", "qair.day", "wind.day", "next.press")]
+      rows.now = which(dat.mod$time.day==i)
+      dat.temp <- dat.mod[rows.now,c("time.day", "year", "doy", "hour", "tmax.day", "tmin.day", "precipf.day", "swdown.day", "press.day", "press.day", "qair.day", "wind.day", "next.press")]
       dat.temp$press = -99999 # Dummy value so there's a column
       dat.temp <- dat.temp[complete.cases(dat.temp),]
       # day.now = dat.temp$doy
       day.now = unique(dat.temp$doy)
       
       # Set up the lags
-      if(i==max(dat.mod$time.day2)){
+      if(i==max(dat.mod$time.day)){
         sim.lag <- stack(lags.init$press)
         names(sim.lag) <- c("lag.press", "ens")
       } else {
-        sim.lag <- stack(data.frame(array(dat.sim[["press"]][dat.mod$time.day2==(i+1)  & dat.mod$hour==0,], dim=c(1, ncol(dat.sim$press)))))
+        sim.lag <- stack(data.frame(array(dat.sim[["press"]][dat.mod$time.day==(i+1)  & dat.mod$hour==0,], dim=c(1, ncol(dat.sim$press)))))
         names(sim.lag) <- c("lag.press", "ens")
       }
       dat.temp <- merge(dat.temp, sim.lag, all.x=T)
@@ -436,10 +436,10 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.init){
       # dat.mod[rows.now,"mod.press"] <- apply(dat.sim[["press"]][rows.now,],1, mean)
       # dat.sim[i,] <- dat.pred
       # dat.mod[i,"mod.hr"] <- predict(mod.fill, dat.mod[i,])
-      if(i>min(dat.mod$time.day2)){ 
-        dat.mod[dat.mod$time.day2==i-1,"lag.press" ] <- dat.mod[dat.mod$time.day2==i & dat.mod$hour==0,"mod.press"] 
+      if(i>min(dat.mod$time.day)){ 
+        dat.mod[dat.mod$time.day==i-1,"lag.press" ] <- dat.mod[dat.mod$time.day==i & dat.mod$hour==0,"mod.press"] 
       }
-      # if(i>min(dat.mod$time.day2)) dat.mod[dat.mod$time.day2==i-1,"lag.day"] <- mean(dat.mod[dat.mod$time.day2==i & dat.mod$hour<=2,"mod.press"])
+      # if(i>min(dat.mod$time.day)) dat.mod[dat.mod$time.day==i-1,"lag.day"] <- mean(dat.mod[dat.mod$time.day==i & dat.mod$hour<=2,"mod.press"])
     }
     # dat.mod$mod.press.mean <- apply(dat.sim[["press"]], 1, mean)
     # dat.mod$mod.press.025   <- apply(dat.sim[["press"]], 1, quantile, 0.025)
@@ -468,26 +468,26 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.init){
     dat.sim[["qair"]] <- data.frame(array(dim=c(nrow(dat.mod), n.ens)))
     dat.sim[["qair"]][1,] <- dat.mod[1,"qair"]
     
-    pb <- txtProgressBar(min=abs(max(dat.mod$time.day2)), max=abs(min(dat.mod$time.day2)), style=3)
+    pb <- txtProgressBar(min=abs(max(dat.mod$time.day)), max=abs(min(dat.mod$time.day)), style=3)
     set.seed(138)
     tic()
-    for(i in max(dat.mod$time.day2):min(dat.mod$time.day2)){
+    for(i in max(dat.mod$time.day):min(dat.mod$time.day)){
       setTxtProgressBar(pb, abs(i))
       
-      rows.now = which(dat.mod$time.day2==i)
-      dat.temp <- dat.mod[rows.now,c("time.day2", "year", "doy", "hour", "tmax.day", "tmin.day", "precipf.day", "swdown.day", "press.day", "lwdown.day", "qair.day", "wind.day", "next.qair")]
+      rows.now = which(dat.mod$time.day==i)
+      dat.temp <- dat.mod[rows.now,c("time.day", "year", "doy", "hour", "tmax.day", "tmin.day", "precipf.day", "swdown.day", "press.day", "lwdown.day", "qair.day", "wind.day", "next.qair")]
       dat.temp$qair = 99999 # Dummy value so there's a column
       dat.temp <- dat.temp[complete.cases(dat.temp),]
       # day.now = dat.temp$doy
       day.now = unique(dat.temp$doy)
       
       # Set up the lags
-      if(i==max(dat.mod$time.day2)){
+      if(i==max(dat.mod$time.day)){
         sim.lag <- stack(lags.init$qair)
         names(sim.lag) <- c("lag.qair", "ens")
         
       } else {
-        sim.lag <- stack(data.frame(array(dat.sim[["qair"]][dat.mod$time.day2==(i+1)  & dat.mod$hour==0,], dim=c(1, ncol(dat.sim$qair)))))
+        sim.lag <- stack(data.frame(array(dat.sim[["qair"]][dat.mod$time.day==(i+1)  & dat.mod$hour==0,], dim=c(1, ncol(dat.sim$qair)))))
         names(sim.lag) <- c("lag.qair", "ens")
       }
       dat.temp <- merge(dat.temp, sim.lag, all.x=T)
@@ -518,10 +518,10 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.init){
       # dat.mod[rows.now,"mod.qair"] <- apply(dat.sim[["qair"]][rows.now,],1, mean)
       # dat.sim[i,] <- dat.pred
       # dat.mod[i,"mod.hr"] <- predict(mod.fill, dat.mod[i,])
-      if(i>min(dat.mod$time.day2)){ 
-        dat.mod[dat.mod$time.day2==i-1,"lag.qair" ] <- dat.mod[dat.mod$time.day2==i & dat.mod$hour==0,"mod.qair"] 
+      if(i>min(dat.mod$time.day)){ 
+        dat.mod[dat.mod$time.day==i-1,"lag.qair" ] <- dat.mod[dat.mod$time.day==i & dat.mod$hour==0,"mod.qair"] 
       }
-      # if(i>min(dat.mod$time.day2)) dat.mod[dat.mod$time.day2==i-1,"lag.day"] <- mean(dat.mod[dat.mod$time.day2==i & dat.mod$hour<=2,"mod.qair"])
+      # if(i>min(dat.mod$time.day)) dat.mod[dat.mod$time.day==i-1,"lag.day"] <- mean(dat.mod[dat.mod$time.day==i & dat.mod$hour<=2,"mod.qair"])
     }
     # dat.mod$mod.qair.mean <- apply(dat.sim[["qair"]], 1, mean)
     # dat.mod$mod.qair.025   <- apply(dat.sim[["qair"]], 1, quantile, 0.025)
@@ -549,33 +549,33 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.init){
     dat.sim[["wind"]] <- data.frame(array(dim=c(nrow(dat.mod), n.ens)))
     dat.sim[["wind"]][1,] <- dat.mod[1,"wind"]
     
-    # pb <- txtProgressBar(min=abs(max(dat.mod$time.day2)), max=abs(min(dat.mod$time.day2)), style=3)
-    for(i in max(dat.mod$time.day2):min(dat.mod$time.day2)){
+    # pb <- txtProgressBar(min=abs(max(dat.mod$time.day)), max=abs(min(dat.mod$time.day)), style=3)
+    for(i in max(dat.mod$time.day):min(dat.mod$time.day)){
       # setTxtProgressBar(pb, abs(i))
       
-      rows.now = which(dat.mod$time.day2==i)
-      dat.temp <- dat.mod[rows.now,c("time.day2", "year", "doy", "hour", "tmax.day", "tmin.day", "precipf.day", "swdown.day", "press.day", "wind.day", "qair.day", "wind.day", "next.wind")]
+      rows.now = which(dat.mod$time.day==i)
+      dat.temp <- dat.mod[rows.now,c("time.day", "year", "doy", "hour", "tmax.day", "tmin.day", "precipf.day", "swdown.day", "press.day", "wind.day", "qair.day", "wind.day", "next.wind")]
       dat.temp$wind = 99999 # Dummy value so there's a column
       dat.temp <- dat.temp[complete.cases(dat.temp),]
       # day.now = dat.temp$doy
       day.now = unique(dat.temp$doy)
       
       # Set up the lags
-      if(i==max(dat.mod$time.day2)){
+      if(i==max(dat.mod$time.day)){
         sim.lag <- stack(lags.init$wind)
         names(sim.lag) <- c("lag.wind", "ens")
         
-        # sim.lag$lag.tmin <- stack(data.frame(array(min(dat.mod[which(dat.mod$time.day2==i ),"wind"]), dim=c(1, ncol(dat.sim$wind)))))[,1]
-        # sim.lag$lag.tmax <- stack(data.frame(array(max(dat.mod[which(dat.mod$time.day2==i ),"wind"]), dim=c(1, ncol(dat.sim$wind)))))[,1]
+        # sim.lag$lag.tmin <- stack(data.frame(array(min(dat.mod[which(dat.mod$time.day==i ),"wind"]), dim=c(1, ncol(dat.sim$wind)))))[,1]
+        # sim.lag$lag.tmax <- stack(data.frame(array(max(dat.mod[which(dat.mod$time.day==i ),"wind"]), dim=c(1, ncol(dat.sim$wind)))))[,1]
         
-        # sim.lag <- stack(data.frame(array(mean(dat.mod[which(dat.mod$time.day2==i & dat.mod$hour<=2),"wind"]), dim=c(1, ncol(dat.sim)))))
+        # sim.lag <- stack(data.frame(array(mean(dat.mod[which(dat.mod$time.day==i & dat.mod$hour<=2),"wind"]), dim=c(1, ncol(dat.sim)))))
       } else {
-        sim.lag <- stack(data.frame(array(dat.sim[["wind"]][dat.mod$time.day2==(i+1)  & dat.mod$hour==0,], dim=c(1, ncol(dat.sim$wind)))))
+        sim.lag <- stack(data.frame(array(dat.sim[["wind"]][dat.mod$time.day==(i+1)  & dat.mod$hour==0,], dim=c(1, ncol(dat.sim$wind)))))
         names(sim.lag) <- c("lag.wind", "ens")
-        # sim.lag$lag.tmin <- stack(apply(dat.sim[["wind"]][dat.mod$time.day2==(i+1),], 2, min))[,1]
-        # sim.lag$lag.tmax <- stack(apply(dat.sim[["wind"]][dat.mod$time.day2==(i+1),], 2, max))[,1]
+        # sim.lag$lag.tmin <- stack(apply(dat.sim[["wind"]][dat.mod$time.day==(i+1),], 2, min))[,1]
+        # sim.lag$lag.tmax <- stack(apply(dat.sim[["wind"]][dat.mod$time.day==(i+1),], 2, max))[,1]
         
-        # sim.lag <- stack(apply(dat.sim[dat.mod$time.day2==(i+1)  & dat.mod$hour<=2,],2, mean))
+        # sim.lag <- stack(apply(dat.sim[dat.mod$time.day==(i+1)  & dat.mod$hour<=2,],2, mean))
       }
       dat.temp <- merge(dat.temp, sim.lag, all.x=T)
       
@@ -604,10 +604,10 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.init){
       # dat.mod[rows.now,"mod.wind"] <- apply(dat.sim[["wind"]][rows.now,],1, mean)
       # dat.sim[i,] <- dat.pred
       # dat.mod[i,"mod.hr"] <- predict(mod.fill, dat.mod[i,])
-      if(i>min(dat.mod$time.day2)){ 
-        dat.mod[dat.mod$time.day2==i-1,"lag.wind" ] <- dat.mod[dat.mod$time.day2==i & dat.mod$hour==0,"mod.wind"] 
+      if(i>min(dat.mod$time.day)){ 
+        dat.mod[dat.mod$time.day==i-1,"lag.wind" ] <- dat.mod[dat.mod$time.day==i & dat.mod$hour==0,"mod.wind"] 
       }
-      # if(i>min(dat.mod$time.day2)) dat.mod[dat.mod$time.day2==i-1,"lag.day"] <- mean(dat.mod[dat.mod$time.day2==i & dat.mod$hour<=2,"mod.wind"])
+      # if(i>min(dat.mod$time.day)) dat.mod[dat.mod$time.day==i-1,"lag.day"] <- mean(dat.mod[dat.mod$time.day==i & dat.mod$hour<=2,"mod.wind"])
     }
     # dat.mod$mod.wind.mean <- apply(dat.sim[["wind"]], 1, mean)
     # dat.mod$mod.wind.025   <- apply(dat.sim[["wind"]], 1, quantile, 0.025)

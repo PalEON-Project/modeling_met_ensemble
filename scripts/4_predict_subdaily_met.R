@@ -51,8 +51,8 @@ library(stringr)
 rm(list=ls())
 
 # Load the scripts that do all the heavy lifting
-load("temporal_downscale.R")
-load("temporal_downscale_functions.R")
+source("temporal_downscale.R")
+source("temporal_downscale_functions.R")
 
 dat.base <- "/projectnb/dietzelab/paleon/met_ensemble/data/met_ensembles/HARVARD/"
 # path.mod <- "../data/met_ensembles/HARVARD/subday_models"
@@ -84,7 +84,7 @@ vars.info <- data.frame(name=c("tair", "precipf", "swdown", "lwdown", "press", "
                                    'Wind speed' 
                                    ),
                         units= c("K", "kg m-2 s-1", "W m-2", "W m-2", "Pa", "kg kg-1", "m s-1")
-)
+                        )
 # Make a few dimensions we can use
 dimY <- ncdim_def( "lon", units="degrees", longname="latitude", vals=site.lat )
 dimX <- ncdim_def( "lat", units="degrees", longname="longitude", vals=site.lon )
@@ -108,6 +108,8 @@ for(GCM in GCM.list){
   lags.init <- list() # Need to initialize lags first outside of the loop and then they'll get updated internally
   for(e in 1:ens.day){
     tair.init    <- dat.out.full$met.bias[dat.out.full$met.bias$year==max(years.sim) & dat.out.full$met.bias$doy==364,"tair"]
+    tmax.init    <- dat.out.full$met.bias[dat.out.full$met.bias$year==max(years.sim) & dat.out.full$met.bias$doy==364,"tmax"]
+    tmin.init    <- dat.out.full$met.bias[dat.out.full$met.bias$year==max(years.sim) & dat.out.full$met.bias$doy==364,"tmin"]
     precipf.init <- dat.out.full$met.bias[dat.out.full$met.bias$year==max(years.sim) & dat.out.full$met.bias$doy==364,"precipf"]
     swdown.init  <- dat.out.full$met.bias[dat.out.full$met.bias$year==max(years.sim) & dat.out.full$met.bias$doy==364,"swdown"]
     lwdown.init  <- dat.out.full$met.bias[dat.out.full$met.bias$year==max(years.sim) & dat.out.full$met.bias$doy==364,"lwdown"]
@@ -116,6 +118,8 @@ for(GCM in GCM.list){
     wind.init    <- dat.out.full$met.bias[dat.out.full$met.bias$year==max(years.sim) & dat.out.full$met.bias$doy==364,"wind"]
     
     lags.init[[paste0("X", e)]][["tair"   ]] <- data.frame(array(tair.init   , dim=c(1, ens.hr)))
+    lags.init[[paste0("X", e)]][["tmax"   ]] <- data.frame(array(tmax.init   , dim=c(1, ens.hr)))
+    lags.init[[paste0("X", e)]][["tmin"   ]] <- data.frame(array(tmin.init   , dim=c(1, ens.hr)))
     lags.init[[paste0("X", e)]][["precipf"]] <- data.frame(array(precipf.init, dim=c(1, ens.hr)))
     lags.init[[paste0("X", e)]][["swdown" ]] <- data.frame(array(swdown.init , dim=c(1, ens.hr)))
     lags.init[[paste0("X", e)]][["lwdown" ]] <- data.frame(array(lwdown.init , dim=c(1, ens.hr)))
@@ -136,23 +140,56 @@ for(GCM in GCM.list){
     dat.yr$press   <- dat.out.full$press  $sims[dat.out.full$press  $sims$year==y,]
     dat.yr$wind    <- dat.out.full$wind   $sims[dat.out.full$wind   $sims$year==y,]
     
+    # Setting up the 'next' dataset
+    dat.nxt <- list()
+    rows.next <-  which(dat.out.full$tmax$sims$time>=min(dat.yr$tmax$time)-1 & dat.out.full$tmax$sims$time<=max(dat.yr$tmax$time)-1)
+    dat.nxt$tmax    <- dat.out.full$tmax   $sims[rows.next,]
+    dat.nxt$tmin    <- dat.out.full$tmin   $sims[rows.next,]
+    dat.nxt$precipf <- dat.out.full$precipf$sims[rows.next,]
+    dat.nxt$swdown  <- dat.out.full$swdown $sims[rows.next,]
+    dat.nxt$lwdown  <- dat.out.full$lwdown $sims[rows.next,]
+    dat.nxt$press   <- dat.out.full$press  $sims[rows.next,]
+    dat.nxt$qair    <- dat.out.full$qair   $sims[rows.next,]
+    dat.nxt$wind    <- dat.out.full$wind   $sims[rows.next,]
+    
+    # If this is the first year in the dataset (850), there is no "next" value, 
+    # so we need to add it in to have the right dimensions
+    if(y == years.sim[length(years.sim)]){
+      dat.nxt$tmax    <- rbind(dat.nxt$tmax   [1,], dat.nxt$tmax   )
+      dat.nxt$tmin    <- rbind(dat.nxt$tmin   [1,], dat.nxt$tmin   )
+      dat.nxt$precipf <- rbind(dat.nxt$precipf[1,], dat.nxt$precipf)
+      dat.nxt$swdown  <- rbind(dat.nxt$swdown [1,], dat.nxt$swdown )
+      dat.nxt$lwdown  <- rbind(dat.nxt$lwdown [1,], dat.nxt$lwdown )
+      dat.nxt$press   <- rbind(dat.nxt$press  [1,], dat.nxt$press  )
+      dat.nxt$qair    <- rbind(dat.nxt$qair   [1,], dat.nxt$qair   )
+      dat.nxt$wind    <- rbind(dat.nxt$wind   [1,], dat.nxt$wind   )
+    }
+    
     dat.ens <- list() # a new list for each ensemble member as a new layer
     df.hour <- data.frame(hour=0:23)
     
     # Create a list layer for each ensemble member
     for(e in 1:ens.day){
-      dat.ens[[paste0("X", e)]] <- data.frame(dataset =dat.yr$tmax   $dataset,
-                                              year    =dat.yr$tmax   $year,
-                                              doy     =dat.yr$tmax   $doy,
-                                              date    =dat.yr$tmax   $time,
-                                              tmax    =dat.yr$tmax   [,paste0("X", e)],
-                                              tmin    =dat.yr$tmin   [,paste0("X", e)],
-                                              precipf =dat.yr$precipf[,paste0("X", e)],
-                                              swdown  =dat.yr$swdown [,paste0("X", e)],
-                                              lwdown  =dat.yr$lwdown [,paste0("X", e)],
-                                              qair    =dat.yr$qair   [,paste0("X", e)],
-                                              press   =dat.yr$press  [,paste0("X", e)],
-                                              wind    =dat.yr$wind   [,paste0("X", e)]
+      dat.ens[[paste0("X", e)]] <- data.frame(dataset      =dat.yr $tmax   $dataset,
+                                              year         =dat.yr $tmax   $year,
+                                              doy          =dat.yr $tmax   $doy,
+                                              date         =dat.yr $tmax   $time,
+                                              tmax.day     =dat.yr $tmax   [,paste0("X", e)],
+                                              tmin.day     =dat.yr $tmin   [,paste0("X", e)],
+                                              precipf.day  =dat.yr $precipf[,paste0("X", e)],
+                                              swdown.day   =dat.yr $swdown [,paste0("X", e)],
+                                              lwdown.day   =dat.yr $lwdown [,paste0("X", e)],
+                                              press.day    =dat.yr $press  [,paste0("X", e)],
+                                              qair.day     =dat.yr $qair   [,paste0("X", e)],
+                                              wind.day     =dat.yr $wind   [,paste0("X", e)],
+                                              next.tmax    =dat.nxt$tmax   [,paste0("X", e)],
+                                              next.tmin    =dat.nxt$tmin   [,paste0("X", e)],
+                                              next.precipf =dat.nxt$precipf[,paste0("X", e)],
+                                              next.swdown  =dat.nxt$swdown [,paste0("X", e)],
+                                              next.lwdown  =dat.nxt$lwdown [,paste0("X", e)],
+                                              next.press   =dat.nxt$press  [,paste0("X", e)],
+                                              next.qair    =dat.nxt$qair   [,paste0("X", e)],
+                                              next.wind    =dat.nxt$wind   [,paste0("X", e)]
                                              )
       dat.ens[[paste0("X", e)]]$time.day <- as.numeric(difftime(dat.ens[[paste0("X", e)]]$date, "2016-01-01", tz="GMT", units="day"))
       dat.ens[[paste0("X", e)]] <- merge(dat.ens[[paste0("X", e)]], df.hour, all=T)
@@ -176,7 +213,7 @@ for(GCM in GCM.list){
     #       parallelized to speed it up soon, but we'll prototype in parallel
     # -----------------------------------
     for(e in 1:length(dat.ens)){
-      ens.sims <- predict.subdaily(dat.ens[[paste0("X", e)]], ens.hr, path.model=file.path(dat.base, "subday_models"), lags.init=lags.init)
+      ens.sims <- predict.subdaily(dat.mod=dat.ens[[paste0("X", e)]], n.ens=ens.hr, path.model=file.path(dat.base, "subday_models"), lags.init=lags.init[[paste0("X", e)]])
       
 
       # Update the initial lags for next year
