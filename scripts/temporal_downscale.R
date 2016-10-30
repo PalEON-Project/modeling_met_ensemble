@@ -48,7 +48,7 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.init, dat.train){
       # setTxtProgressBar(pb, abs(i))
       
       # For SWDOWN, we only want to model daylight hours -- make sure this matches what's in the swdown function
-      day.now = unique(dat.temp$doy)
+      day.now = unique(dat.mod[dat.mod$time.day==i, "doy"])
       
       # Use the training data to figure out night/day
       hrs.day = unique(dat.train[dat.train$doy==day.now & dat.train$swdown>quantile(dat.train[dat.train$swdown>0,"swdown"], 0.05), "hour"])

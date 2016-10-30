@@ -50,12 +50,13 @@ library(stringr)
 # library(tictoc)
 rm(list=ls())
 
-# Load the scripts that do all the heavy lifting
-source("temporal_downscale.R")
-source("temporal_downscale_functions.R")
-
 wd.base <- "/projectnb/dietzelab/paleon/met_ensemble/"
 setwd(wd.base)
+
+# Load the scripts that do all the heavy lifting
+source("scripts/temporal_downscale.R")
+source("scripts/temporal_downscale_functions.R")
+
 
 dat.base <- "/projectnb/dietzelab/paleon/met_ensemble/data/met_ensembles/HARVARD/"
 # path.mod <- "../data/met_ensembles/HARVARD/subday_models"
@@ -98,15 +99,16 @@ dimX <- ncdim_def( "lat", units="degrees", longname="longitude", vals=site.lon )
 # This gets done when formatting things for downscaling
 
 for(GCM in GCM.list){
+  # Set the directory where the output is & load the file
   path.gcm <- file.path(dat.base, GCM, "day")
-  
-  if(!dir.exists(path.out)) dir.create(path.out, recursive=T)
-  # setwd(path.gcm)
-  # All of the daily ensembles should be zipped to save space
   dat.day <- dir(path.gcm, ".Rdata")
   
   load(file.path(path.gcm, dat.day)) # Loads dat.out.full
 
+  # Set & create the output directory
+  path.out <- file.path(dat.base, GCM, "1hr")
+  if(!dir.exists(path.out)) dir.create(path.out, recursive=T)
+  
   # -----------------------------------
   # 1. Format output so all ensemble members can be run at once
   # NOTE: Need to start with the last and work to the first
@@ -222,6 +224,7 @@ for(GCM in GCM.list){
     #       parallelized to speed it up soon, but we'll prototype in parallel
     # -----------------------------------
     for(e in 1:length(dat.ens)){
+      # Do the prediction
       ens.sims <- predict.subdaily(dat.mod=dat.ens[[paste0("X", e)]], n.ens=ens.hr, path.model=file.path(dat.base, "subday_models"), lags.init=lags.init[[paste0("X", e)]], dat.train=dat.train)
       
 
