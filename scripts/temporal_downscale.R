@@ -144,8 +144,8 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.init, dat.train){
       
       for(j in 1:ncol(dat.sim$tair)){
         dat.prop <- dat.pred[dat.temp$ens==paste0("X", j),cols.prop[j]]
-        tmax.ens <- dat.temp[dat.temp$ens==paste0("X",j), "tmax.day"]
-        tmin.ens <- dat.temp[dat.temp$ens==paste0("X",j), "tmax.day"]
+        tmax.ens <- max(dat.temp[dat.temp$ens==paste0("X",j), "tmax.day"])
+        tmin.ens <- min(dat.temp[dat.temp$ens==paste0("X",j), "tmin.day"])
         
         # Hard-coding in some bounds so we don't drift too far away from our given maxes & mins
         # Not going to worry for the moment about what happens if we undershoot out max/min since
@@ -153,7 +153,7 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.init, dat.train){
         dat.prop[dat.prop>tmax.ens+2] <- tmax.ens+2
         dat.prop[dat.prop<tmin.ens-2] <- tmin.ens-2
         
-        dat.sim[["tair"]][rows.now,j] <- dat.pred[dat.temp$ens==paste0("X", j),cols.prop[j]]
+        dat.sim[["tair"]][rows.now,j] <- dat.prop
       }
     }
 
