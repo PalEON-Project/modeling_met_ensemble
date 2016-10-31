@@ -122,7 +122,7 @@ model.swdown <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=N
   # Final list will have 2 layers per DOY: the model, and a bunch of simulated betas
   if(parallel==T){
     library(parallel)
-    mod.out <- mclapply(dat.list, model.train, mc.cores=n.cores, n.beta=n.beta, resids=resids)
+    mod.out <- mclapply(dat.list, model.train, mc.cores=n.cores, n.beta=n.beta, resids=resids, threshold=quantile(dat.train[dat.train$swdown>0,"swdown"], 0.05))
   } else {
     for(i in names(dat.list)){
       mod.out[[i]] <- model.train(dat.subset=dat.list[[i]], threshold=quantile(dat.train[dat.train$swdown>0,"swdown"], 0.05), n.beta=n.beta, resids=resids)
@@ -393,7 +393,8 @@ model.qair <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NUL
   model.train <- function(dat.subset, n.beta, resids=resids){ 
     
     # mod.doy <- lm(log(qair) ~ as.factor(hour)*log(qair.day)*(log(lag.qair) + log(next.qair) + precipf.day + tmin.day + tmax.day)-as.factor(hour)-1 - precipf.day - tmin.day - tmax.day - log(qair.day)*precipf.day - log(qair.day)*tmin.day- log(qair.day)*tmax.day - as.factor(hour)*tmin.day - as.factor(hour)*tmax.day - as.factor(hour)*precipf.day, data=dat.subset) ###
-    mod.doy <- lm(log(qair) ~ as.factor(hour)*qair.day*(lag.qair + next.qair)-as.factor(hour)-1 - qair.day - lag.qair - next.qair - qair.day*lag.qair - qair.day*next.qair, data=dat.subset) ###
+    # mod.doy <- lm(log(qair) ~ as.factor(hour)*qair.day*(lag.qair + next.qair)-as.factor(hour)-1 - qair.day - lag.qair - next.qair - qair.day*lag.qair - qair.day*next.qair, data=dat.subset) ###
+    mod.doy <- lm(log(qair) ~ as.factor(hour)*qair.day*(lag.qair + next.qair + tmax.day)-as.factor(hour)-1 - tmax.day, data=dat.subset) ###
     # mod.doy <- glm(qair ~ as.factor(hour)*qair.day*(lag.qair + next.qair)-as.factor(hour)-1 - qair.day - lag.qair - next.qair - qair.day*lag.qair - qair.day*next.qair, data=dat.subset, family="quasibinomial") ###
     
     # Generate a bunch of random coefficients that we can pull from 

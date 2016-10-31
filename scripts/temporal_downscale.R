@@ -278,10 +278,6 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.init, dat.train){
         dat.sim[["lwdown"]][rows.now,j] <- dat.pred[dat.temp$ens==paste0("X", j),cols.prop[j]]
       }
       
-      dat.mod[rows.now,"mod.lwdown"] <- apply(dat.sim[["lwdown"]][rows.now,],1, mean)
-      if(i>min(dat.mod$time.day)){ 
-        dat.mod[dat.mod$time.day==i-1,"lag.lwdown" ] <- dat.mod[dat.mod$time.day==i & dat.mod$hour==0,"mod.lwdown"] 
-      }
     }
     
     nc_close(betas.lwdown)
