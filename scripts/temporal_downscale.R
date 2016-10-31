@@ -294,6 +294,10 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.init, dat.train){
                               n.ens=n.ens)
       dat.pred <- dat.pred^2 # because squared to prevent negative numbers
       
+      # Hard-coding some sanity bounds by ball-parking things from NLDAS & CRUNCEP
+      dat.pred[dat.pred<100] <- 100
+      dat.pred[dat.pred>600] <- 600
+      
       # Randomly pick which values to save & propogate
       cols.prop <- sample(1:n.ens, ncol(dat.sim$lwdown), replace=T)
       
@@ -470,7 +474,11 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.init, dat.train){
                               model.resid=NULL, 
                               Rbeta.resid=NULL, 
                               n.ens=n.ens)
-      dat.pred <- dat.pred^2 # because squared to prevent negative numbers
+      dat.pred <- dat.pred^2 # because square-rooted to prevent negative numbers
+      
+      # Hard code an upper-level sanity check on the wind
+      # 20 m/s = 45 mph; not hurricane strength, but plenty strong enough for most models
+      dat.pred[dat.pred>20] <- 20
       
       # Randomly pick which values to save & propogate
       cols.prop <- sample(1:n.ens, ncol(dat.sim$wind), replace=T)
