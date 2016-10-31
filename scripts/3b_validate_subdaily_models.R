@@ -193,8 +193,7 @@ n.beta=1000
 resids=F
 parallel=T
 n.cores=4
-n.ens=10
-ens.hr = 10
+n.ens=ens.hr=10
 
 
 dat.mod <- dat.train
@@ -935,11 +934,119 @@ lags.init[["wind"   ]] <- data.frame(array(dat.mod[dat.mod$time.hr==max(dat.mod$
 }
 # ---------
 
-mod.wind.doy    <- model.wind   (dat.train=dat.train[,], resids=resids, parallel=parallel, n.cores=n.cores, n.beta=n.beta)
-graph.resids(var="wind", dat.train=dat.train, model.var=mod.wind.doy, fig.dir=fig.dir)
-save.betas(model.out=mod.wind.doy, betas="betas", outfile=file.path(mod.out, "betas_wind.nc"))
-save.model(model.out=mod.wind.doy, model="model", outfile=file.path(mod.out, "model_wind.Rdata"))
-rm(mod.wind.doy)
+
+
+# ---------
+# wind
+# ---------
+{
+  mod.wind.doy    <- model.wind   (dat.train=dat.train[,], resids=resids, parallel=parallel, n.cores=n.cores, n.beta=n.beta)
+  
+  # Doing the prediction 
+  dat.sim[["wind"]] <- data.frame(array(dim=c(nrow(dat.mod), n.ens)))
+  pb <- txtProgressBar(min=min(abs(dat.mod$time.day)), max=max(abs(dat.mod$time.day)), style=3)
+  tic()
+  for(i in max(dat.mod$time.day):min(dat.mod$time.day)){
+    setTxtProgressBar(pb, abs(i))
+    rows.now = which(dat.mod$time.day==i)
+    dat.temp <- dat.mod[rows.now,c("time.day", "year", "doy", "hour", 
+                                   "tmax.day", "tmin.day", "precipf.day", "swdown.day", "lwdown.day", "press.day", "qair.day", "wind.day",
+                                   "next.tmax", "next.tmin", "next.precipf", "next.swdown", "next.lwdown", "next.press", "next.qair", "next.wind")]
+    dat.temp$wind = 99999 # Dummy value so there's a column
+    day.now = unique(dat.temp$doy)
+    
+    # Set up the lags
+    if(i==max(dat.mod$time.day)){
+      sim.lag <- stack(lags.init$wind)
+      names(sim.lag) <- c("lag.wind", "ens")
+    } else {
+      sim.lag <- stack(data.frame(array(dat.sim[["wind"]][dat.mod$time.day==(i+1)  & dat.mod$hour==0,], dim=c(1, ncol(dat.sim$wind)))))
+      names(sim.lag) <- c("lag.wind", "ens")
+    }
+    dat.temp <- merge(dat.temp, sim.lag, all.x=T)
+    
+    rows.beta <- sample(1:n.beta, n.ens, replace=T)
+    Rbeta <- as.matrix(mod.wind.doy[[paste(day.now)]]$betas[rows.beta,], nrow=length(rows.beta), ncol=ncol(betas))
+    # dimnames(Rbeta)[[2]] <- names(coef(mod.wind.doy[[paste(day.now)]]))
+    
+    dat.pred <- predict.met(newdata=dat.temp, 
+                            model.predict=mod.wind.doy[[paste(day.now)]]$model, 
+                            Rbeta=Rbeta, 
+                            resid.err=F,
+                            model.resid=NULL, 
+                            Rbeta.resid=NULL, 
+                            n.ens=n.ens)
+    dat.pred <- dat.pred^2 # because squared to prevent negative numbers
+    
+    # Randomly pick which values to save & propogate
+    cols.prop <- sample(1:n.ens, ncol(dat.sim$wind), replace=T)
+    
+    for(j in 1:ncol(dat.sim$wind)){
+      dat.sim[["wind"]][rows.now,j] <- dat.pred[dat.temp$ens==paste0("X", j),cols.prop[j]]
+    }
+  }
+  toc()
+  
+  # Graphing
+  fig.ens <- file.path(fig.dir, "model_validation", "wind")
+  if(!dir.exists(fig.ens)) dir.create(fig.ens, recursive=T)
+  
+  var="wind"
+  dat.mod$var.pred <- apply(dat.sim[[var]],1,mean)
+  dat.mod$var.025 <- apply(dat.sim[[var]],1,quantile, 0.025)
+  dat.mod$var.975 <- apply(dat.sim[[var]],1,quantile, 0.975)
+  
+  for(y in max(dat.mod$year):min(dat.mod$year)){
+    dat.graph1 <- dat.mod[dat.mod$doy>=32 & dat.mod$doy<=(32+14) & dat.mod$year==y,]
+    dat.graph1$season <- as.factor("winter")
+    dat.graph2 <- dat.mod[dat.mod$doy>=123 & dat.mod$doy<=(123+14) & dat.mod$year==y,]
+    dat.graph2$season <- as.factor("spring")
+    dat.graph3 <- dat.mod[dat.mod$doy>=214 & dat.mod$doy<=(213+14) & dat.mod$year==y,]
+    dat.graph3$season <- as.factor("summer")
+    dat.graph4 <- dat.mod[dat.mod$doy>=305 & dat.mod$doy<=(305+14) & dat.mod$year==y,]
+    dat.graph4$season <- as.factor("fall")
+    
+    dat.graph <- rbind(dat.graph1, dat.graph2, dat.graph3, dat.graph4)
+    
+    png(file.path(fig.ens, paste0(var, y, "_year.png")), height=8, width=10, units="in", res=220)
+    print(
+      ggplot(data=dat.mod[dat.mod$year==y,]) +
+        geom_ribbon(aes(x=date, ymin=var.025, ymax=var.975), alpha=0.5, fill="blue") +
+        geom_line(aes(x=date, y=var.pred), color="blue") +
+        geom_point(aes(x=date, y=var.pred), color="blue", size=0.5) +
+        geom_point(aes(x=date, y=wind), color="black", size=0.1, alpha=0.5) +
+        geom_line(aes(x=date, y=wind), color="black", size=0.2, alpha=0.5) +
+        scale_x_datetime(expand=c(0,0)) +
+        ggtitle(paste0(var, ": ", y)) +
+        theme_bw()
+    )
+    dev.off()
+    
+    
+    png(file.path(fig.ens, paste0(var, "_examples_", y,".png")), height=8, width=10, units="in", res=220)
+    print(
+      ggplot(data=dat.graph[dat.graph$year==y,]) +
+        facet_wrap(~season, scales="free") +
+        geom_line(aes(x=date, y=wind), color="black") +
+        geom_point(aes(x=date, y=wind), color="black", size=0.5) +
+        geom_ribbon(aes(x=date, ymin=var.025, ymax=var.975), alpha=0.5, fill="blue") +
+        geom_line(aes(x=date, y=var.pred), color="blue") +
+        geom_point(aes(x=date, y=var.pred), color="blue", size=0.5) +
+        scale_y_continuous(name=var) +
+        scale_x_datetime(expand=c(0,0)) +
+        ggtitle(paste0(var, ": ", y)) +
+        theme_bw()
+    )
+    dev.off()
+    
+  }
+  
+  
+  graph.resids(var="wind", dat.train=dat.train, model.var=mod.wind.doy, fig.dir=fig.dir)
+  save.betas(model.out=mod.wind.doy, betas="betas", outfile=file.path(mod.out, "betas_wind.nc"))
+  save.model(model.out=mod.wind.doy, model="model", outfile=file.path(mod.out, "model_wind.Rdata"))
+  rm(mod.wind.doy)
+}
 # ---------
 
 # ------------------------------------------
