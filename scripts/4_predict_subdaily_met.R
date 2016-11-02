@@ -79,9 +79,10 @@ site.lon=-72.18
 # GCM.list = c("CCSM4", "MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1")
 GCM.list = "CCSM4"
 ens.hr  <- 4 # Number of hourly ensemble members to create
-n.day <- 25 # Number of daily ensemble members to process
+n.day <- 3 # Number of daily ensemble members to process
 yrs.plot <- c(2015, 1985, 1920, 1875, 1800, 1000, 850)
-years.sim=2015:1950
+years.sim=2015:2014
+cores.max = 8
 
 # Defining variable names, longname & units
 vars.info <- data.frame(name    =c("tair", "precipf", "swdown", "lwdown", "press", "qair", "wind"),
@@ -183,7 +184,7 @@ for(GCM in GCM.list){
     
     # If this is the first year in the dataset (850), there is no "next" value, 
     # so we need to add it in to have the right dimensions
-    if(y == years.sim[length(years.sim)]){
+    if(y == min(dat.out.full$tmax$sims$year)){
       dat.nxt$tmax    <- rbind(dat.nxt$tmax   [1,], dat.nxt$tmax   )
       dat.nxt$tmin    <- rbind(dat.nxt$tmin   [1,], dat.nxt$tmin   )
       dat.nxt$precipf <- rbind(dat.nxt$precipf[1,], dat.nxt$precipf)
@@ -241,8 +242,7 @@ for(GCM in GCM.list){
     # Note: Using a loop for each ensemble member for now, but this will get 
     #       parallelized to speed it up soon, but we'll prototype in parallel
     # -----------------------------------
-    
-    cores.use <- min(8, length(dat.ens))
+    cores.use <- min(cores.max, length(dat.ens))
     ens.sims  <- mclapply(dat.ens, predict.subdaily, mc.cores=cores.use, n.ens=ens.hr, path.model=file.path(dat.base, "subday_models"), lags.init=lags.init[[paste0("X", e)]], dat.train=dat.train)
     
     for(e in ens.day){

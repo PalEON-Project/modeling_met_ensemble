@@ -3,6 +3,7 @@
 #$ -j y
 #$ -S /bin/bash
 #$ -V
+#$ -pe omp 12
 #$ -m e
 #$ -q "geo*"
 #$ -M crollinson@gmail.com
