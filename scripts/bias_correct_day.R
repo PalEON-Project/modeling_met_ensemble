@@ -380,21 +380,29 @@ for(v in 1:length(vars.met)){
         # Modeling in the predicted value from mod.bias
         dat.anom$pred <- predict(mod.bias, newdata=dat.anom)
         
-        # CRUNCEP swdown has been vary hard to fit to NLDAS because it has a different variance for some reason, 
-        # and the only way I've been able to fix it is to model the temporal pattern seen in the dataset based on 
-        # its own anomalies (not ideal, but it works)
-        if(met.var=="swdown"){
-          mod.anom <- gam(anom.raw ~ s(doy, k=4) + s(year, k=3) + tmax.anom + tmin.anom, data=dat.pred)
+        if (met.var %in% c("tair", "tmax", "tmin", "qair"){
+          # ** We want to make sure we do these first **
+          # These are the variables that have quasi-observed values for their whole time period, 
+          # so we can use the the seasonsal trend, and the observed anaomalies
+          # Note: because we can directly model the anomalies, the inherent long-term trend should be preserved
+          mod.anom <- gam(anom.train ~ s(doy) + anom.raw -1 , data=dat.anom)
+        } else if(met.var=="swdown"){
+          # CRUNCEP swdown has been vary hard to fit to NLDAS because it has a different variance for some reason, 
+          # and the only way I've been able to fix it is to model the temporal pattern seen in the dataset based on 
+          # its own anomalies (not ideal, but it works)
+          mod.anom <- gam(anom.raw ~ s(doy, k=4) + s(year, k=k) + tmax.anom*tmin.anom, data=dat.pred)
         } else if(met.var=="precipf"){
-          # Precip is really only different from the other in that I deliberately chose a more rigid seasonal pattern and we need to force the intercept
+          # Precip is really only different from the others in that I deliberately chose a more rigid seasonal pattern and we need to force the intercept
           # through 0 so we can try and reduce the likelihood of evenly distributed precipitation events
           k=round(length(dat.pred$year)/(25*366),0)
           k=max(k, 4) # we can't have less than 4 knots
           
-          mod.anom <- gam(anom.raw ~ s(year, k=k) + tmax.anom + tmin.anom + swdown.anom + lwdown.anom , data=dat.pred)
-        } else {
-          # For the rest of our variables, anom.train and anom.raw should be hihgly correlated, we can use straightforward regression
-          mod.anom <- gam(anom.train ~ s(doy) + anom.raw + tmax.anom + tmin.anom + precipf.anom + swdown.anom + qair.anom + lwdown.anom + press.anom + wind.anom, data=dat.anom)
+          mod.anom <- gam(anom.raw ~ s(year, k=k) + tmax.anom + tmin.anom + swdown.anom + lwdown.anom + qair.anom, data=dat.pred)
+        } else if(met.var %in% c("wind", "press", "lwdown")) {
+          # These variables are constant in CRU pre-1950.  
+          # This means that we can not use information about the long term trend OR the actual annomalies 
+          # -- they must be inferred from the other met we have
+          mod.anom <- gam(anom.train ~ s(doy) + tmax.anom*tmin.anom + swdown.anom + qair.anom -1, data=dat.anom)
         }      
       } else { 
         # If we're dealing with non-empirical datasets, we can't pair anomalies to come up with a direct adjustment 
@@ -406,15 +414,21 @@ for(v in 1:length(vars.met)){
         k=round(length(dat.pred$year)/(25*366),0)
         k=max(k, 4) # we can't have less than 4 knots
         
+        # vars.met <- c("tair", "tmax", "tmin", "qair", "precipf", "swdown", "press", "lwdown", "wind")
+        # Vars that are at daily and we just need to adjust the variance
         # We have some other anomaly to use! that helps a lot. -- use that to try and get low-frequency trends in the past
         if(met.var=="precipf"){ 
           # If we're working with precipf, need to make the intercept 0 so that we have plenty of days with little/no rain
-          mod.anom <- gam(anom.raw ~  s(year, k=k) + tmax.anom + tmin.anom + swdown.anom + lwdown.anom, data=dat.pred)  
-        } else if(max(raw.bias[,vars.met])>0){
+          mod.anom <- gam(anom.raw ~  s(year, k=k) + tmax.anom + tmin.anom + swdown.anom + lwdown.anom + qair.anom, data=dat.pred)  
+        } else if(met.var %in% c("swdown", "lwdown")){
           # See if we have some other anomaly that we can use to get the anomaly covariance & temporal trends right
-          mod.anom <- gam(anom.train ~ s(doy, k=4) + tmax.anom + tmin.anom + precipf.anom + swdown.anom + qair.anom + lwdown.anom + press.anom + wind.anom, data=raw.train)
+          # This relies on the assumption that the low-frequency trends are in proportion to the other met variables
+          # (this doesn't seem unreasonable, but that doesn't mean it's right)
+          mod.anom <- gam(anom.train ~ s(doy, k=4) + tmax.anom*tmin.anom + precipf.anom + qair.anom + press.anom + wind.anom, data=raw.train)
         } else {
-          # If we haven't already done another met product, our best shot is to just model the variance adding in as much of the low-frequency cylce as possible
+          # If we haven't already done another met product, our best shot is to just model the existing variance 
+          # and preserve as much of the low-frequency cylce as possible
+          # THis should be tair, tmax, tmin, qair, press, wind
           mod.anom <- gam(anom.raw ~ s(doy) + s(year, k=k) + pred, data=dat.pred)
         }
       }
