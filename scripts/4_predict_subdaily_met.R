@@ -48,12 +48,13 @@ library(lubridate)
 library(ggplot2)
 library(stringr)
 library(tictoc)
+library(parallel)
 # library(tictoc)
 rm(list=ls())
 set.seed(0017)
 
-wd.base <- "/projectnb/dietzelab/paleon/met_ensemble/"
-# wd.base <- "~/Desktop/Research/PalEON_CR/met_ensemble/"
+# wd.base <- "/projectnb/dietzelab/paleon/met_ensemble/"
+wd.base <- "~/Desktop/Research/PalEON_CR/met_ensemble/"
 setwd(wd.base)
 
 # Load the scripts that do all the heavy lifting
@@ -61,11 +62,11 @@ source("scripts/temporal_downscale.R")
 source("scripts/temporal_downscale_functions.R")
 
 
-dat.base <- "/projectnb/dietzelab/paleon/met_ensemble/data/met_ensembles/HARVARD/"
-dat.train <- read.csv("/projectnb/dietzelab/paleon/met_ensemble/data/paleon_sites/HARVARD/NLDAS_1980-2015.csv")
+# dat.base <- "/projectnb/dietzelab/paleon/met_ensemble/data/met_ensembles/HARVARD/"
+# dat.train <- read.csv("/projectnb/dietzelab/paleon/met_ensemble/data/paleon_sites/HARVARD/NLDAS_1980-2015.csv")
 
-# dat.base <- "~/Desktop/met_ensembles/HARVARD/"
-# dat.train <- read.csv(file.pawd.base, "data/paleon_sites/HARVARD/NLDAS_1980-2015.csv")
+dat.base <- "~/Desktop/met_ensembles/HARVARD/"
+dat.train <- read.csv(file.path(wd.base, "data/paleon_sites/HARVARD/NLDAS_1980-2015.csv"))
 
 # if(!dir.exists(mod.out)) dir.create(mod.out, recursive = T)
 # if(!dir.exists(fig.dir)) dir.create(fig.dir, recursive = T)
@@ -75,13 +76,23 @@ site.name="HARVARD"
 site.lat=42.54
 site.lon=-72.18
 
-GCM.list = c("CCSM4", "MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1")
-ens.hr  <- 3 # Number of hourly ensemble members to create
-n.day <- 1 # Number of daily ensemble members to process
+# GCM.list = c("CCSM4", "MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1")
+GCM.list = "CCSM4"
+ens.hr  <- 4 # Number of hourly ensemble members to create
+n.day <- 25 # Number of daily ensemble members to process
 yrs.plot <- c(2015, 1985, 1920, 1875, 1800, 1000, 850)
+years.sim=2015:1950
 
 # Defining variable names, longname & units
-vars.info <- data.frame(name=c("tair", "precipf", "swdown", "lwdown", "press", "qair", "wind"),
+vars.info <- data.frame(name    =c("tair", "precipf", "swdown", "lwdown", "press", "qair", "wind"),
+                        name.cf = c("air_temperature", 
+                                    "precipitation_flux",
+                                    "surface_downwelling_shortwave_flux_in_air",
+                                    "surface_downwelling_longwave_flux_in_air",
+                                    "air_pressure",
+                                    "specific_humidity",
+                                    "wind"
+                                    ),
                         longname=c("2 meter mean air temperature", 
                                    "cumulative precipitation (water equivalent)",
                                    "incident (downwelling) showtwave radiation",
@@ -101,7 +112,7 @@ dimX <- ncdim_def( "lat", units="degrees", longname="longitude", vals=site.lon )
 # This gets done when formatting things for downscaling
 
 for(GCM in GCM.list){
-  tic()
+  # tic()
   # Set the directory where the output is & load the file
   path.gcm <- file.path(dat.base, GCM, "day")
   dat.day <- dir(path.gcm, ".Rdata")
@@ -116,7 +127,9 @@ for(GCM in GCM.list){
   # 1. Format output so all ensemble members can be run at once
   # NOTE: Need to start with the last and work to the first
   # -----------------------------------
-  years.sim <- max(dat.out.full$tmax$sims$year):min(dat.out.full$tmax$sims$year)
+  if(is.null(years.sim)){
+    years.sim <- max(dat.out.full$tmax$sims$year):min(dat.out.full$tmax$sims$year)
+  }
   
   tot.ens <- which(substr(names(dat.out.full$tmax$sims),1,1)=="X")
   ens.day <- sample(1:length(tot.ens), n.day, replace=F) # For now, randomly choose which ensemble members to downscale
@@ -228,9 +241,13 @@ for(GCM in GCM.list){
     # Note: Using a loop for each ensemble member for now, but this will get 
     #       parallelized to speed it up soon, but we'll prototype in parallel
     # -----------------------------------
+    
+    cores.use <- min(8, length(dat.ens))
+    ens.sims  <- mclapply(dat.ens, predict.subdaily, mc.cores=cores.use, n.ens=ens.hr, path.model=file.path(dat.base, "subday_models"), lags.init=lags.init[[paste0("X", e)]], dat.train=dat.train)
+    
     for(e in ens.day){
-      # Do the prediction
-      ens.sims <- predict.subdaily(dat.mod=dat.ens[[paste0("X", e)]], n.ens=ens.hr, path.model=file.path(dat.base, "subday_models"), lags.init=lags.init[[paste0("X", e)]], dat.train=dat.train)
+      # # Do the prediction
+      # ens.sims[[paste0("X", e)]] <- predict.subdaily(dat.mod=dat.ens[[paste0("X", e)]], n.ens=ens.hr, path.model=file.path(dat.base, "subday_models"), lags.init=lags.init[[paste0("X", e)]], dat.train=dat.train)
       
 
       # If this is one of our designated QAQC years, makes some graphs
@@ -239,15 +256,15 @@ for(GCM in GCM.list){
         fig.ens <- file.path(path.out, "subdaily_qaqc", day.name)
         if(!dir.exists(fig.ens)) dir.create(fig.ens, recursive=T)
         
-        for(v in names(ens.sims)){
-          graph.predict(dat.mod=dat.ens[[paste0("X", e)]], dat.ens=ens.sims, var=v, fig.dir=fig.ens)
+        for(v in names(ens.sims[[paste0("X", e)]])){
+          graph.predict(dat.mod=dat.ens[[paste0("X", e)]], dat.ens=ens.sims[[paste0("X", e)]], var=v, fig.dir=fig.ens)
         }
       }
       
       
       # Update the initial lags for next year
-      for(v in names(ens.sims)){
-        lags.init[[paste0("X",e)]][[v]] <- data.frame(ens.sims[[v]][length(ens.sims[[v]]),])
+      for(v in names(ens.sims[[paste0("X", e)]])){
+        lags.init[[paste0("X",e)]][[v]] <- data.frame(ens.sims[[paste0("X", e)]][[v]][length(ens.sims[[paste0("X", e)]][[v]]),])
       }
       
       # -----------------------------------
@@ -261,9 +278,10 @@ for(GCM in GCM.list){
         
         var.list <- list()
         dat.list <- list()
-        for(v in names(ens.sims)){
+        for(v in names(ens.sims[[paste0("X", e)]])){
+          var.cf = vars.info[vars.info$name==v, "name.cf"]
           var.list[[v]] <- ncvar_def(v, units=paste(vars.info[vars.info$name==v, "units"]), dim=list(dimX, dimY, dim.t), longname=paste(vars.info[vars.info$name==v, "longname"]))
-          dat.list[[v]] <- array(ens.sims[[v]][,i], dim=c(1,1,length(hrs.now)))
+          dat.list[[v]] <- array(ens.sims[[paste0("X", e)]][[v]][,i], dim=c(1,1,length(hrs.now)))
         }
         
         # Naming convention: [SITE]_[GCM]_1hr_[bias_ens_member]-[subday_ens_member]_[YEAR].nc
