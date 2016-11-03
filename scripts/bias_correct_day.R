@@ -380,7 +380,7 @@ for(v in 1:length(vars.met)){
         # Modeling in the predicted value from mod.bias
         dat.anom$pred <- predict(mod.bias, newdata=dat.anom)
         
-        if (met.var %in% c("tair", "tmax", "tmin", "qair"){
+        if (met.var %in% c("tair", "tmax", "tmin", "qair")){
           # ** We want to make sure we do these first **
           # These are the variables that have quasi-observed values for their whole time period, 
           # so we can use the the seasonsal trend, and the observed anaomalies
