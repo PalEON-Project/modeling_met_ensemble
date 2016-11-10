@@ -31,7 +31,7 @@ yrs.cal <- yrs.cal[order(yrs.cal$cal.min, decreasing=T),]
 vars.pred <- vector()
 dat.out <- list()
 for(v in 1:length(vars.met)){
-# for(v in 1:2){  
+# for(v in 1:7){
   # -------------
   # Doing some initial setup to prepare for looping for a variable for the first time
   # -------------
@@ -46,11 +46,11 @@ for(v in 1:length(vars.met)){
   #       of the issues inherent with precip, I don't want to distort too many variables by 
   #       including both it and a derivative as predictors
   #
-  if(v>1) vars.pred <- vars.met[1:(v-1)]
-  vars.pred <- vars.pred[!vars.pred %in% c("qair")] 
-  # if we're not looking at humidity, also exlcude precip
-  if(met.var!="qair") vars.pred <- vars.pred[!vars.pred == "precipf"] 
-  if(met.var=="tmin") vars.pred <- vector()
+  # if(v>1) vars.pred <- vars.met[1:(v-1)]
+  # vars.pred <- vars.pred[!vars.pred %in% c("qair")] 
+  # # if we're not looking at humidity, also exlcude precip
+  # if(met.var!="qair") vars.pred <- vars.pred[!vars.pred == "precipf"] 
+  # if(met.var=="tmin") vars.pred <- vector()
   # -------------
   
   # -------------
@@ -172,62 +172,49 @@ for(v in 1:length(vars.met)){
       # 4. Getting the raw ("bias") & training data for the calibration periods so we can model the anomalies
       #    -- NOTE: Now propogating anomaly uncertainty by pulling each simulation from the previous round.
       # The dataset to be bias-corrected is easy because there's no anomaly variation
-      raw.bias  <- met.bias[met.bias$dataset==dat.bias  & met.bias$year>=yr.min       & met.bias$year<=yr.max      , c("dataset", "year", "doy", met.var, vars.met)]
-      names(raw.bias) <- c("dataset", "year", "doy", "X", vars.met)
+      # 5. Pulling all of the raw data to predict the full bias-corrected time series
+      # Need to make sure we're propogating the uncertainty in the bias-corrected variables
+      
+      raw.bias  <- met.bias[met.bias$dataset==dat.bias  & met.bias$year>=yr.min       & met.bias$year<=yr.max      , c("dataset", "year", "doy", met.var)]
+      names(raw.bias) <- c("dataset", "year", "doy", "X")
       
       raw.bias <- merge(raw.bias, data.frame(ind=paste0("X", 1:n)), all=T)
       
-      # Propogating anomaly uncertainty -- need to stack the variables for each (if there's 1 or more predictor variables)
-      # raw.train <- met.bias[met.bias$dataset==dat.train & met.bias$year>=yr.min.train & met.bias$year<=yr.max.train, c("dataset", "year", "doy", met.var)]
-      # names(raw.train) <- c("dataset", "year", "doy", "X")
-      
-      # pulling the 
-      # dat.stack <- stack(dat.out[[met.var]]$sims[dat.out[[met.var]]$sims$dataset==dat.train & dat.out[[met.var]]$sims$year>=yr.min.train & dat.out[[met.var]]$sims$year<=yr.max.train, paste0("X", 1:n)])
       raw.train <- data.frame(dataset=dat.train,
                               year = dat.out[[met.var]]$sims[dat.out[[met.var]]$sims$dataset==dat.train  & dat.out[[met.var]]$sims$year>=yr.min.train & dat.out[[met.var]]$sims$year<=yr.max.train, "year" ],
                               doy  = dat.out[[met.var]]$sims[dat.out[[met.var]]$sims$dataset==dat.train  & dat.out[[met.var]]$sims$year>=yr.min.train & dat.out[[met.var]]$sims$year<=yr.max.train, "doy"  ],
                               X    = dat.stack$values,
                               ind  = dat.stack$ind
                               )
-      if(length(vars.pred)>0){ 
-        for(v.pred in vars.pred){
-          raw.train[,v.pred] <- stack(dat.out[[v.pred]]$sims[dat.out[[v.pred]]$sims$dataset==dat.train  & dat.out[[v.pred]]$sims$year>=yr.min.train & dat.out[[v.pred]]$sims$year<=yr.max.train, paste0("X", 1:n)])[,1]
+      
+      dat.prop <- data.frame(ind=paste0("X", 1:n))
+      dat.pred <- data.frame(met.bias[met.bias$dataset==dat.bias, c("year", "doy")],
+                             X    = met.bias[met.bias$dataset==dat.bias, met.var]
+                             )
+      dat.pred <- merge(dat.pred, dat.prop, all=T)
+      
+
+      # vars.prop <- names(dat.out)[names(dat.out)!=met.var]
+      # if(length(vars.prop)>0){
+      for(v.pred in vars.met[!vars.met==met.var]){
+        if(v.pred %in% names(dat.out)){
+          raw.train[,v.pred] <- stack(dat.out[[v.pred]]$sims[dat.out[[v.pred]]$sims$dataset==dat.train & dat.out[[v.pred]]$sims$year>=yr.min.train & dat.out[[v.pred]]$sims$year<=yr.max.train, paste0("X", 1:n)])[,1]
+          raw.bias [,v.pred] <- stack(dat.out[[v.pred]]$sims[dat.out[[v.pred]]$sims$dataset==dat.bias  & dat.out[[v.pred]]$sims$year>=yr.min.train & dat.out[[v.pred]]$sims$year<=yr.max.train, paste0("X", 1:n)])[,1]
+          dat.pred [,v.pred] <- stack(dat.out[[v.pred]]$sims[dat.out[[v.pred]]$sims$dataset==dat.bias, paste0("X", 1:n)])[,1]
+        } else {
+          raw.train[,v.pred] <- met.bias[met.bias$dataset==dat.train & met.bias$year>=yr.min.train & met.bias$year<=yr.max.train, v.pred]
+          raw.bias [,v.pred] <- met.bias[met.bias$dataset==dat.bias & met.bias$year>=yr.min.train & met.bias$year<=yr.max.train, v.pred]
+          dat.pred [,v.pred] <- met.bias[met.bias$dataset==dat.bias, v.pred]
         }
       }
-  
-      #  # Merge in the full permutation of anomalies -- here's where that pairing like we did for climate can occur
-      #  raw.bias <- merge(raw.bias, met.df)
-      
-      # 5. Pulling all of the raw data to predict the full bias-corrected time series
-      # Need to make sure we're propogating the uncertainty in the bias-corrected variables
-      vars.prop <- names(dat.out)[names(dat.out)!=met.var]
-      if(length(vars.prop)>0){
-        dat.pred <- data.frame(year=dat.out[[vars.prop[1]]]$sims[dat.out[[vars.prop[1]]]$sims$dataset==dat.bias,"year"],
-                               doy=dat.out[[vars.prop[1]]]$sims[dat.out[[vars.prop[1]]]$sims$dataset==dat.bias,"doy"],
-                               ind=stack(dat.out[[vars.prop[1]]]$sims[dat.out[[vars.prop[1]]]$sims$dataset==dat.bias, paste0("X", 1:n)])[,2],
-                               X  = met.bias[met.bias$dataset==dat.bias, met.var]
-                               )
-        for(v.prop in vars.prop){
-          dat.pred[,v.prop] <- stack(dat.out[[v.prop]]$sims[dat.out[[v.prop]]$sims$dataset==dat.bias, paste0("X", 1:n)])[,1]
-        }
-      } else {
-        dat.prop <- data.frame(ind=paste0("X", 1:n))
-        dat.pred <- data.frame(met.bias[met.bias$dataset==dat.bias, c("year", "doy")],
-                               X    = met.bias[met.bias$dataset==dat.bias, met.var]
-                               )
-        
-        dat.pred <- merge(dat.pred, dat.prop, all=T)
-      }
-      
-      
-      # dat.pred <- merge(dat.pred, met.df)
-      
+
+
       # 6. 0 out unnecessary predictors in all data frames
       #    -- this lets us have a standard equation that lists all potential predictors, but only actually use some
-      dat.temp [,vars.met[which(!vars.met %in% vars.pred)]] <- 0
-      raw.train[,vars.met[which(!vars.met %in% vars.pred)]] <- 0
-      raw.bias [,vars.met[which(!vars.met %in% vars.pred)]] <- 0
-      dat.pred [,vars.met[which(!vars.met %in% vars.pred)]] <- 0
+      # dat.temp [,vars.met[which(!vars.met %in% vars.pred)]] <- 0
+      # raw.train[,vars.met[which(!vars.met %in% vars.pred)]] <- 0
+      # raw.bias [,vars.met[which(!vars.met %in% vars.pred)]] <- 0
+      # dat.pred [,vars.met[which(!vars.met %in% vars.pred)]] <- 0
   
       # We have several variables where we run into zero-truncation problems
       # where negative values are not possible (and many for which zero is unlikely)
@@ -235,11 +222,11 @@ for(v in 1:length(vars.met)){
       #     and wind
       if(met.var %in% c("swdown", "qair", "lwdown", "wind")){
         # After some playign a square-root transformation seems to work best
-        dat.temp$X <- sqrt(dat.temp$X)
-        dat.temp$Y <- sqrt(dat.temp$Y)
+        dat.temp$X  <- sqrt(dat.temp$X)
+        dat.temp$Y  <- sqrt(dat.temp$Y)
         raw.train$X <- sqrt(raw.train$X)
-        raw.bias$X <- sqrt(raw.bias$X)
-        dat.pred$X <- sqrt(dat.pred$X)
+        raw.bias$X  <- sqrt(raw.bias$X)
+        dat.pred$X  <- sqrt(dat.pred$X)
         
         # # if we have a 0-value make it small number
         # dat.temp [dat.temp$X==0 , "X"] <- 1e-6
@@ -272,23 +259,23 @@ for(v in 1:length(vars.met)){
       
       # Running a model
       # ## Looking at precip as an anomaly-only function
-#       if(met.var == "precipf"){ 
-#         # Doing the mean bias correction
-#         dat.temp <- raw.train
-#         dat.temp$Y <- raw.train$X
-#         dat.temp$X <- raw.bias$X
-#         # If we're workign with precipf, we're going to try and get the low-frequeny patterns, but that's it
-#         # dat.temp <- dat.pred
-#         
-#         #dat.temp <- aggregate(dat.temp[,c("X", "tmax", "tmin", "swdown", "lwdown")], by=list(dat.temp$year), FUN=mean)
-#         #names(dat.temp)[1] <- "year"
-#         #summary(dat.temp)
-#         
-#         mod.bias <- gam(Y ~ s(doy) + X + tmax + tmin + swdown + lwdown, data=dat.temp)
-#       } else {
+      # if(met.var == "precipf"){
+      #   # Doing the mean bias correction
+      #   dat.temp <- raw.train
+      #   dat.temp$Y <- raw.train$X
+      #   dat.temp$X <- raw.bias$X
+      #   # If we're workign with precipf, we're going to try and get the low-frequeny patterns, but that's it
+      #   # dat.temp <- dat.pred
+      # 
+      #   #dat.temp <- aggregate(dat.temp[,c("X", "tmax", "tmin", "swdown", "lwdown")], by=list(dat.temp$year), FUN=mean)
+      #   #names(dat.temp)[1] <- "year"
+      #   #summary(dat.temp)
+      # 
+      #   mod.bias <- gam(Y ~ s(doy) + X + tmax + tmin + swdown + lwdown, data=dat.temp)
+      # } else {
         # mod.bias <- gam(Y ~ s(doy) + X + tmax + tmin + precipf + swdown + qair + lwdown + press + wind, data=dat.temp)
         mod.bias <- gam(Y ~ s(doy) + X + ind, data=dat.temp)
-#       }
+      # }
       summary(mod.bias)
       # plot(mod.bias, pages=1)
       # ACF(resid(mod.bias))
@@ -374,23 +361,18 @@ for(v in 1:length(vars.met)){
       # Modeling the anomalies of the other predictors 
       #  -- note: the downscaling & bias-correction of precip should have removed the monsoonal trend if there is no empirical basis for it
       #     so this should be pretty straight-forward now
-      for(j in vars.met){
+      for(j in vars.met[vars.met!=met.var]){
+        # print(j)
         raw.train$Q <- raw.train[,j]
         raw.bias$Q <- raw.bias[,j]
         dat.pred$Q <- dat.pred[,j]
         
-        if(j %in% vars.pred){ 
-          anom.train2  <- gam(Q ~ s(doy) + ind, data=raw.train) # Need to account for the climatic differences in the simulations 
-          raw.train[,paste0(j, ".anom")] <- resid(anom.train2)
-          
-          anom.bias2  <- gam(Q ~ s(doy), data=raw.bias) # Note: the "bias" dataset has not corrected yet, so there should only be 1 value
-          raw.bias[,paste0(j, ".anom")] <- resid(anom.bias2)
-          dat.pred[,paste0(j, ".anom")] <- dat.pred$Q - predict(anom.bias2, newdata=dat.pred)
-        } else {
-          raw.train[,paste0(j, ".anom")] <- 0
-          raw.bias[,paste0(j, ".anom")] <- 0
-          dat.pred[,paste0(j, ".anom")] <- 0
-        }
+        anom.train2  <- gam(Q ~ s(doy) + ind, data=raw.train) # Need to account for the climatic differences in the simulations 
+        anom.bias2  <- gam(Q ~ s(doy) + ind, data=raw.bias) # Note: the "bias" dataset has not corrected yet, so there should only be 1 value
+        
+        raw.train[,paste0(j, ".anom")] <- resid(anom.train2)
+        raw.bias[,paste0(j, ".anom")] <- resid(anom.bias2)
+        dat.pred[,paste0(j, ".anom")] <- dat.pred$Q - predict(anom.bias2, newdata=dat.pred)
       }
   
       # CRUNCEP has a few variables that assume a constant pattern from 1901-1950; 
@@ -406,7 +388,7 @@ for(v in 1:length(vars.met)){
         # if it's empirical we can, pair the anomalies for best estimation
         # Note: Pull the covariates from the training data to get any uncertainty &/or try to correct covariances
         #        -- this makes it mroe consistent with the GCM calculations
-        dat.anom <- merge(raw.bias[,c("year", "doy", "ind", "X", "anom.raw")], raw.train[,c("year", "doy", "anom.train", "ind", vars.met, paste0(vars.met, ".anom"))])
+        dat.anom <- merge(raw.bias[,c("year", "doy", "ind", "X", "anom.raw")], raw.train[,c("year", "doy", "anom.train", "ind", vars.met[vars.met!=met.var], paste0(vars.met[vars.met!=met.var], ".anom"))])
   
         k=round(length(dat.pred$year)/(25*366),0)
         k=max(k, 4) # we can't have less than 4 knots
@@ -461,11 +443,11 @@ for(v in 1:length(vars.met)){
         if(met.var=="precipf"){ 
           # If we're working with precipf, need to make the intercept 0 so that we have plenty of days with little/no rain
           mod.anom <- gam(anom.raw ~  s(year, k=k) + ind + tmax.anom + tmin.anom + swdown.anom + lwdown.anom + qair.anom -1, data=dat.pred)  
-        # } else if(met.var %in% c("swdown", "lwdown")){
+        } else if(met.var %in% c("swdown", "lwdown")){
           # See if we have some other anomaly that we can use to get the anomaly covariance & temporal trends right
           # This relies on the assumption that the low-frequency trends are in proportion to the other met variables
           # (this doesn't seem unreasonable, but that doesn't mean it's right)
-          # mod.anom <- gam(anom.train ~ s(doy, k=4) + tmax.anom*tmin.anom + precipf.anom + qair.anom + press.anom + wind.anom, data=raw.train)
+          mod.anom <- gam(anom.train ~ s(doy, k=4) + ind*(tmax.anom*tmin.anom + qair.anom + press.anom + wind.anom) -1, data=raw.train)
         } else {
           # If we haven't already done another met product, our best shot is to just model the existing variance 
           # and preserve as much of the low-frequency cylce as possible

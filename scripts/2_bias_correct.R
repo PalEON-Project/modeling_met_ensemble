@@ -54,9 +54,9 @@ rm(list=ls())
 library(mgcv); library(ggplot2)
 
 # Set the working directory
-# wd.base <- "~/Desktop/Research/PalEON_CR/met_ensemble"
+wd.base <- "~/Desktop/Research/PalEON_CR/met_ensemble"
 # wd.base <- "~/Dropbox/PalEON_CR/met_ensemble"
-wd.base <- "/projectnb/dietzelab/paleon/met_ensemble"
+# wd.base <- "/projectnb/dietzelab/paleon/met_ensemble"
 setwd(wd.base)
 
 # Defining a site name -- this can go into a function later
@@ -119,7 +119,7 @@ summary(gcm.hist)
 
 
 # vars.met <- c("tair", "tmax", "tmin", "precipf", "press", "qair", "wind", "swdown", "lwdown")
-vars.met <- c("tair", "tmax", "tmin", "qair", "precipf", "swdown", "press", "lwdown", "wind")
+vars.met <- c("tair", "tmax", "tmin", "qair", "swdown", "press", "lwdown", "wind", "precipf")
 cols.bind <- c("dataset", "year", "doy", "hour", vars.met)
 met.all <- rbind(ldas[,cols.bind], cruncep[,cols.bind], gcm.p1k[,cols.bind], gcm.hist[,cols.bind])
 met.all$Date <- as.Date(met.all$doy, origin=as.Date(paste(met.all$year, "01", "01", sep="-")))
@@ -186,6 +186,7 @@ precip.cutoff <- quantile(met.doy[met.doy$met=="precipf","upr"], 0.95)
 met.doy$upr2 <- ifelse(met.doy$met=="precipf" & met.doy$upr>=precip.cutoff, precip.cutoff, met.doy$upr)
 
 png(file.path(path.out, paste0(GCM, "_Raw_Year_0850-2015.png")), height=11, width=8.5, "in", res=180)
+print(
 ggplot(data=met.year) +
   facet_grid(met~., scales="free_y") +
   geom_line(aes(x=year, y=value, color=dataset)) +
@@ -194,9 +195,11 @@ ggplot(data=met.year) +
   theme_bw() +
   theme(legend.position="top",
         legend.direction="horizontal")
+)
 dev.off()
 
 png(file.path(path.out, paste0(GCM, "_Raw_DOY_All.png")), height=11, width=8.5, "in", res=180)
+print(
 ggplot(data=met.doy) +
   facet_grid(met~., scales="free_y") +
   geom_ribbon(aes(x=doy, ymin=lwr, ymax=upr2, fill=dataset), alpha=0.3) +
@@ -206,6 +209,7 @@ ggplot(data=met.doy) +
   theme_bw() +
   theme(legend.position="top",
         legend.direction="horizontal")
+)
 dev.off()
 # ----------------
 # -----------------------------------
@@ -214,11 +218,10 @@ dev.off()
 # 3. Doing the DOY bias-corrections : 
 # -----------------------------------
 # bias.correct <- function(met.day, met.var, dat.train, yrs.cal, n){
-# yrs.cal = yrs.cal[1,]
 
 # The met vars we need (in the order we want to do them)
 # vars.met <- c("tmax", "tmin", "swdown", "lwdown", "precipf", "qair", "press", "wind")
-vars.met <- c("tmax", "tmin", "qair", "precipf", "swdown", "press", "lwdown", "wind")
+vars.met <- c("tmax", "tmin", "qair", "swdown", "press", "lwdown", "wind", "precipf")
 dat.cal = LDAS
 
 # Note This dataframe is only for the datasets to be bias-corrected!
@@ -227,6 +230,7 @@ yrs.cal = data.frame(dataset = c("CRUNCEP", paste0(GCM, ".hist"), paste0(GCM, ".
                      cal.max = c(2010,             1921,              1849)
                      )
 
+# yrs.cal = yrs.cal[1,]
 
 # --------------------------
 # Looking at the covariance among different variables
