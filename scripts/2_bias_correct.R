@@ -73,8 +73,8 @@ for(GCM in GCM.list){
   
 print(GCM)
 path.dat <- file.path(wd.base, "data/paleon_sites", site.name)
-path.out <- file.path(wd.base, "data/met_ensembles", site.name, GCM, "day")
-# path.out <- file.path("~/Desktop/met_bias_day", site.name, GCM)
+# path.out <- file.path(wd.base, "data/met_ensembles", site.name, GCM, "day")
+path.out <- file.path("~/Desktop/met_bias_day", site.name, GCM)
 if(!dir.exists(path.out)) dir.create(path.out, recursive=T)  
 
 met.done <- dir(path.out, ".csv")
@@ -152,7 +152,6 @@ summary(met.day)
 # Make precipf in total kg/m2/day rather than per s to make life easier
 met.day$precipf <- met.day$precipf*60*60*24
 summary(met.day)
-
 # ----------------
 
 # ----------------
@@ -218,7 +217,8 @@ dev.off()
 # yrs.cal = yrs.cal[1,]
 
 # The met vars we need (in the order we want to do them)
-vars.met <- c("tmax", "tmin", "swdown", "lwdown", "precipf", "qair", "press", "wind")
+# vars.met <- c("tmax", "tmin", "swdown", "lwdown", "precipf", "qair", "press", "wind")
+vars.met <- c("tmax", "tmin", "qair", "precipf", "swdown", "press", "lwdown", "wind")
 dat.cal = LDAS
 
 # Note This dataframe is only for the datasets to be bias-corrected!
