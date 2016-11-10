@@ -355,7 +355,7 @@ for(v in 1:length(vars.met)){
   
         # We don't want the anomaly from the bias-corrected mean, we want it form the original  
         # if(v>1){
-          anom.train <- gam(X ~ s(doy, by=ind) + ind, data=raw.train) # Need to account for the climatic differences in the simulations 
+          anom.train <- gam(X ~ s(doy) + ind, data=raw.train) # Need to account for the climatic differences in the simulations 
         # } else {
           # anom.train <- gam(X ~ s(doy, by=ind), data=raw.train) # Need to account for the climatic differences in the simulations 
         # }
@@ -380,7 +380,7 @@ for(v in 1:length(vars.met)){
         dat.pred$Q <- dat.pred[,j]
         
         if(j %in% vars.pred){ 
-          anom.train2  <- gam(Q ~ s(doy, by=ind) + ind, data=raw.train) # Need to account for the climatic differences in the simulations 
+          anom.train2  <- gam(Q ~ s(doy) + ind, data=raw.train) # Need to account for the climatic differences in the simulations 
           raw.train[,paste0(j, ".anom")] <- resid(anom.train2)
           
           anom.bias2  <- gam(Q ~ s(doy), data=raw.bias) # Note: the "bias" dataset has not corrected yet, so there should only be 1 value
@@ -418,31 +418,31 @@ for(v in 1:length(vars.met)){
         # Modeling in the predicted value from mod.bias
         dat.anom$pred <- predict(mod.bias, newdata=dat.anom)
         
-        if (met.var %in% c("tair", "tmax", "tmin", "qair")){
+        if (met.var %in% c("tair", "tmax", "tmin")){
           # ** We want to make sure we do these first **
           # These are the variables that have quasi-observed values for their whole time period, 
           # so we can use the the seasonsal trend, and the observed anaomalies
           # Note: because we can directly model the anomalies, the inherent long-term trend should be preserved
-          # mod.anom <- gam(anom.train ~ s(doy) + ind*anom.raw -1 -ind, data=dat.anom)
-          mod.anom <- gam(anom.raw ~ s(doy, k=4) + s(year, k=k) + ind*tmax.anom*tmin.anom -1 - ind, data=dat.pred)
-        } else if(met.var=="swdown"){
+          mod.anom <- gam(anom.train ~ s(doy) + ind*anom.raw -1, data=dat.anom)
+          # mod.anom <- gam(anom.raw ~ s(doy, k=4) + s(year, k=k) + ind*tmax.anom*tmin.anom -1 - ind, data=dat.pred)
+        } else if(met.var %in% c("swdown", "qair")){
           # CRUNCEP swdown has been vary hard to fit to NLDAS because it has a different variance for some reason, 
           # and the only way I've been able to fix it is to model the temporal pattern seen in the dataset based on 
           # its own anomalies (not ideal, but it works)
-          mod.anom <- gam(anom.raw ~ s(doy, k=4) + s(year, k=k) + ind*tmax.anom*tmin.anom -1 - ind, data=dat.pred)
+          mod.anom <- gam(anom.raw ~ s(doy) + s(year, k=k) + ind*tmax.anom*tmin.anom -1 , data=dat.pred)
         } else if(met.var=="precipf"){
           # Precip is really only different from the others in that I deliberately chose a more rigid seasonal pattern and we need to force the intercept
           # through 0 so we can try and reduce the likelihood of evenly distributed precipitation events
           k=round(length(dat.pred$year)/(25*366),0)
           k=max(k, 4) # we can't have less than 4 knots
           
-          mod.anom <- gam(anom.raw ~ s(year, k=k) + ind*(tmax.anom + tmin.anom + swdown.anom + lwdown.anom + qair.anom) -1 - ind, data=dat.pred)
+          mod.anom <- gam(anom.raw ~ s(year, k=k) + ind*(tmax.anom + tmin.anom + swdown.anom + lwdown.anom + qair.anom) -1, data=dat.pred)
         } else if(met.var %in% c("wind", "press", "lwdown")) {
           # These variables are constant in CRU pre-1950.  
           # This means that we can not use information about the long term trend OR the actual annomalies 
           # -- they must be inferred from the other met we have
           # mod.anom <- gam(anom.train ~ s(doy) + tmax.anom*tmin.anom + swdown.anom + qair.anom -1, data=dat.anom)
-          mod.anom <- gam(anom.train ~ s(doy) + ind*swdown.anom*qair - ind -1, data=dat.anom)
+          mod.anom <- gam(anom.train ~ s(doy) + ind*swdown.anom*qair -1, data=dat.anom)
           # mod.anom <- gam(anom.raw ~ s(doy) + ind + tmax.anom + swdown.anom -1, data=dat.pred)
         }      
       } else { 
