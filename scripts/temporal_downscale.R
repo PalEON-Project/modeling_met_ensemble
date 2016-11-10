@@ -295,8 +295,8 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.init, dat.train){
       dat.pred <- dat.pred^2 # because squared to prevent negative numbers
       
       # Hard-coding some sanity bounds by ball-parking things from NLDAS & CRUNCEP
-      dat.pred[dat.pred<100] <- 100
-      dat.pred[dat.pred>600] <- 600
+      # dat.pred[dat.pred<100] <- 100
+      # dat.pred[dat.pred>600] <- 600
       
       # Randomly pick which values to save & propogate
       cols.prop <- sample(1:n.ens, ncol(dat.sim$lwdown), replace=T)
@@ -416,7 +416,7 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.init, dat.train){
       dat.pred <- exp(dat.pred) # because log-transformed
       
       # having a *very* hard time keeping humidity reasonable, even with transformations so truncating the max
-      dat.pred[dat.pred>max(dat.train$qair)] <- max(dat.train$qair) 
+      # dat.pred[dat.pred>max(dat.train$qair)] <- max(dat.train$qair) 
       
       # Randomly pick which values to save & propogate
       cols.prop <- sample(1:n.ens, ncol(dat.sim$qair), replace=T)
@@ -478,7 +478,7 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.init, dat.train){
       
       # Hard code an upper-level sanity check on the wind
       # 20 m/s = 45 mph; not hurricane strength, but plenty strong enough for most models
-      dat.pred[dat.pred>20] <- 20
+      # dat.pred[dat.pred>20] <- 20
       
       # Randomly pick which values to save & propogate
       cols.prop <- sample(1:n.ens, ncol(dat.sim$wind), replace=T)

@@ -4,6 +4,7 @@
 #$ -S /bin/bash
 #$ -V
 #$ -m e
+#$ -pe omp 12
 #$ -q "geo*"
 #$ -M crollinson@gmail.com
 #$ -l h_rt=120:00:00

@@ -53,8 +53,8 @@ library(parallel)
 rm(list=ls())
 set.seed(0017)
 
-# wd.base <- "/projectnb/dietzelab/paleon/met_ensemble/"
-wd.base <- "~/Desktop/Research/PalEON_CR/met_ensemble/"
+wd.base <- "/projectnb/dietzelab/paleon/met_ensemble/"
+# wd.base <- "~/Desktop/Research/PalEON_CR/met_ensemble/"
 setwd(wd.base)
 
 # Load the scripts that do all the heavy lifting
@@ -62,11 +62,11 @@ source("scripts/temporal_downscale.R")
 source("scripts/temporal_downscale_functions.R")
 
 
-# dat.base <- "/projectnb/dietzelab/paleon/met_ensemble/data/met_ensembles/HARVARD/"
-# dat.train <- read.csv("/projectnb/dietzelab/paleon/met_ensemble/data/paleon_sites/HARVARD/NLDAS_1980-2015.csv")
+dat.base <- "/projectnb/dietzelab/paleon/met_ensemble/data/met_ensembles/HARVARD/"
+dat.train <- read.csv("/projectnb/dietzelab/paleon/met_ensemble/data/paleon_sites/HARVARD/NLDAS_1980-2015.csv")
 
-dat.base <- "~/Desktop/met_ensembles/HARVARD/"
-dat.train <- read.csv(file.path(wd.base, "data/paleon_sites/HARVARD/NLDAS_1980-2015.csv"))
+# dat.base <- "~/Desktop/met_ensembles/HARVARD/"
+# dat.train <- read.csv(file.path(wd.base, "data/paleon_sites/HARVARD/NLDAS_1980-2015.csv"))
 
 # if(!dir.exists(mod.out)) dir.create(mod.out, recursive = T)
 # if(!dir.exists(fig.dir)) dir.create(fig.dir, recursive = T)
@@ -78,11 +78,11 @@ site.lon=-72.18
 
 # GCM.list = c("CCSM4", "MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1")
 GCM.list = "CCSM4"
-ens.hr  <- 4 # Number of hourly ensemble members to create
-n.day <- 3 # Number of daily ensemble members to process
+ens.hr  <- 3 # Number of hourly ensemble members to create
+n.day <- 10 # Number of daily ensemble members to process
 yrs.plot <- c(2015, 1985, 1920, 1875, 1800, 1000, 850)
-years.sim=2015:2014
-cores.max = 8
+years.sim=2015:1900
+cores.max = 12
 
 # Defining variable names, longname & units
 vars.info <- data.frame(name    =c("tair", "precipf", "swdown", "lwdown", "press", "qair", "wind"),
@@ -121,7 +121,7 @@ for(GCM in GCM.list){
   load(file.path(path.gcm, dat.day)) # Loads dat.out.full
 
   # Set & create the output directory
-  path.out <- file.path(dat.base, GCM, "1hr")
+  path.out <- file.path(dat.base, "test_ensembles", GCM, "1hr")
   if(!dir.exists(path.out)) dir.create(path.out, recursive=T)
   
   # -----------------------------------
