@@ -54,11 +54,11 @@ rm(list=ls())
 library(mgcv); library(ggplot2)
 
 # Set the working directory
-# wd.base <- "~/Desktop/Research/PalEON_CR/met_ensemble"
-# out.base <- "~/Desktop/met_bias_day/"
+wd.base <- "~/Desktop/Research/PalEON_CR/met_ensemble"
+out.base <- "~/Desktop/met_bias_day/"
 # wd.base <- "~/Dropbox/PalEON_CR/met_ensemble"
-wd.base <- "/projectnb/dietzelab/paleon/met_ensemble"
-out.base <- "/projectnb/dietzelab/paleon/met_ensemble"
+# wd.base <- "/projectnb/dietzelab/paleon/met_ensemble"
+# out.base <- "/projectnb/dietzelab/paleon/met_ensemble"
 setwd(wd.base)
 
 # Defining a site name -- this can go into a function later

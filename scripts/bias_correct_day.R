@@ -281,7 +281,7 @@ for(v in 1:length(vars.met)){
       #        -- this makes it mroe consistent with the GCM calculations
       dat.anom <- merge(raw.bias[,c("year", "doy", "ind", "X", "anom.raw")], raw.train[,c("year", "doy", "anom.train", "ind", vars.met[vars.met!=met.var], paste0(vars.met[vars.met!=met.var], ".anom"))])
 
-      k=round(length(dat.pred$year)/(25*366),0)
+      k=round(length(unique(dat.pred$year))/25,0)
       k=max(k, 4) # we can't have less than 4 knots
       
       # plot(anom.train ~ anom.raw, data=dat.anom)
@@ -325,7 +325,7 @@ for(v in 1:length(vars.met)){
       #      to come up with a relationship that we an use to predict the new set of anomalies
       #   2) If we don't have any other variables to leverage (i.e. this is our first met variable), we incorporate both the seasonal
       #      trend (doy spline) and potential low-frequency trends in the data (year spline)
-      k=round(length(dat.pred$year)/(25*366),0)
+      k=round(length(unique(dat.pred$year))/25,0)
       k=max(k, 4) # we can't have less than 4 knots
       
       # vars.met <- c("tair", "tmax", "tmin", "qair", "precipf", "swdown", "press", "lwdown", "wind")
@@ -335,7 +335,7 @@ for(v in 1:length(vars.met)){
         mod.anom <- gam(anom.raw ~ s(year, k=k) + ind -1, data=dat.pred)
       } else if(met.var=="precipf"){ 
         # If we're working with precipf, need to make the intercept 0 so that we have plenty of days with little/no rain
-        mod.anom <- gam(anom.raw ~  s(year, k=k) + ind + tmax.anom + tmin.anom + swdown.anom + lwdown.anom + qair.anom -1, data=dat.pred)  
+        mod.anom <- gam(anom.raw ~  s(year, k=k) + ind*(tmax.anom*tmin.anom + swdown.anom + lwdown.anom + qair.anom) -1, data=dat.pred)  
       } else if(met.var %in% c("swdown", "lwdown")){
         # See if we have some other anomaly that we can use to get the anomaly covariance & temporal trends right
         # This relies on the assumption that the low-frequency trends are in proportion to the other met variables
@@ -397,9 +397,9 @@ for(v in 1:length(vars.met)){
     sim1b <- Xp.anom %*% t(Rbeta.anom) # Weather component with uncertainty
 
     # If we're dealing with the temperatures where there's basically no anomaly, 
-    # we'll subtract the multi-decadal trend out of the anomalies; not a perfect solution, but it will increase teh variability
-    if(met.var %in% c("tmax", "tmin") & !(dat.bias %in% empirical)){
-      sim1b <- sim1b - dat.pred$anom.raw
+    # we'll get the uncertainty subtract the multi-decadal trend out of the anomalies; not a perfect solution, but it will increase teh variability
+    if(!(dat.bias %in% empirical) & (met.var %in% c("tmax", "tmin"))){
+      sim1b <- sim1b - apply(sim1b, 1, mean) + as.vector(dat.pred$anom.raw) # Get the range around that medium-frequency trend 
     }
     
     
