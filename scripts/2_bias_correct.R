@@ -54,9 +54,11 @@ rm(list=ls())
 library(mgcv); library(ggplot2)
 
 # Set the working directory
-wd.base <- "~/Desktop/Research/PalEON_CR/met_ensemble"
+# wd.base <- "~/Desktop/Research/PalEON_CR/met_ensemble"
+# out.base <- "~/Desktop/met_bias_day/"
 # wd.base <- "~/Dropbox/PalEON_CR/met_ensemble"
-# wd.base <- "/projectnb/dietzelab/paleon/met_ensemble"
+wd.base <- "/projectnb/dietzelab/paleon/met_ensemble"
+out.base <- "/projectnb/dietzelab/paleon/met_ensemble"
 setwd(wd.base)
 
 # Defining a site name -- this can go into a function later
@@ -66,15 +68,18 @@ site.lon=-72.18
 GCM.list=c("MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1", "CCSM4")
 # GCM.list=c("CCSM4")
 LDAS="NLDAS"
-n=25 # Number of ensemble members
+n=5 # Number of ensemble members
 # -----------------------------------
+
+# source("scripts/debias.gcm.R")
+# debias.gcm(GCM=GCM.list[1], LDAS=LDAS, wd.base=wd.base, out.base=out.base, site.name=site.name, site.lat=site.lat, site.lon=site.lon, n=n)
+
 
 for(GCM in GCM.list){
   
 print(GCM)
 path.dat <- file.path(wd.base, "data/paleon_sites", site.name)
-# path.out <- file.path(wd.base, "data/met_ensembles", site.name, GCM, "day")
-path.out <- file.path("~/Desktop/met_bias_day", site.name, GCM)
+path.out <- file.path(out.base, "data/met_ensembles", site.name, GCM, "day")
 if(!dir.exists(path.out)) dir.create(path.out, recursive=T)  
 
 met.done <- dir(path.out, ".csv")
@@ -509,7 +514,7 @@ yr.bins <- c(min(dat.out.full$met.bias$year), seq(min(dat.out.full$met.bias$year
 for(i in 1:n){
   # Make a directory for each ensemble member
   out.name <- paste0(site.name, "_", GCM, "_day_", str_pad(i, 3, pad=0))
-  new.dir <- file.path(wd.base, "data/met_ensembles", site.name, GCM, "day", out.name)
+  new.dir <- file.path(path.out, "day", out.name)
   if(!dir.exists(new.dir)) dir.create(new.dir, recursive=T)  
   
   for(j in 1:length(yr.bins)){

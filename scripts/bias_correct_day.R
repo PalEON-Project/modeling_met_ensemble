@@ -172,11 +172,11 @@ for(v in 1:length(vars.met)){
     for(v.pred in vars.met[!vars.met==met.var]){
       if(v.pred %in% names(dat.out)){
         raw.train[,v.pred] <- stack(dat.out[[v.pred]]$sims[dat.out[[v.pred]]$sims$dataset==dat.train & dat.out[[v.pred]]$sims$year>=yr.min.train & dat.out[[v.pred]]$sims$year<=yr.max.train, paste0("X", 1:n)])[,1]
-        raw.bias [,v.pred] <- stack(dat.out[[v.pred]]$sims[dat.out[[v.pred]]$sims$dataset==dat.bias  & dat.out[[v.pred]]$sims$year>=yr.min.train & dat.out[[v.pred]]$sims$year<=yr.max.train, paste0("X", 1:n)])[,1]
+        raw.bias [,v.pred] <- stack(dat.out[[v.pred]]$sims[dat.out[[v.pred]]$sims$dataset==dat.bias  & dat.out[[v.pred]]$sims$year>=yr.min & dat.out[[v.pred]]$sims$year<=yr.max, paste0("X", 1:n)])[,1]
         dat.pred [,v.pred] <- stack(dat.out[[v.pred]]$sims[dat.out[[v.pred]]$sims$dataset==dat.bias, paste0("X", 1:n)])[,1]
       } else {
         raw.train[,v.pred] <- met.bias[met.bias$dataset==dat.train & met.bias$year>=yr.min.train & met.bias$year<=yr.max.train, v.pred]
-        raw.bias [,v.pred] <- met.bias[met.bias$dataset==dat.bias & met.bias$year>=yr.min.train & met.bias$year<=yr.max.train, v.pred]
+        raw.bias [,v.pred] <- met.bias[met.bias$dataset==dat.bias & met.bias$year>=yr.min & met.bias$year<=yr.max, v.pred]
         dat.pred [,v.pred] <- met.bias[met.bias$dataset==dat.bias, v.pred]
       }
     }
@@ -315,8 +315,8 @@ for(v in 1:length(vars.met)){
         # This means that we can not use information about the long term trend OR the actual annomalies 
         # -- they must be inferred from the other met we have
         # mod.anom <- gam(anom.train ~ s(doy) + tmax.anom*tmin.anom + swdown.anom + qair.anom -1, data=dat.anom)
-        mod.anom <- gam(anom.train ~ s(doy) + ind*swdown.anom*qair -1, data=dat.anom)
-        # mod.anom <- gam(anom.raw ~ s(doy) + ind + tmax.anom + swdown.anom -1, data=dat.pred)
+        # mod.anom <- gam(anom.train ~ s(doy) + ind*swdown.anom*qair -1, data=dat.anom)
+        mod.anom <- gam(anom.raw ~ s(doy) + ind*(tmin*tmax.anom + swdown.anom + qair.anom) -1, data=dat.pred)
       }      
     } else { 
       # If we're dealing with non-empirical datasets, we can't pair anomalies to come up with a direct adjustment 
