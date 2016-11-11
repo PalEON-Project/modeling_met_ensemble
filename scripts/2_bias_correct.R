@@ -68,7 +68,7 @@ site.lon=-72.18
 GCM.list=c("MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1", "CCSM4")
 # GCM.list=c("CCSM4")
 LDAS="NLDAS"
-n=5 # Number of ensemble members
+n=25 # Number of ensemble members
 # -----------------------------------
 
 # source("scripts/debias.gcm.R")

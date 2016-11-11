@@ -331,7 +331,9 @@ for(v in 1:length(vars.met)){
       # vars.met <- c("tair", "tmax", "tmin", "qair", "precipf", "swdown", "press", "lwdown", "wind")
       # Vars that are at daily and we just need to adjust the variance
       # We have some other anomaly to use! that helps a lot. -- use that to try and get low-frequency trends in the past
-      if(met.var=="precipf"){ 
+      if(met.var %in% c("tmax", "tmin")){
+        mod.anom <- gam(anom.raw ~ s(year, k=k) + ind -1, data=dat.pred)
+      } else if(met.var=="precipf"){ 
         # If we're working with precipf, need to make the intercept 0 so that we have plenty of days with little/no rain
         mod.anom <- gam(anom.raw ~  s(year, k=k) + ind + tmax.anom + tmin.anom + swdown.anom + lwdown.anom + qair.anom -1, data=dat.pred)  
       } else if(met.var %in% c("swdown", "lwdown")){
@@ -343,7 +345,7 @@ for(v in 1:length(vars.met)){
         # If we haven't already done another met product, our best shot is to just model the existing variance 
         # and preserve as much of the low-frequency cylce as possible
         # THis should be tair, tmax, tmin, qair, press, wind
-        mod.anom <- gam(anom.raw ~ s(doy) + s(year, k=k) + ind + pred -1, data=dat.pred)
+        mod.anom <- gam(anom.raw ~ s(doy) + s(year, k=k) +ind*(tmax.anom*tmin.anom)-1, data=dat.pred)
       }
     }
     summary(mod.anom)
@@ -394,6 +396,14 @@ for(v in 1:length(vars.met)){
     sim1a <- Xp %*% t(Rbeta)  # Climate component with uncertainty
     sim1b <- Xp.anom %*% t(Rbeta.anom) # Weather component with uncertainty
 
+    # If we're dealing with the temperatures where there's basically no anomaly, 
+    # we'll subtract the multi-decadal trend out of the anomalies; not a perfect solution, but it will increase teh variability
+    if(met.var %in% c("tmax", "tmin") & !(dat.bias %in% empirical)){
+      sim1b <- sim1b - dat.pred$anom.raw
+    }
+    
+    
+    
     # Option 1: Adding a constant error per time series for the cliamte correction 
     #             (otherwise we're just doubling anomalies)
     # sim1a <- sweep(sim1a, 2, rnorm(n, mean(resid.bias), sd(resid.bias)), FUN="+")
