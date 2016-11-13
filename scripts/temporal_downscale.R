@@ -415,9 +415,12 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.init, dat.train){
                               n.ens=n.ens)
       dat.pred <- exp(dat.pred) # because log-transformed
       
-      # having a *very* hard time keeping humidity reasonable, even with transformations so truncating the max
-      # dat.pred[dat.pred>max(dat.train$qair)] <- max(dat.train$qair) 
-      
+      # qair sometimes ends up with high or infinite values, so lets make sure those get brought down a bit
+      if(max(dat.pred)>0.03)  {
+        qair.fix <- ifelse(quantile(dat.pred, 0.99)<0.03, quantile(dat.pred, 0.99), 0.03)
+        dat.pred[dat.pred>qair.fix] <- qair.fix
+      }
+
       # Randomly pick which values to save & propogate
       cols.prop <- sample(1:n.ens, ncol(dat.sim$qair), replace=T)
       

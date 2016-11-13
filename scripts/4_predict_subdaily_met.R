@@ -53,8 +53,8 @@ library(parallel)
 rm(list=ls())
 set.seed(0017)
 
-wd.base <- "/projectnb/dietzelab/paleon/met_ensemble/"
-# wd.base <- "~/Desktop/Research/PalEON_CR/met_ensemble/"
+# wd.base <- "/projectnb/dietzelab/paleon/met_ensemble/"
+wd.base <- "~/Desktop/Research/PalEON_CR/met_ensemble/"
 setwd(wd.base)
 
 # Load the scripts that do all the heavy lifting
@@ -62,11 +62,13 @@ source("scripts/temporal_downscale.R")
 source("scripts/temporal_downscale_functions.R")
 
 
-dat.base <- "/projectnb/dietzelab/paleon/met_ensemble/data/met_ensembles/HARVARD/"
-dat.train <- read.csv("/projectnb/dietzelab/paleon/met_ensemble/data/paleon_sites/HARVARD/NLDAS_1980-2015.csv")
+# dat.base <- "/projectnb/dietzelab/paleon/met_ensemble/data/met_ensembles/HARVARD/"
+# dat.train <- read.csv("/projectnb/dietzelab/paleon/met_ensemble/data/paleon_sites/HARVARD/NLDAS_1980-2015.csv")
 
 # dat.base <- "~/Desktop/met_ensembles/HARVARD/"
-# dat.train <- read.csv(file.path(wd.base, "data/paleon_sites/HARVARD/NLDAS_1980-2015.csv"))
+dat.base <- "~/Desktop/met_bias_day/data/met_ensembles/HARVARD/"
+
+dat.train <- read.csv(file.path(wd.base, "data/paleon_sites/HARVARD/NLDAS_1980-2015.csv"))
 
 # if(!dir.exists(mod.out)) dir.create(mod.out, recursive = T)
 # if(!dir.exists(fig.dir)) dir.create(fig.dir, recursive = T)
@@ -77,9 +79,9 @@ site.lat=42.54
 site.lon=-72.18
 
 # GCM.list = c("CCSM4", "MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1")
-GCM.list = "CCSM4"
+GCM.list = "MIROC-ESM"
 ens.hr  <- 3 # Number of hourly ensemble members to create
-n.day <- 10 # Number of daily ensemble members to process
+n.day <- 5 # Number of daily ensemble members to process
 yrs.plot <- c(2015, 1985, 1920, 1875, 1800, 1000, 850)
 years.sim=2015:1900
 cores.max = 12
@@ -242,13 +244,14 @@ for(GCM in GCM.list){
     # Note: Using a loop for each ensemble member for now, but this will get 
     #       parallelized to speed it up soon, but we'll prototype in parallel
     # -----------------------------------
-    cores.use <- min(cores.max, length(dat.ens))
-    ens.sims  <- mclapply(dat.ens, predict.subdaily, mc.cores=cores.use, n.ens=ens.hr, path.model=file.path(dat.base, "subday_models"), lags.init=lags.init[[paste0("X", e)]], dat.train=dat.train)
-    
-    for(e in ens.day){
+    # cores.use <- min(cores.max, length(dat.ens))
+    # ens.sims  <- mclapply(dat.ens, predict.subdaily, mc.cores=cores.use, n.ens=ens.hr, path.model=file.path(dat.base, "subday_models"), lags.init=lags.init[[paste0("X", e)]], dat.train=dat.train)
+    ens.sims <- list()
+    for(e in unique(ens.day)){
       # # Do the prediction
-      # ens.sims[[paste0("X", e)]] <- predict.subdaily(dat.mod=dat.ens[[paste0("X", e)]], n.ens=ens.hr, path.model=file.path(dat.base, "subday_models"), lags.init=lags.init[[paste0("X", e)]], dat.train=dat.train)
-      
+      ens.sims[[paste0("X", e)]] <- predict.subdaily(dat.mod=dat.ens[[paste0("X", e)]], n.ens=ens.hr, path.model=file.path(dat.base, "subday_models"), lags.init=lags.init[[paste0("X", e)]], dat.train=dat.train)
+      # qair.max <- quantile(as.matrix(ens.sims[[paste0("X", e)]]$qair[,c(1:ens.hr)]), 0.99)
+      # ens.sims[[paste0("X", e)]]$qair[ens.sims[[paste0("X", e)]]$qair>qair.max] <- qair.max
 
       # If this is one of our designated QAQC years, makes some graphs
       if(y %in% yrs.plot){
@@ -299,13 +302,13 @@ for(GCM in GCM.list){
   # -----------------------------------
   
   # Do some clean-up to save space
-  dir.compress <- dir(path.out, GCM)
+  # dir.compress <- dir(path.out, GCM)
   
-  setwd(path.out)
-  for(ens in dir.compress){
-    system(paste0("tar -jcvf ", ens, ".tar.bz2 ", ens)) # Compress the folder
-    system(paste0("rm -rf ", ens)) # remove the uncompressed folder
-  }
-  setwd(wd.base)
+  # setwd(path.out)
+  # for(ens in dir.compress){
+  #   system(paste0("tar -jcvf ", ens, ".tar.bz2 ", ens)) # Compress the folder
+  #   system(paste0("rm -rf ", ens)) # remove the uncompressed folder
+  # }
+  # setwd(wd.base)
   toc()
 } # End GCM loop
