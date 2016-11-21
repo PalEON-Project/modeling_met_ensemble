@@ -65,8 +65,8 @@ setwd(wd.base)
 site.name="HARVARD"
 site.lat=42.54
 site.lon=-72.18
-GCM.list=c("MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1", "CCSM4")
-# GCM.list=c("CCSM4")
+# GCM.list=c("MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1", "CCSM4")
+GCM.list=c("MIROC-ESM")
 LDAS="NLDAS"
 n=25 # Number of ensemble members
 # -----------------------------------
