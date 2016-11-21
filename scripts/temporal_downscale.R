@@ -1,8 +1,10 @@
-predict.subdaily <- function(dat.mod, n.ens, path.model, lags.init, dat.train){
+predict.subdaily <- function(dat.mod, n.ens, path.model, lags.list=NULL, lags.init=NULL, dat.train){
   # dat.mod    = data to be predicted at the time step of the training data
   # n.ens      = number of hourly ensemble members to generate
   # path.model = path to where the training model & betas is stored
-  # lags.init  = a list with layers of same name dat.sim and n=n.ens that provide the initial lags
+  # lags.list  = a list with layers of same name dat.sim and n=n.ens that provide the initial lags; 
+  #              used if entering the function from a parallel apply function
+  # lags.init  = a data frame of initialization paramters to match the data in dat.mod
   # dat.train  = the training data used to fit the model; needed for night/day in swdown
   
   # --------------------------------
@@ -24,6 +26,11 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.init, dat.train){
   library(ggplot2)
   # library(tictoc)
 
+  # Figure out if we need to extract the approrpiate 
+  if(is.null(lags.init) | is.list(lags.init)){
+    lags.init <- lags.list[[unique(dat.mod$ens.day)]]
+  }
+  
   # Set up the ensemble members in a list so the uncertainty can be propogated
   dat.sim <- list() 
 

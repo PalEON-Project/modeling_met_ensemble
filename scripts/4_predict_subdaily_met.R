@@ -78,10 +78,10 @@ site.name="HARVARD"
 site.lat=42.54
 site.lon=-72.18
 
-# GCM.list = c("CCSM4", "MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1")
-GCM.list = "MIROC-ESM"
+GCM.list = c("CCSM4", "MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1")
+# GCM.list = "MIROC-ESM"
 ens.hr  <- 3 # Number of hourly ensemble members to create
-n.day <- 5 # Number of daily ensemble members to process
+n.day <- 10 # Number of daily ensemble members to process
 yrs.plot <- c(2015, 1985, 1920, 1875, 1800, 1000, 850)
 years.sim=2015:1900
 cores.max = 12
@@ -203,6 +203,7 @@ for(GCM in GCM.list){
     # Create a list layer for each ensemble member
     for(e in ens.day){
       dat.ens[[paste0("X", e)]] <- data.frame(dataset      =dat.yr $tmax   $dataset,
+                                              ens.day      =as.factor(paste0("X", e)),
                                               year         =dat.yr $tmax   $year,
                                               doy          =dat.yr $tmax   $doy,
                                               date         =dat.yr $tmax   $time,
@@ -244,27 +245,39 @@ for(GCM in GCM.list){
     # Note: Using a loop for each ensemble member for now, but this will get 
     #       parallelized to speed it up soon, but we'll prototype in parallel
     # -----------------------------------
-    # cores.use <- min(cores.max, length(dat.ens))
-    # ens.sims  <- mclapply(dat.ens, predict.subdaily, mc.cores=cores.use, n.ens=ens.hr, path.model=file.path(dat.base, "subday_models"), lags.init=lags.init[[paste0("X", e)]], dat.train=dat.train)
-    ens.sims <- list()
+    cores.use <- min(cores.max, length(dat.ens))
+    ens.sims  <- mclapply(dat.ens, predict.subdaily, mc.cores=cores.use, n.ens=ens.hr, path.model=file.path(dat.base, "subday_models"), lags.list=lags.init, lags.init=NULL, dat.train=dat.train)
+    
+    # If this is one of our designated QAQC years, makes some graphs
+    # Now doing this for the whole GCM
+    if(y %in% yrs.plot){
+      dat.plot <- data.frame()
+      ens.plot <- list()
+      for(i in names(ens.sims[[1]])){
+        ens.plot[[i]] <- data.frame(matrix(nrow=nrow(ens.sims[[1]][[i]]), ncol=0))
+      }
+      for(e in names(ens.sims)){
+        dat.plot <- rbind(dat.plot, dat.ens[[e]])
+        for(i in names(ens.sims[[e]])){
+          ens.plot[[i]] <- cbind(ens.plot[[i]], ens.sims[[e]][[i]])
+        }
+      }
+      day.name <- paste0(site.name, "_", GCM, "_1hr")
+      fig.ens <- file.path(path.out, "subdaily_qaqc", day.name)
+      if(!dir.exists(fig.ens)) dir.create(fig.ens, recursive=T)
+      for(v in names(ens.plot)){
+        graph.predict(dat.mod=dat.plot, dat.ens=ens.plot, var=v, fig.dir=fig.ens)
+      }
+    }
+    
+    
+    # ens.sims <- list()
     for(e in unique(ens.day)){
       # # Do the prediction
-      ens.sims[[paste0("X", e)]] <- predict.subdaily(dat.mod=dat.ens[[paste0("X", e)]], n.ens=ens.hr, path.model=file.path(dat.base, "subday_models"), lags.init=lags.init[[paste0("X", e)]], dat.train=dat.train)
+      # ens.sims[[paste0("X", e)]] <- predict.subdaily(dat.mod=dat.ens[[paste0("X", e)]], n.ens=ens.hr, path.model=file.path(dat.base, "subday_models"), lags.list=lags.init, lags.init=NULL, dat.train=dat.train)
       # qair.max <- quantile(as.matrix(ens.sims[[paste0("X", e)]]$qair[,c(1:ens.hr)]), 0.99)
       # ens.sims[[paste0("X", e)]]$qair[ens.sims[[paste0("X", e)]]$qair>qair.max] <- qair.max
 
-      # If this is one of our designated QAQC years, makes some graphs
-      if(y %in% yrs.plot){
-        day.name <- paste0(site.name, "_", GCM, "_1hr_", str_pad(e, 3, pad=0))
-        fig.ens <- file.path(path.out, "subdaily_qaqc", day.name)
-        if(!dir.exists(fig.ens)) dir.create(fig.ens, recursive=T)
-        
-        for(v in names(ens.sims[[paste0("X", e)]])){
-          graph.predict(dat.mod=dat.ens[[paste0("X", e)]], dat.ens=ens.sims[[paste0("X", e)]], var=v, fig.dir=fig.ens)
-        }
-      }
-      
-      
       # Update the initial lags for next year
       for(v in names(ens.sims[[paste0("X", e)]])){
         lags.init[[paste0("X",e)]][[v]] <- data.frame(ens.sims[[paste0("X", e)]][[v]][length(ens.sims[[paste0("X", e)]][[v]]),])

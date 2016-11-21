@@ -48,6 +48,7 @@ library(lubridate)
 library(ggplot2)
 library(stringr)
 library(tictoc)
+library(parallel)
 # library(tictoc)
 rm(list=ls())
 set.seed(0017)
@@ -62,10 +63,12 @@ source("scripts/temporal_downscale_functions.R")
 
 
 dat.base <- "/projectnb/dietzelab/paleon/met_ensemble/data/met_ensembles/HARVARD/"
-dat.train <- read.csv("/projectnb/dietzelab/paleon/met_ensemble/data/paleon_sites/HARVARD/NLDAS_1980-2015.csv")
+# dat.train <- read.csv("/projectnb/dietzelab/paleon/met_ensemble/data/paleon_sites/HARVARD/NLDAS_1980-2015.csv")
 
 # dat.base <- "~/Desktop/met_ensembles/HARVARD/"
-# dat.train <- read.csv(file.pawd.base, "data/paleon_sites/HARVARD/NLDAS_1980-2015.csv")
+# dat.base <- "~/Desktop/met_bias_day/data/met_ensembles/HARVARD/"
+
+dat.train <- read.csv(file.path(wd.base, "data/paleon_sites/HARVARD/NLDAS_1980-2015.csv"))
 
 # if(!dir.exists(mod.out)) dir.create(mod.out, recursive = T)
 # if(!dir.exists(fig.dir)) dir.create(fig.dir, recursive = T)
@@ -77,12 +80,22 @@ site.lon=-72.18
 
 # GCM.list = c("CCSM4", "MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1")
 GCM.list = "bcc-csm1-1"
-ens.hr  <- 5 # Number of hourly ensemble members to create
-n.day <- 1 # Number of daily ensemble members to process
+ens.hr  <- 3 # Number of hourly ensemble members to create
+n.day <- 10 # Number of daily ensemble members to process
 yrs.plot <- c(2015, 1985, 1920, 1875, 1800, 1000, 850)
+# years.sim=2015:1900
+cores.max = 12
 
 # Defining variable names, longname & units
-vars.info <- data.frame(name=c("tair", "precipf", "swdown", "lwdown", "press", "qair", "wind"),
+vars.info <- data.frame(name    =c("tair", "precipf", "swdown", "lwdown", "press", "qair", "wind"),
+                        name.cf = c("air_temperature", 
+                                    "precipitation_flux",
+                                    "surface_downwelling_shortwave_flux_in_air",
+                                    "surface_downwelling_longwave_flux_in_air",
+                                    "air_pressure",
+                                    "specific_humidity",
+                                    "wind"
+                                    ),
                         longname=c("2 meter mean air temperature", 
                                    "cumulative precipitation (water equivalent)",
                                    "incident (downwelling) showtwave radiation",
@@ -102,7 +115,7 @@ dimX <- ncdim_def( "lat", units="degrees", longname="longitude", vals=site.lon )
 # This gets done when formatting things for downscaling
 
 for(GCM in GCM.list){
-  tic()
+  # tic()
   # Set the directory where the output is & load the file
   path.gcm <- file.path(dat.base, GCM, "day")
   dat.day <- dir(path.gcm, ".Rdata")
@@ -110,14 +123,16 @@ for(GCM in GCM.list){
   load(file.path(path.gcm, dat.day)) # Loads dat.out.full
 
   # Set & create the output directory
-  path.out <- file.path(dat.base, GCM, "1hr")
+  path.out <- file.path(dat.base, "test_ensembles", GCM, "1hr")
   if(!dir.exists(path.out)) dir.create(path.out, recursive=T)
   
   # -----------------------------------
   # 1. Format output so all ensemble members can be run at once
   # NOTE: Need to start with the last and work to the first
   # -----------------------------------
-  years.sim <- max(dat.out.full$tmax$sims$year):min(dat.out.full$tmax$sims$year)
+  if(is.null(years.sim)){
+    years.sim <- max(dat.out.full$tmax$sims$year):min(dat.out.full$tmax$sims$year)
+  }
   
   tot.ens <- which(substr(names(dat.out.full$tmax$sims),1,1)=="X")
   ens.day <- sample(1:length(tot.ens), n.day, replace=F) # For now, randomly choose which ensemble members to downscale
@@ -171,7 +186,7 @@ for(GCM in GCM.list){
     
     # If this is the first year in the dataset (850), there is no "next" value, 
     # so we need to add it in to have the right dimensions
-    if(y == years.sim[length(years.sim)]){
+    if(y == min(dat.out.full$tmax$sims$year)){
       dat.nxt$tmax    <- rbind(dat.nxt$tmax   [1,], dat.nxt$tmax   )
       dat.nxt$tmin    <- rbind(dat.nxt$tmin   [1,], dat.nxt$tmin   )
       dat.nxt$precipf <- rbind(dat.nxt$precipf[1,], dat.nxt$precipf)
@@ -188,6 +203,7 @@ for(GCM in GCM.list){
     # Create a list layer for each ensemble member
     for(e in ens.day){
       dat.ens[[paste0("X", e)]] <- data.frame(dataset      =dat.yr $tmax   $dataset,
+                                              ens.day      =as.factor(paste0("X", e)),
                                               year         =dat.yr $tmax   $year,
                                               doy          =dat.yr $tmax   $doy,
                                               date         =dat.yr $tmax   $time,
@@ -229,26 +245,42 @@ for(GCM in GCM.list){
     # Note: Using a loop for each ensemble member for now, but this will get 
     #       parallelized to speed it up soon, but we'll prototype in parallel
     # -----------------------------------
-    for(e in ens.day){
-      # Do the prediction
-      ens.sims <- predict.subdaily(dat.mod=dat.ens[[paste0("X", e)]], n.ens=ens.hr, path.model=file.path(dat.base, "subday_models"), lags.init=lags.init[[paste0("X", e)]], dat.train=dat.train)
-      
-
-      # If this is one of our designated QAQC years, makes some graphs
-      if(y %in% yrs.plot){
-        day.name <- paste0(site.name, "_", GCM, "_1hr_", str_pad(e, 3, pad=0))
-        fig.ens <- file.path(path.out, "subdaily_qaqc", day.name)
-        if(!dir.exists(fig.ens)) dir.create(fig.ens, recursive=T)
-        
-        for(v in names(ens.sims)){
-          graph.predict(dat.mod=dat.ens[[paste0("X", e)]], dat.ens=ens.sims, var=v, fig.dir=fig.ens)
+    cores.use <- min(cores.max, length(dat.ens))
+    ens.sims  <- mclapply(dat.ens, predict.subdaily, mc.cores=cores.use, n.ens=ens.hr, path.model=file.path(dat.base, "subday_models"), lags.list=lags.init, lags.init=NULL, dat.train=dat.train)
+    
+    # If this is one of our designated QAQC years, makes some graphs
+    # Now doing this for the whole GCM
+    if(y %in% yrs.plot){
+      dat.plot <- data.frame()
+      ens.plot <- list()
+      for(i in names(ens.sims[[1]])){
+        ens.plot[[i]] <- data.frame(matrix(nrow=nrow(ens.sims[[1]][[i]]), ncol=0))
+      }
+      for(e in names(ens.sims)){
+        dat.plot <- rbind(dat.plot, dat.ens[[e]])
+        for(i in names(ens.sims[[e]])){
+          ens.plot[[i]] <- cbind(ens.plot[[i]], ens.sims[[e]][[i]])
         }
       }
-      
-      
+      day.name <- paste0(site.name, "_", GCM, "_1hr")
+      fig.ens <- file.path(path.out, "subdaily_qaqc", day.name)
+      if(!dir.exists(fig.ens)) dir.create(fig.ens, recursive=T)
+      for(v in names(ens.plot)){
+        graph.predict(dat.mod=dat.plot, dat.ens=ens.plot, var=v, fig.dir=fig.ens)
+      }
+    }
+    
+    
+    # ens.sims <- list()
+    for(e in unique(ens.day)){
+      # # Do the prediction
+      # ens.sims[[paste0("X", e)]] <- predict.subdaily(dat.mod=dat.ens[[paste0("X", e)]], n.ens=ens.hr, path.model=file.path(dat.base, "subday_models"), lags.list=lags.init, lags.init=NULL, dat.train=dat.train)
+      # qair.max <- quantile(as.matrix(ens.sims[[paste0("X", e)]]$qair[,c(1:ens.hr)]), 0.99)
+      # ens.sims[[paste0("X", e)]]$qair[ens.sims[[paste0("X", e)]]$qair>qair.max] <- qair.max
+
       # Update the initial lags for next year
-      for(v in names(ens.sims)){
-        lags.init[[paste0("X",e)]][[v]] <- data.frame(ens.sims[[v]][length(ens.sims[[v]]),])
+      for(v in names(ens.sims[[paste0("X", e)]])){
+        lags.init[[paste0("X",e)]][[v]] <- data.frame(ens.sims[[paste0("X", e)]][[v]][length(ens.sims[[paste0("X", e)]][[v]]),])
       }
       
       # -----------------------------------
@@ -262,9 +294,10 @@ for(GCM in GCM.list){
         
         var.list <- list()
         dat.list <- list()
-        for(v in names(ens.sims)){
+        for(v in names(ens.sims[[paste0("X", e)]])){
+          var.cf = vars.info[vars.info$name==v, "name.cf"]
           var.list[[v]] <- ncvar_def(v, units=paste(vars.info[vars.info$name==v, "units"]), dim=list(dimX, dimY, dim.t), longname=paste(vars.info[vars.info$name==v, "longname"]))
-          dat.list[[v]] <- array(ens.sims[[v]][,i], dim=c(1,1,length(hrs.now)))
+          dat.list[[v]] <- array(ens.sims[[paste0("X", e)]][[v]][,i], dim=c(1,1,length(hrs.now)))
         }
         
         # Naming convention: [SITE]_[GCM]_1hr_[bias_ens_member]-[subday_ens_member]_[YEAR].nc
@@ -282,13 +315,13 @@ for(GCM in GCM.list){
   # -----------------------------------
   
   # Do some clean-up to save space
-  dir.compress <- dir(path.out, GCM)
+  # dir.compress <- dir(path.out, GCM)
   
-  setwd(path.out)
-  for(ens in dir.compress){
-    system(paste0("tar -jcvf ", ens, ".tar.bz2 ", ens)) # Compress the folder
-    system(paste0("rm -rf ", ens)) # remove the uncompressed folder
-  }
-  setwd(wd.base)
+  # setwd(path.out)
+  # for(ens in dir.compress){
+  #   system(paste0("tar -jcvf ", ens, ".tar.bz2 ", ens)) # Compress the folder
+  #   system(paste0("rm -rf ", ens)) # remove the uncompressed folder
+  # }
+  # setwd(wd.base)
   toc()
 } # End GCM loop
