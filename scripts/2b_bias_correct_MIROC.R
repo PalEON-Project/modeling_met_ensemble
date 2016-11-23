@@ -68,7 +68,15 @@ site.lon=-72.18
 # GCM.list=c("MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1", "CCSM4")
 GCM.list=c("MIROC-ESM")
 LDAS="NLDAS"
-n=25 # Number of ensemble members
+ens=1:10
+n=length(ens)
+# n=10 # Number of ensemble members
+
+# Set up the appropriate seed
+set.seed(1207)
+seed.vec <- sample.int(1e6, size=500, replace=F)
+seed <- seed.vec[min(ens)] # This makes sure that if we add ensemble members, it gets a new, but reproducible seed
+
 # -----------------------------------
 
 # source("scripts/debias.gcm.R")
@@ -314,7 +322,7 @@ yrs.cal = data.frame(dataset = c("CRUNCEP", paste0(GCM, ".hist"), paste0(GCM, ".
 
 source("scripts/bias_correct_day.R")
 met.bias <- met.day
-dat.out.full <- bias.correct(met.bias=met.bias, vars.met=vars.met, dat.train=LDAS, GCM=GCM, yrs.cal=yrs.cal, n=n, path.out=path.out)
+dat.out.full <- bias.correct(met.bias=met.bias, vars.met=vars.met, dat.train=LDAS, GCM=GCM, yrs.cal=yrs.cal, n=n, path.out=path.out, seed=seed)
 # --------------------
 
 
@@ -513,7 +521,7 @@ dimX <- ncdim_def( "lat", units="degrees", longname="longitude", vals=site.lon )
 yr.bins <- c(min(dat.out.full$met.bias$year), seq(min(dat.out.full$met.bias$year)+50, round(max(dat.out.full$met.bias$year),-2), by=100))
 for(i in 1:n){
   # Make a directory for each ensemble member
-  out.name <- paste0(site.name, "_", GCM, "_day_", str_pad(i, 3, pad=0))
+  out.name <- paste0(site.name, "_", GCM, "_day_", str_pad(ens[i], 3, pad=0))
   new.dir <- file.path(path.out, "day", out.name)
   if(!dir.exists(new.dir)) dir.create(new.dir, recursive=T)  
   

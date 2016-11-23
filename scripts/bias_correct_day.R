@@ -1,4 +1,4 @@
-bias.correct <- function(met.bias, vars.met, dat.train, GCM, yrs.cal, n, path.out){
+bias.correct <- function(met.bias, vars.met, dat.train, GCM, yrs.cal, n, path.out, seed=2509){
 # Inputs:
 # met.bias   = data frame of all daily met data
 # vars.met  = vector of variables to downscale, **in the order they should be done**
@@ -14,7 +14,7 @@ bias.correct <- function(met.bias, vars.met, dat.train, GCM, yrs.cal, n, path.ou
 library(MASS)
 library(mgcv)
 library(ggplot2)
-set.seed(2509)
+set.seed(seed)
 dir.create(file.path(path.out, "BiasCorrect_QAQC"), recursive=T, showWarnings=F)  
 empirical = c("NLDAS", "GLDAS", "CRUNCEP", "PRISM", "DAYMET") # Empirical datasets
 
