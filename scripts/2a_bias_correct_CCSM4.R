@@ -482,7 +482,7 @@ ggplot(data=dat.final) +
 dev.off()
 # --------------
 
-save(dat.out.full, file=file.path(path.out, paste0(GCM, "_day_alldata.Rdata")))
+save(dat.out.full, file=file.path(path.out, paste0(GCM, "_", str_pad(min(ens), 3, pad=0), "-", str_pad(max(ens), 3, pad=0), "_day_alldata.Rdata")))
 # -----------------------------------
 
 # -----------------------------------
@@ -518,20 +518,17 @@ dimY <- ncdim_def( "lon", units="degrees", longname="latitude", vals=site.lat )
 dimX <- ncdim_def( "lat", units="degrees", longname="longitude", vals=site.lon )
 
 
-yr.bins <- c(min(dat.out.full$met.bias$year), seq(min(dat.out.full$met.bias$year)+50, round(max(dat.out.full$met.bias$year),-2), by=100))
+# yr.bins <- c(min(dat.out.full$met.bias$year), seq(min(dat.out.full$met.bias$year)+50, round(max(dat.out.full$met.bias$year),-2), by=100))
+yrs <- min(dat.out.full$met.bias$year):max(dat.out.full$met.bias$year)
 for(i in 1:n){
   # Make a directory for each ensemble member
   out.name <- paste0(site.name, "_", GCM, "_day_", str_pad(ens[i], 3, pad=0))
   new.dir <- file.path(path.out, "day", out.name)
   if(!dir.exists(new.dir)) dir.create(new.dir, recursive=T)  
   
-  for(j in 1:length(yr.bins)){
-    date.start <- as.Date(paste0(yr.bins[j], "-01-01"))
-    if(j < length(yr.bins)){
-      date.end   <- as.Date(paste0(yr.bins[j+1]-1, "-12-31"))
-    } else {
-      date.end   <- as.Date(paste0(max(dat.out.full$met.bias$year), "-12-31"))
-    }
+  for(j in 1:length(yrs)){
+    date.start <- as.Date(paste0(yrs[j], "-01-01"))
+    date.end   <- as.Date(paste0(yrs[j], "-12-31"))
     day.vec <- seq(date.start, date.end, by="day")
     day.vec <- julian(day.vec, origin=as.Date("850-01-01"))
   
