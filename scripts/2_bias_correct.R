@@ -52,6 +52,7 @@ rm(list=ls())
 # -----------------------------------
 # Load libraries
 library(mgcv); library(ggplot2)
+library(stringr)
 
 # Set the working directory
 # wd.base <- "~/Desktop/Research/PalEON_CR/met_ensemble"
