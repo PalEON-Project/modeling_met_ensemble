@@ -51,7 +51,6 @@ library(tictoc)
 library(parallel)
 # library(tictoc)
 rm(list=ls())
-set.seed(0017)
 
 wd.base <- "/projectnb/dietzelab/paleon/met_ensemble/"
 # wd.base <- "~/Desktop/Research/PalEON_CR/met_ensemble/"
@@ -63,15 +62,10 @@ source("scripts/temporal_downscale_functions.R")
 
 
 dat.base <- "/projectnb/dietzelab/paleon/met_ensemble/data/met_ensembles/HARVARD/"
-# dat.train <- read.csv("/projectnb/dietzelab/paleon/met_ensemble/data/paleon_sites/HARVARD/NLDAS_1980-2015.csv")
-
 # dat.base <- "~/Desktop/met_ensembles/HARVARD/"
 # dat.base <- "~/Desktop/met_bias_day/data/met_ensembles/HARVARD/"
 
 dat.train <- read.csv(file.path(wd.base, "data/paleon_sites/HARVARD/NLDAS_1980-2015.csv"))
-
-# if(!dir.exists(mod.out)) dir.create(mod.out, recursive = T)
-# if(!dir.exists(fig.dir)) dir.create(fig.dir, recursive = T)
 
 # Hard-coding numbers for Harvard
 site.name="HARVARD"
@@ -85,6 +79,10 @@ n.day <- 10 # Number of daily ensemble members to process
 yrs.plot <- c(2015, 1985, 1920, 1875, 1800, 1000, 850)
 # years.sim=2015:1900
 cores.max = 12
+
+# Set up the appropriate seed
+set.seed(1206)
+seed.vec <- sample.int(1e6, size=500, replace=F)
 
 # Defining variable names, longname & units
 vars.info <- data.frame(name    =c("tair", "precipf", "swdown", "lwdown", "press", "qair", "wind"),
@@ -118,38 +116,58 @@ for(GCM in GCM.list){
   # tic()
   # Set the directory where the output is & load the file
   path.gcm <- file.path(dat.base, GCM, "day")
-  dat.day <- dir(path.gcm, ".Rdata")
-  
-  load(file.path(path.gcm, dat.day)) # Loads dat.out.full
+  # dat.day <- dir(path.gcm, ".Rdata")
+  # load(file.path(path.gcm, dat.day)) # Loads dat.out.full
 
   # Set & create the output directory
-  path.out <- file.path(dat.base, "test_ensembles", GCM, "1hr")
+  path.out <- file.path(dat.base, GCM, "1hr")
   if(!dir.exists(path.out)) dir.create(path.out, recursive=T)
   
   # -----------------------------------
   # 1. Format output so all ensemble members can be run at once
   # NOTE: Need to start with the last and work to the first
   # -----------------------------------
+  # Figure out which daily ensembles we should pull from
+  day.dirs <- dir(path.gcm,  paste0(site.name, "_", GCM, "_day_"))
+  ens.day.all <- substr(day.dirs, nchar(day.dirs)-2, nchar(day.dirs))
+  
+  hrs.dir <- dir(file.path(path.out),  paste0(site.name, "_", GCM, "_1hr_"))
+  ens.day.done <- substr(hrs.dir, nchar(hrs.dir)-6, nchar(hrs.dir)-4)
+  
+  ens.list <- ens.day.all[!(ens.day.all %in% ens.day.done)]
+  
+  seed <- seed.vec[length(hrs.dir)+1] # This makes sure that if we add ensemble members, it gets a new, but reproducible seed
+  set.seed(seed)
+  ens.day <- sample(ens.list, n.day, replace=F) # For now, randomly choose which ensemble members to downscale
+
+  # If we haven't specified a years subset, extract it from the available files
   if(is.null(years.sim)){
-    years.sim <- max(dat.out.full$tmax$sims$year):min(dat.out.full$tmax$sims$year)
+    files.avail <- dir(file.path(path.gcm, day.dirs[1]))
+    years.files <- as.numeric(substr(files.avail,nchar(files.avail)-6, nchar(files.avail)-3))
+    years.sim <- max(years.files):min(years.files)
   }
   
-  tot.ens <- which(substr(names(dat.out.full$tmax$sims),1,1)=="X")
-  ens.day <- sample(1:length(tot.ens), n.day, replace=F) # For now, randomly choose which ensemble members to downscale
+  
   # Initialize the lags
   lags.init <- list() # Need to initialize lags first outside of the loop and then they'll get updated internally
   for(e in ens.day){
-    tair.init    <- dat.out.full$met.bias[dat.out.full$met.bias$year==max(years.sim) & dat.out.full$met.bias$doy==364,"tair"]
-    tmax.init    <- dat.out.full$met.bias[dat.out.full$met.bias$year==max(years.sim) & dat.out.full$met.bias$doy==364,"tmax"]
-    tmin.init    <- dat.out.full$met.bias[dat.out.full$met.bias$year==max(years.sim) & dat.out.full$met.bias$doy==364,"tmin"]
-    precipf.init <- dat.out.full$met.bias[dat.out.full$met.bias$year==max(years.sim) & dat.out.full$met.bias$doy==364,"precipf"]/(60*60*24)
-    swdown.init  <- dat.out.full$met.bias[dat.out.full$met.bias$year==max(years.sim) & dat.out.full$met.bias$doy==364,"swdown"]
-    lwdown.init  <- dat.out.full$met.bias[dat.out.full$met.bias$year==max(years.sim) & dat.out.full$met.bias$doy==364,"lwdown"]
-    press.init   <- dat.out.full$met.bias[dat.out.full$met.bias$year==max(years.sim) & dat.out.full$met.bias$doy==364,"press"]
-    qair.init    <- dat.out.full$met.bias[dat.out.full$met.bias$year==max(years.sim) & dat.out.full$met.bias$doy==364,"qair"]
-    wind.init    <- dat.out.full$met.bias[dat.out.full$met.bias$year==max(years.sim) & dat.out.full$met.bias$doy==364,"wind"]
+    path.day <- file.path(path.gcm,  paste0(site.name, "_", GCM, "_day_",e))
+    file.ens <- dir(path.day, paste(str_pad(years.sim[1], 4, pad=0)))
     
-    lags.init[[paste0("X", e)]][["tair"   ]] <- data.frame(array(tair.init   , dim=c(1, ens.hr)))
+    nc.now <- nc_open(file.path(path.day, file.ens))
+    # tair.init    <- dat.out.full$met.bias[dat.out.full$met.bias$year==max(years.sim) & dat.out.full$met.bias$doy==364,"tair"]
+    nc.time <- ncvar_get(nc.now, "time")
+    tmax.init    <- ncvar_get(nc.now, "tmax")[length(nc.time)]
+    tmin.init    <- ncvar_get(nc.now, "tmin")[length(nc.time)]
+    precipf.init <- ncvar_get(nc.now, "precipf")[length(nc.time)]/(60*60*24)
+    swdown.init  <- ncvar_get(nc.now, "swdown")[length(nc.time)]
+    lwdown.init  <- ncvar_get(nc.now, "lwdown")[length(nc.time)]
+    press.init   <- ncvar_get(nc.now, "press")[length(nc.time)]
+    qair.init    <- ncvar_get(nc.now, "qair")[length(nc.time)]
+    wind.init    <- ncvar_get(nc.now, "wind")[length(nc.time)]
+    nc_close(nc.now)
+    
+    lags.init[[paste0("X", e)]][["tair"   ]] <- data.frame(array(mean(c(tmax.init, tmin.init)), dim=c(1, ens.hr)))
     lags.init[[paste0("X", e)]][["tmax"   ]] <- data.frame(array(tmax.init   , dim=c(1, ens.hr)))
     lags.init[[paste0("X", e)]][["tmin"   ]] <- data.frame(array(tmin.init   , dim=c(1, ens.hr)))
     lags.init[[paste0("X", e)]][["precipf"]] <- data.frame(array(precipf.init, dim=c(1, ens.hr)))
@@ -161,73 +179,85 @@ for(GCM in GCM.list){
   }
   
   for(y in years.sim){
-    # Create a list with just the data from that year
-    dat.yr <- list()
-    dat.yr$tmax    <- dat.out.full$tmax   $sims[dat.out.full$tmax   $sims$year==y,]
-    dat.yr$tmin    <- dat.out.full$tmin   $sims[dat.out.full$tmin   $sims$year==y,]
-    dat.yr$precipf <- dat.out.full$precipf$sims[dat.out.full$precipf$sims$year==y,]
-    dat.yr$swdown  <- dat.out.full$swdown $sims[dat.out.full$swdown $sims$year==y,]
-    dat.yr$lwdown  <- dat.out.full$lwdown $sims[dat.out.full$lwdown $sims$year==y,]
-    dat.yr$qair    <- dat.out.full$qair   $sims[dat.out.full$qair   $sims$year==y,]
-    dat.yr$press   <- dat.out.full$press  $sims[dat.out.full$press  $sims$year==y,]
-    dat.yr$wind    <- dat.out.full$wind   $sims[dat.out.full$wind   $sims$year==y,]
-    
-    # Setting up the 'next' dataset
-    dat.nxt <- list()
-    rows.next <-  which(dat.out.full$tmax$sims$time>=min(dat.yr$tmax$time)-1 & dat.out.full$tmax$sims$time<=max(dat.yr$tmax$time)-1)
-    dat.nxt$tmax    <- dat.out.full$tmax   $sims[rows.next,]
-    dat.nxt$tmin    <- dat.out.full$tmin   $sims[rows.next,]
-    dat.nxt$precipf <- dat.out.full$precipf$sims[rows.next,]
-    dat.nxt$swdown  <- dat.out.full$swdown $sims[rows.next,]
-    dat.nxt$lwdown  <- dat.out.full$lwdown $sims[rows.next,]
-    dat.nxt$press   <- dat.out.full$press  $sims[rows.next,]
-    dat.nxt$qair    <- dat.out.full$qair   $sims[rows.next,]
-    dat.nxt$wind    <- dat.out.full$wind   $sims[rows.next,]
-    
-    # If this is the first year in the dataset (850), there is no "next" value, 
-    # so we need to add it in to have the right dimensions
-    if(y == min(dat.out.full$tmax$sims$year)){
-      dat.nxt$tmax    <- rbind(dat.nxt$tmax   [1,], dat.nxt$tmax   )
-      dat.nxt$tmin    <- rbind(dat.nxt$tmin   [1,], dat.nxt$tmin   )
-      dat.nxt$precipf <- rbind(dat.nxt$precipf[1,], dat.nxt$precipf)
-      dat.nxt$swdown  <- rbind(dat.nxt$swdown [1,], dat.nxt$swdown )
-      dat.nxt$lwdown  <- rbind(dat.nxt$lwdown [1,], dat.nxt$lwdown )
-      dat.nxt$press   <- rbind(dat.nxt$press  [1,], dat.nxt$press  )
-      dat.nxt$qair    <- rbind(dat.nxt$qair   [1,], dat.nxt$qair   )
-      dat.nxt$wind    <- rbind(dat.nxt$wind   [1,], dat.nxt$wind   )
-    }
-    
     dat.ens <- list() # a new list for each ensemble member as a new layer
     df.hour <- data.frame(hour=0:23)
     
     # Create a list layer for each ensemble member
+    # NOTE: NEED TO CHECK THE TIME STAMPS HERE TO MAKE SURE WE'RE PULLING AND ADDING IN THE RIGHT PLACE
     for(e in ens.day){
-      dat.ens[[paste0("X", e)]] <- data.frame(dataset      =dat.yr $tmax   $dataset,
-                                              ens.day      =as.factor(paste0("X", e)),
-                                              year         =dat.yr $tmax   $year,
-                                              doy          =dat.yr $tmax   $doy,
-                                              date         =dat.yr $tmax   $time,
-                                              tmax.day     =dat.yr $tmax   [,paste0("X", e)],
-                                              tmin.day     =dat.yr $tmin   [,paste0("X", e)],
-                                              precipf.day  =dat.yr $precipf[,paste0("X", e)]/(60*60*24),
-                                              swdown.day   =dat.yr $swdown [,paste0("X", e)],
-                                              lwdown.day   =dat.yr $lwdown [,paste0("X", e)],
-                                              press.day    =dat.yr $press  [,paste0("X", e)],
-                                              qair.day     =dat.yr $qair   [,paste0("X", e)],
-                                              wind.day     =dat.yr $wind   [,paste0("X", e)],
-                                              next.tmax    =dat.nxt$tmax   [,paste0("X", e)],
-                                              next.tmin    =dat.nxt$tmin   [,paste0("X", e)],
-                                              next.precipf =dat.nxt$precipf[,paste0("X", e)]/(60*60*24),
-                                              next.swdown  =dat.nxt$swdown [,paste0("X", e)],
-                                              next.lwdown  =dat.nxt$lwdown [,paste0("X", e)],
-                                              next.press   =dat.nxt$press  [,paste0("X", e)],
-                                              next.qair    =dat.nxt$qair   [,paste0("X", e)],
-                                              next.wind    =dat.nxt$wind   [,paste0("X", e)]
+      path.day <- file.path(path.gcm,  paste0(site.name, "_", GCM, "_day_",e))
+      file.ens <- dir(path.day, str_pad(y, 4, pad=0))
+      
+      nc.now <- nc_open(file.path(path.day, file.ens))
+      dat.yr <- data.frame(time    = ncvar_get(nc.now, "time"   ),
+                           tmax    = ncvar_get(nc.now, "tmax"   ),
+                           tmin    = ncvar_get(nc.now, "tmin"   ),
+                           precipf = ncvar_get(nc.now, "precipf")/(60*60*24),
+                           swdown  = ncvar_get(nc.now, "swdown" ),
+                           lwdown  = ncvar_get(nc.now, "lwdown" ),
+                           press   = ncvar_get(nc.now, "press"  ),
+                           qair    = ncvar_get(nc.now, "qair"   ),
+                           wind    = ncvar_get(nc.now, "wind"   )
+                           )
+      nc_close(nc.now)
+      
+      # Do some stuff to get the right time variables for dat.yr
+      dat.yr$year <- y
+      dat.yr$date <- as.Date(dat.yr$time, origin="850-01-01")
+      dat.yr$doy <- yday(dat.yr$date)
+      
+      # Create the data frame for the "next" values
+      dat.nxt <- dat.yr
+      # Shift everyting up by a day to get the preview of the next day to get processed
+      # Note: Because we work backwards through time, Jan 1 is the "next" day to get processed with Jan 2
+      dat.nxt[2:(nrow(dat.nxt)), c("tmax", "tmin", "precipf", "swdown", "lwdown", "press", "qair", "wind")] <- dat.nxt[1:(nrow(dat.nxt)-1), c("tmax", "tmin", "precipf", "swdown", "lwdown", "press", "qair", "wind")]
+      
+      # Need to add in the "next" value for january (dec 31 of next year) 
+      # Note: if we're past the end of our daily data, the best we can do is leave things as is (copy the last day's value)
+      if(y>min(years.sim)){
+        file.nxt <- dir(path.day, str_pad(y-1, 4, pad=0))
+        
+        nc.nxt <- nc_open(file.path(path.day, file.nxt))
+        # tair.init    <- dat.out.full$met.bias[dat.out.full$met.bias$year==max(years.sim) & dat.out.full$met.bias$doy==364,"tair"]
+        nxt.time <- ncvar_get(nc.nxt, "time")
+        dat.nxt[dat.nxt$time==min(dat.nxt$time),"tmax"   ] <- ncvar_get(nc.nxt, "tmax")[length(nxt.time)]
+        dat.nxt[dat.nxt$time==min(dat.nxt$time),"tmin"   ] <- ncvar_get(nc.nxt, "tmin")[length(nxt.time)]
+        dat.nxt[dat.nxt$time==min(dat.nxt$time),"precipf"] <- ncvar_get(nc.nxt, "precipf")[length(nxt.time)]/(60*60*24)
+        dat.nxt[dat.nxt$time==min(dat.nxt$time),"swdown" ] <- ncvar_get(nc.nxt, "swdown")[length(nxt.time)]
+        dat.nxt[dat.nxt$time==min(dat.nxt$time),"lwdown" ] <- ncvar_get(nc.nxt, "lwdown")[length(nxt.time)]
+        dat.nxt[dat.nxt$time==min(dat.nxt$time),"press"  ] <- ncvar_get(nc.nxt, "press")[length(nxt.time)]
+        dat.nxt[dat.nxt$time==min(dat.nxt$time),"qair"   ] <- ncvar_get(nc.nxt, "qair")[length(nxt.time)]
+        dat.nxt[dat.nxt$time==min(dat.nxt$time),"wind"   ] <- ncvar_get(nc.nxt, "wind")[length(nxt.time)]
+        
+        nc_close(nc.nxt)
+      } 
+      
+      dat.ens[[paste0("X", e)]] <- data.frame(ens.day      =as.factor(paste0("X", e)),
+                                              year         =dat.yr $year   ,
+                                              doy          =dat.yr $doy    ,
+                                              date         =dat.yr $date   ,
+                                              tmax.day     =dat.yr $tmax   ,
+                                              tmin.day     =dat.yr $tmin   ,
+                                              precipf.day  =dat.yr $precipf,
+                                              swdown.day   =dat.yr $swdown ,
+                                              lwdown.day   =dat.yr $lwdown ,
+                                              press.day    =dat.yr $press  ,
+                                              qair.day     =dat.yr $qair   ,
+                                              wind.day     =dat.yr $wind   ,
+                                              next.tmax    =dat.nxt$tmax   ,
+                                              next.tmin    =dat.nxt$tmin   ,
+                                              next.precipf =dat.nxt$precipf,
+                                              next.swdown  =dat.nxt$swdown ,
+                                              next.lwdown  =dat.nxt$lwdown ,
+                                              next.press   =dat.nxt$press  ,
+                                              next.qair    =dat.nxt$qair   ,
+                                              next.wind    =dat.nxt$wind
                                              )
+      
       dat.ens[[paste0("X", e)]]$time.day <- as.numeric(difftime(dat.ens[[paste0("X", e)]]$date, "2016-01-01", tz="GMT", units="day"))
       dat.ens[[paste0("X", e)]] <- merge(dat.ens[[paste0("X", e)]], df.hour, all=T)
       
-      dat.ens[[paste0("X", e)]]$date <- strptime(paste(dat.ens[[paste0("X", e)]]$year, dat.ens[[paste0("X", e)]]$doy+1, dat.ens[[paste0("X", e)]]$hour, sep="-"), "%Y-%j-%H", tz="GMT")
+      dat.ens[[paste0("X", e)]]$date <- strptime(paste(dat.ens[[paste0("X", e)]]$year, dat.ens[[paste0("X", e)]]$doy, dat.ens[[paste0("X", e)]]$hour, sep="-"), "%Y-%j-%H", tz="GMT")
       dat.ens[[paste0("X", e)]]$time.hr <- as.numeric(difftime(dat.ens[[paste0("X", e)]]$date, "2016-01-01", tz="GMT", units="hour"))
       dat.ens[[paste0("X", e)]] <- dat.ens[[paste0("X", e)]][order(dat.ens[[paste0("X", e)]]$time.hr, decreasing=F),]
     }
@@ -290,7 +320,7 @@ for(GCM in GCM.list){
         ens.name <- paste0(site.name, "_", GCM, "_1hr_", str_pad(e, 3, pad=0), "-", str_pad(i, 3, pad=0))
         
         if(!dir.exists(file.path(path.out, ens.name))) dir.create(file.path(path.out, ens.name), recursive=T)
-        path.out <- file.path(dat.base, GCM, "1hr")
+        # path.out <- file.path(dat.base, GCM, "1hr")
         
         var.list <- list()
         dat.list <- list()

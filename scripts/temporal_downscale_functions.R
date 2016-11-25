@@ -617,6 +617,14 @@ graph.predict <- function(dat.mod, dat.ens, var, fig.dir){
   # Graph the output
   # ---------
   {
+
+    date.vec <- dat.mod[dat.mod$ens.day==unique(dat.mod$ens.day)[1],"date"]
+    dat.mod <- aggregate(dat.mod[,c("tmax.day", "tmin.day", "precipf.day", "swdown.day", "lwdown.day", "press.day", "qair.day", "wind.day")],
+                         by=dat.mod[,c("dataset", "year", "doy", "time.day", "time.hr")],
+                         FUN=mean)
+    dat.mod$date <- date.vec
+    head(dat.mod)
+    
     dat.mod$var.pred <- apply(dat.ens[[var]],1,mean)
     dat.mod$var.025 <- apply(dat.ens[[var]],1,quantile, 0.025)
     dat.mod$var.975 <- apply(dat.ens[[var]],1,quantile, 0.975)
@@ -654,8 +662,8 @@ graph.predict <- function(dat.mod, dat.ens, var, fig.dir){
       print(
         ggplot(data=dat.graph[dat.graph$year==y,]) +
           facet_wrap(~season, scales="free") +
-          geom_point(aes(x=date, y=tmax.day), color="black", size=0.1, alpha=0.5) +
-          geom_point(aes(x=date, y=tmin.day), color="black", size=0.1, alpha=0.5) +
+          # geom_point(aes(x=date, y=tmax.day), color="black", size=0.1, alpha=0.5) +
+          # geom_point(aes(x=date, y=tmin.day), color="black", size=0.1, alpha=0.5) +
           geom_ribbon(aes(x=date, ymin=var.025, ymax=var.975), alpha=0.5, fill="blue") +
           geom_line(aes(x=date, y=var.pred), color="blue") +
           geom_point(aes(x=date, y=var.pred), color="blue", size=0.5) +

@@ -27,7 +27,7 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.list=NULL, lags.in
   # library(tictoc)
 
   # Figure out if we need to extract the approrpiate 
-  if(is.null(lags.init) | is.list(lags.init)){
+  if(is.null(lags.init)){
     lags.init <- lags.list[[unique(dat.mod$ens.day)]]
   }
   
@@ -237,7 +237,7 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.list=NULL, lags.in
         dat.pred[is.na(dat.pred)] <- 0
       }
       # Convert precip into real units
-      dat.pred <- dat.pred*(dat.temp$precipf.day*24)
+      dat.pred <- dat.pred*as.vector((dat.temp$precipf.day*24))
       
       # Randomly pick which values to save & propogate
       cols.prop <- sample(1:n.ens, ncol(dat.sim$precipf), replace=T)
