@@ -78,6 +78,7 @@ ens.hr  <- 3 # Number of hourly ensemble members to create
 n.day <- 10 # Number of daily ensemble members to process
 yrs.plot <- c(2015, 1985, 1920, 1875, 1800, 1000, 850)
 # years.sim=2015:1900
+years.sim=NULL
 cores.max = 12
 
 # Set up the appropriate seed
