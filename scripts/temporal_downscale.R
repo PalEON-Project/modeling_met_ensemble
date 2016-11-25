@@ -34,6 +34,8 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.list=NULL, lags.in
   # Set up the ensemble members in a list so the uncertainty can be propogated
   dat.sim <- list() 
 
+  # DOY indexing is now off from the original; fix by subtracting 1
+  dat.mod$doy = dat.mod$doy-1
   # ------------------------------------------
   # Modeling SWDOWN 
   # Note: this can be generalized to just run by DOY for all years at once since there's no memory in the system
@@ -65,7 +67,7 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.list=NULL, lags.in
                                      "next.tmax", "next.tmin", "next.precipf", "next.swdown", "next.lwdown", "next.press", "next.qair", "next.wind")]
       
       dat.temp$swdown = 99999 # Dummy value so there's a column
-      day.now = unique(dat.temp$doy)
+      # day.now = unique(dat.temp$doy)
       
       rows.beta <- sample(1:n.beta, n.ens, replace=T)
       Rbeta <- as.matrix(ncvar_get(betas.swdown, paste(day.now))[rows.beta,], nrow=length(rows.beta), ncol=ncol(betas))
