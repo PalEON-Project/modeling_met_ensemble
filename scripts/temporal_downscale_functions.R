@@ -620,7 +620,7 @@ graph.predict <- function(dat.mod, dat.ens, var, fig.dir){
 
     date.vec <- dat.mod[dat.mod$ens.day==unique(dat.mod$ens.day)[1],"date"]
     dat.mod <- aggregate(dat.mod[,c("tmax.day", "tmin.day", "precipf.day", "swdown.day", "lwdown.day", "press.day", "qair.day", "wind.day")],
-                         by=dat.mod[,c("dataset", "year", "doy", "time.day", "time.hr")],
+                         by=dat.mod[,c("year", "doy", "time.day", "time.hr")],
                          FUN=mean)
     dat.mod$date <- date.vec
     head(dat.mod)
