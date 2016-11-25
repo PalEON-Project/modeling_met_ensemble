@@ -524,7 +524,7 @@ yrs <- min(dat.out.full$met.bias$year):max(dat.out.full$met.bias$year)
 for(i in 1:n){
   # Make a directory for each ensemble member
   out.name <- paste0(site.name, "_", GCM, "_day_", str_pad(ens[i], 3, pad=0))
-  new.dir <- file.path(path.out, "day", out.name)
+  new.dir <- file.path(path.out, out.name)
   if(!dir.exists(new.dir)) dir.create(new.dir, recursive=T)  
   
   for(j in 1:length(yrs)){
