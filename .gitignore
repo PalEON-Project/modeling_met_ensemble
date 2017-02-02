@@ -9,3 +9,5 @@ data/
 
 Scripts/Old_QAQC
 scripts/.history
+
+*.history
