@@ -654,6 +654,9 @@ It works!
 ```{r}
 daily_sums <- function(file_name){
   
+  #Load required libraries
+  library(ncdf4)
+  
   nc_data <- nc_open(file_name) #create connection to datafile
   nc_time <- ncvar_get(nc = nc_data, varid = "time") #Extract time data
   
@@ -944,7 +947,7 @@ monthly_sums <- function(day_df){ #function to calculate monthly summaries from 
   months <- list("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec") #list of month names
   mo_start <- c(1, 32, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335) #month start days
   mo_end <- mo_start - 1 #month end days
-  mo_end <- mo_end[2:length(m_end)] #remove preceeding 0
+  mo_end <- mo_end[2:length(mo_end)] #remove preceeding 0
   mo_end <- append(mo_end, mo_end[11] + 31, after = length(mo_end)) #add end of December
 
   if (d_in_yr == 366){ #if it's a leap year
