@@ -13,7 +13,7 @@
 
 
 # Define the working directory & move there if we're not already
-dir_NLDAS=/Volumes/Celtis/NLDAS_FORA0125_H.002
+dir_NLDAS=/Volumes/Celtis/Meteorology/LDAS/NLDAS_FORA0125_H.002
 dir_grib=GRIB_original
 dir_ncdf=netcdf
 
@@ -74,9 +74,6 @@ mkdir -p $dir_ncdf # make directory for our output
 mos=(01 02 03 04 05 06 07 08 09 10 11 12)
 
 
-y=$(( $YEAR % 4 ))
-
-
 #  1. Start loop by year
 for YEAR in ${yrs[@]}
 do
@@ -128,6 +125,9 @@ do
 		#  6. Start loop by day of month
 		for DAY in ${days_mo[@]}
 		do
+			# Print where we are
+			echo ${YEAR}-${MONTH}-${DAY}
+			
 			#  7. Make folder for day in GRIB directories
 			mkdir -p ${dir_grib}/${YEAR}/${MONTH}/${DAY}
 			
@@ -145,20 +145,25 @@ do
 
 			# 11. change incomprehensible var names to CF
 			#     vars on separate lines just to make it easier to keep track of
-			cdo chname,var11,air_temperature,\
-			var51,specific_humidity,\
-			var1,air_pressure,\
-			var33,eastward_wind,\
-			var34,northward_wind,\
-			var205,surface_downwelling_longwave_flux_in_air,\
-			var153,convective_precipitation_fraction,\
-			var157,specific_convective_available_potential_energy,\
-			var228,water_potential_evaporation_amount,\
-			var61,precipitation_amount,\
-			var204,downwelling_shortwave_flux_in_air \
-			TEMP.nc ${prefix}${YEAR}${MONTH}${DAY}.nc
+			pushd ${dir_ncdf}/${YEAR}/${MONTH}
+# 				cdo chname,var11,air_temperature,\
+# 				var51,specific_humidity,\
+# 				var1,air_pressure,\
+# 				var33,eastward_wind,\
+# 				var34,northward_wind,\
+# 				var205,surface_downwelling_longwave_flux_in_air,\
+# 				var153,convective_precipitation_fraction,\
+# 				var157,specific_convective_available_potential_energy,\
+# 				var228,water_potential_evaporation_amount,\
+# 				var61,precipitation_amount,\
+# 				var204,downwelling_shortwave_flux_in_air \
+# 				TEMP.nc ${prefix}${YEAR}${MONTH}${DAY}.nc
+
+				cdo chname,var11,air_temperature,var51,specific_humidity,var1,air_pressure,var33,eastward_wind,var34,northward_wind,var205,surface_downwelling_longwave_flux_in_air,var153,convective_precipitation_fraction,var157,specific_convective_available_potential_energy,var228,water_potential_evaporation_amount,var61,precipitation_amount,var204,downwelling_shortwave_flux_in_air TEMP.nc ${prefix}${YEAR}${MONTH}${DAY}.nc
+
 			
-			rm -f TEMP.nc # Clean up
+				rm -f TEMP.nc # Clean up
+			popd
 			
 		done # end day loop
 		
