@@ -150,7 +150,8 @@ download.NLDAS <- function(outfolder, start_date, end_date, site_id, lat.in, lon
         }
       } # end variable loop
       
-      pb.index=pb.index+1
+      nc_close(dap_file) # close file
+      pb.index=pb.index+1 # Advance our progress bar
     } # end day
     ## change units of precip from kg/m2/hr to kg/m2/s 
     dat.list[["precipitation_flux"]] = dat.list[["precipitation_flux"]]/(60*60)
@@ -171,7 +172,7 @@ download.NLDAS <- function(outfolder, start_date, end_date, site_id, lat.in, lon
     
   }
   
-  invisible(results)
+  # invisible(results)
 }
 
 

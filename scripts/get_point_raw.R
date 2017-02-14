@@ -99,8 +99,7 @@ if(!ldas.type %in% substr(met.done, 1, 5)) {
     # dir.out <- file.path(path.ldas, site.name)
     if(ldas.type=="NLDAS"){
       download.NLDAS(outfolder=path.ldas, 
-                     # start_date="1980-01-01", end_date="2015-12-31",
-                     start_date="1980-01-01", end_date="1981-12-31",
+                     start_date="1980-01-01", end_date="2015-12-31",
                      site_id=site.name, 
                      lat.in=lat, lon.in=lon, 
                      dir.nldas="/Volumes/Celtis/Meteorology/LDAS/NLDAS_FORA0125_H.002/netcdf/")
