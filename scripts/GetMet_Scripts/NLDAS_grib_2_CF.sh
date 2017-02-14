@@ -159,7 +159,7 @@ do
 # 				var204,downwelling_shortwave_flux_in_air \
 # 				TEMP.nc ${prefix}${YEAR}${MONTH}${DAY}.nc
 
-				cdo chname,var11,air_temperature,var51,specific_humidity,var1,air_pressure,var33,eastward_wind,var34,northward_wind,var205,surface_downwelling_longwave_flux_in_air,var153,convective_precipitation_fraction,var157,specific_convective_available_potential_energy,var228,water_potential_evaporation_amount,var61,precipitation_amount,var204,downwelling_shortwave_flux_in_air TEMP.nc ${prefix}${YEAR}${MONTH}${DAY}.nc
+				cdo chname,var11,air_temperature,var51,specific_humidity,var1,air_pressure,var33,eastward_wind,var34,northward_wind,var205,surface_downwelling_longwave_flux_in_air,var153,convective_precipitation_fraction,var157,specific_convective_available_potential_energy,var228,water_potential_evaporation_amount,var61,precipitation_amount,var204,surface_downwelling_shortwave_flux_in_air TEMP.nc ${prefix}${YEAR}${MONTH}${DAY}.nc
 
 			
 				rm -f TEMP.nc # Clean up

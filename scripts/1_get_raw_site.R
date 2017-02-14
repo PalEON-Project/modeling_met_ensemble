@@ -41,10 +41,16 @@ source("get_point_raw.R")
 
 
 # Downloading Harvard
-get.raw(wd.base="/projectnb/dietzelab/paleon/met_ensemble/", 
-        site.name="HARVARD", 
-        lat=42.54, lon=-72.18, 
-        ldas.type="NLDAS", 
+# get.raw(wd.base="/projectnb/dietzelab/paleon/met_ensemble/", 
+#         site.name="HARVARD", 
+#         lat=42.54, lon=-72.18, 
+#         ldas.type="NLDAS", 
+#         GCM.list=c("MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1", "IPSL-CM5A-LR", "CCSM4"))
+
+get.raw(wd.base="~/Dropbox/PalEON_CR/met_ensemble/",
+        site.name="VCM",
+        lat=35.89, lon=-106.53,
+        ldas.type="NLDAS",
         GCM.list=c("MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1", "IPSL-CM5A-LR", "CCSM4"))
 
 # wd.base="/projectnb/dietzelab/paleon/met_ensemble/"

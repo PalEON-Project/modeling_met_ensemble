@@ -81,6 +81,7 @@ setwd(wd.base)
 if(!ldas.type %in% substr(met.done, 1, 5)) {
   
   if(!ldas.type %in% c("NLDAS", "GLDAS")) stop("Invalid ldas.type!  Must be either 'NLDAS' or 'GLDAS'")
+  if(ldas.type %in% c("GLDAS")) stop("LDAS changed permissions and GLDAS now non-functional. \n Please use another data set")
   
   # Get the LDAS training data for each site if we don't already have it downloaded.  
   path.ldas <- "data/paleon_sites/LDAS" 
@@ -93,13 +94,19 @@ if(!ldas.type %in% substr(met.done, 1, 5)) {
   # Note: making everything uppercase to make case not matter
   if(!(toupper(site.name) %in% toupper(sites.met)) | 
      !length(dir(file.path(path.ldas, dir.site), ldas.type))>0){ 
-    print("No LDAS training data found. Downloading. This will take a while")  
-    source(paste0("scripts/GetMet_Scripts/download.", ldas.type, ".R"))
+    print("No LDAS training data found. Extracting. This could take a while")  
+    source(paste0("scripts/GetMet_Scripts/extract.local.", ldas.type, ".R"))
     # dir.out <- file.path(path.ldas, site.name)
     if(ldas.type=="NLDAS"){
-      download.NLDAS(outfolder=path.ldas, start_date="1980-01-01", end_date="2015-12-31", site_id=site.name, lat.in=lat, lon.in=lon)
+      download.NLDAS(outfolder=path.ldas, 
+                     # start_date="1980-01-01", end_date="2015-12-31",
+                     start_date="1980-01-01", end_date="1981-12-31",
+                     site_id=site.name, 
+                     lat.in=lat, lon.in=lon, 
+                     dir.nldas="/Volumes/Celtis/Meteorology/LDAS/NLDAS_FORA0125_H.002/netcdf/")
     } else {
-      download.GLDAS(outfolder=path.ldas, start_date="1980-01-01", end_date="2015-12-31", site_id=site.name, lat.in=lat, lon.in=lon)
+      stop("LDAS changed permissions and GLDAS now non-functional. \n Please use another data set")
+      # download.GLDAS(outfolder=path.ldas, start_date="1980-01-01", end_date="2015-12-31", site_id=site.name, lat.in=lat, lon.in=lon)
     }
   }
   
