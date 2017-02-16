@@ -37,13 +37,13 @@ metgapfill <- function(in.path, in.prefix, outfolder, start_date, end_date, lst 
   }
   
   rows <- end_year - start_year + 1
-  results <- data.frame(file = character(rows), 
-                        host = character(rows), 
-                        mimetype = character(rows), 
-                        formatname = character(rows), 
-                        startdate = character(rows), 
-                        enddate = character(rows), 
-                        dbfile.name = in.prefix, 
+  results <- data.frame(file = character(rows),
+                        host = character(rows),
+                        mimetype = character(rows),
+                        formatname = character(rows),
+                        startdate = character(rows),
+                        enddate = character(rows),
+                        dbfile.name = in.prefix,
                         stringsAsFactors = FALSE)
   
   for (year in start_year:end_year) {
@@ -52,7 +52,7 @@ metgapfill <- function(in.path, in.prefix, outfolder, start_date, end_date, lst 
     
     # check if input exists
     if (!file.exists(old.file)) {
-      logger.warn("Missing input file ", old.file, " for year", sprintf("%04d", year), 
+      warning("Missing input file ", old.file, " for year", sprintf("%04d", year), 
                   "in folder", in.path)
       next
     }
@@ -60,14 +60,14 @@ metgapfill <- function(in.path, in.prefix, outfolder, start_date, end_date, lst 
     # create array with results
     row <- year - start_year + 1
     results$file[row]       <- new.file
-    results$host[row]       <- fqdn()
+    # results$host[row]       <- fqdn()
     results$startdate[row]  <- sprintf("%04d-01-01 00:00:00", year)
     results$enddate[row]    <- sprintf("%04d-12-31 23:59:59", year)
     results$mimetype[row]   <- "application/x-netcdf"
     results$formatname[row] <- "CF (gapfilled)"
     
     if (file.exists(new.file) && !overwrite) {
-      logger.debug("File '", new.file, "' already exists, skipping to next file.")
+      warning("File '", new.file, "' already exists, skipping to next file.")
       next
     }
     
@@ -110,11 +110,11 @@ metgapfill <- function(in.path, in.prefix, outfolder, start_date, end_date, lst 
     ## Required to exist in file
     Tair <- try(ncvar_get(nc = nc, varid = "air_temperature"), silent = TRUE)
     if (!is.numeric(Tair)) {
-      logger.error("air_temperature not defined in met file for metgapfill")
+      warning("air_temperature not defined in met file for metgapfill")
     }
     precip <- try(ncvar_get(nc = nc, varid = "precipitation_flux"), silent = TRUE)
     if (!is.numeric(precip)) {
-      logger.error("precipitation_flux not defined in met file for metgapfill")
+      warning("precipitation_flux not defined in met file for metgapfill")
     }
     
     ## create an array of missing values for writing new variables prior to gap filling
@@ -145,7 +145,7 @@ metgapfill <- function(in.path, in.prefix, outfolder, start_date, end_date, lst 
     # check to see if we have Rg values
     if (length(which(is.na(Rg))) == length(Rg)) {
       if (length(which(is.na(PAR))) == length(PAR)) {
-        logger.severe("Missing both PAR and Rg")
+        warning("Missing both PAR and Rg")
       }
       Rg <- PAR * 1e+06 / 2.1
     }
@@ -621,7 +621,7 @@ metgapfill <- function(in.path, in.prefix, outfolder, start_date, end_date, lst 
       fail.file <- file.path(outfolder, 
                              paste(in.prefix, sprintf("%04d", year), "failure", "nc", sep = "."))
       file.rename(from = new.file, to = fail.file)
-      logger.severe("Could not do gapfill, results are in", fail.file, ".", 
+      warning("Could not do gapfill, results are in", fail.file, ".", 
                     "The following variables have NA's:", paste(error, sep = ", "))
     }
   }  # end loop
@@ -667,5 +667,5 @@ metgapfill <- function(in.path, in.prefix, outfolder, start_date, end_date, lst 
   ## Step 6.Replace gaps with debiased time series (perhaps store statistics of fit somewhere as a measure of uncertainty?)
   ## Step 7. Write to outfolder the new NetCDF file
   
-  return(invisible(results))
+  # return(invisible(results))
 } # metgapfill

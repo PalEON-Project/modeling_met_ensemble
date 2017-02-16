@@ -30,9 +30,12 @@
 # -----------------------------------
 # 0) Set up file structure
 # Extract Data:
-# 1) Extract NLDAS (1980-present) or GLDAS data
-#     -- if not already downloaded, will take 36+ hours 
-#     -- Use for spatial downscaling
+# 1) Download & Format Ameriflux Data
+#     -- New feature (Feb 2017) to expand code utility
+#     -- Uses pecan met tools & workflow from James Simpkins (U Wisc)
+# 1) Extract NLDAS (1980-2015) or GLDAS data
+#     -- Now used locally
+#     -- Default for spatial downscaling & training temporal model
 # 2) CRUNCEP: 1901 - 2009
 #     -- use for extending empirical/subday back to 1901
 # 3) GCM - historical: 1850-2010 - mostly day, (radiation = monthly)
@@ -41,12 +44,14 @@
 # -----------------------------------
 
 # Making this into a function
-get.raw <- function(wd.base, site.name, lat, lon, ldas.type, GCM.list){
+get.raw <- function(wd.base, site.name, lat, lon, Ameriflux=NULL, ldas.type=NULL, CRUNCEP=NULL, GCM.list=NULL,
+                    path.pecan=NULL){
   # Description of declared variables
   # wd.base   = the base directory for this github repository.  
   # site.name = character name of the site; preference for all caps
   # lat       = latitude of the site of interest
   # lon       = longitude of the site of interest
+  # Ameriflux = Code Name for Ameriflux tower; 
   # ldas.type = type of LDAS data to pull: NLDAS (0.25 degree, hourly)
   # GCM
   # 
@@ -71,6 +76,56 @@ met.done <- dir(path.out, ".csv")
 # -----------------------------------
 
 # -----------------------------------
+# Get Ameriflux Data
+# -----------------------------------
+setwd(wd.base)
+if(!is.null(Ameriflux)){
+  
+  library(ncdf4)
+  library(XML)
+  library(lubridate)
+  library(REddyProc)
+  
+  path.ameriflux.raw <- "data/paleon_sites/Ameriflux_raw" 
+  path.ameriflux.CF <- "data/paleon_sites/Ameriflux_CF" 
+  path.ameriflux.gapfill <- "data/paleon_sites/Ameriflux_gapfilled" 
+  path.ameriflux.gapfill.CF <- "data/paleon_sites/Ameriflux_gapfilled_CF" 
+  if(!dir.exists(file.path(path.ameriflux.raw))) dir.create(file.path(path.ameriflux.raw), recursive=T)
+  if(!dir.exists(file.path(path.ameriflux.CF))) dir.create(file.path(path.ameriflux.CF), recursive=T)
+  if(!dir.exists(file.path(path.ameriflux.gapfill))) dir.create(file.path(path.ameriflux.gapfill), recursive=T)
+            
+  # Source & Execute Pecan Scripts (https://github.com/PecanProject/pecan)
+  # Note: the pecan library doesn't work by itself, so I'm modifying their scripts and housing them here
+  # /Users/crollinson/Desktop/Research/pecan/modules/data.atmosphere/R
+  source(file.path(path.pecan, "metutils.R"))
+  source(file.path(path.pecan,"download.Ameriflux.R"))
+  source(file.path(path.pecan,"met2CF.Ameriflux.R"))
+  source(file.path(path.pecan,"metgapfill.R"))
+  
+  
+  # download.Ameriflux(Ameriflux, outfolder = path.ameriflux.raw, start_date = "2007-01-01", end_date = "2014-12-31", overwrite = FALSE, verbose = FALSE)
+  download.Ameriflux(Ameriflux, outfolder = path.ameriflux.gapfill, start_date = "2007-01-01", end_date = "2014-12-31", gapfilled=T, overwrite = FALSE, verbose = FALSE)
+  met2CF.Ameriflux(path.ameriflux.gapfill, in.prefix =Ameriflux, outfolder = path.ameriflux.gapfill.CF, start_date = "2007-01-01", end_date = "2014-12-31", overwrite = FALSE,verbose = FALSE)
+  
+  # Gapfilled data still had gaps, so we're running Ankur's gapfilling script just to be safe
+  metgapfill(in.path = path.ameriflux.gapfill.CF, in.prefix = "US-Vcm",outfolder = path.ameriflux.gapfill, start_date = "2007-01-01",end_date = "2014-12-31",overwrite = FALSE,verbose = FALSE)
+  
+  # Do the formatting: Use a script modified from James
+  source(file.path(path.pecan,"Ameriflux2traindata.R"))
+  Ameriflux2traindata(filepath=path.ameriflux.gapfill, 
+                      Ameriflux=Ameriflux, 
+                      site.name=site.name, 
+                      start_date="2007-01-01", end_date="2014-12-31",
+                      outfile=file.path(path.out, paste0("Ameriflux_2007-2014.csv")), 
+                      aggregate.day=T,
+                      CF.names=FALSE,
+                      overwrite = FALSE, verbose = FALSE)
+  
+  
+}
+# -----------------------------------
+
+# -----------------------------------
 # Get NLDAS / GLDAS data for site
 #
 # This is our hourly dat that will be used raw for the most recent years
@@ -78,7 +133,7 @@ met.done <- dir(path.out, ".csv")
 # ------------
 setwd(wd.base)
 # Figure out if we already have the LDAS we need
-if(!ldas.type %in% substr(met.done, 1, 5)) {
+if(!ldas.type %in% substr(met.done, 1, 5) & !is.null(ldas.type)) {
   
   if(!ldas.type %in% c("NLDAS", "GLDAS")) stop("Invalid ldas.type!  Must be either 'NLDAS' or 'GLDAS'")
   if(ldas.type %in% c("GLDAS")) stop("LDAS changed permissions and GLDAS now non-functional. \n Please use another data set")
@@ -110,15 +165,12 @@ if(!ldas.type %in% substr(met.done, 1, 5)) {
   }
   
   # Now that we have training data, move to the next step
-  files.site <- dir(file.path(path.ldas, dir.site), ldas.type)
-  files.remove <- which(substr(files.site,nchar(files.site)-3, nchar(files.site)) %in% c(".csv", "data")) # make sure we don't try to read an already post-processed .csv or .Rdata file
-  if(length(files.remove)>=1){
-    files.site <- files.site[!files.remove] 
-  }
-  
+  files.site <- dir(file.path(path.ldas, site.name), ldas.type)
+  files.site <- files.site[which(!substr(files.site,nchar(files.site)-3, nchar(files.site)) %in% c(".csv", "data"))] # make sure we don't try to read an already post-processed .csv or .Rdata file
+
   ldas <- list() # create an empty list to store the data
   for(i in files.site){
-    ncT <- nc_open(file.path(path.ldas, dir.site, i))
+    ncT <- nc_open(file.path(path.ldas, site.name, i))
     
     # Loop through and get all of the variables into 1 list
     for(v in names(ncT$var)){
@@ -173,7 +225,7 @@ if(!ldas.type %in% substr(met.done, 1, 5)) {
 setwd(wd.base)
 
 # Figure out if we've already processed the necessary CRUNCEP data
-if(!"CRUNCEP" %in% substr(met.done, 1, 7)) {
+if(!is.null(CRUNCEP) & !"CRUNCEP" %in% substr(met.done, 1, 7)) {
   # Get CRUNCEP data for each site if we don't already have it downloaded.  
   #  -- Uses Pecan scrip download.CRUNCEP_Global.R
   path.cruncep <- "data/paleon_sites/CRUNCEP" 
@@ -256,6 +308,7 @@ if(!"CRUNCEP" %in% substr(met.done, 1, 7)) {
 # Get GCM data
 # -----------------------------------
 setwd(wd.base)
+if(!is.null(GCM.list)){
 
 for(GCM in GCM.list){
 
@@ -553,6 +606,7 @@ if(!paste0(GCM, "_historical") %in% substr(met.done, 1, nchar(GCM)+11)){
   write.csv(hist.df, file.path(path.out, paste0(GCM, "_historical_", min(as.numeric(paste(hist.df$year))), "-", max(as.numeric(paste(hist.df$year))), ".csv")), row.names = F)
 }
 # --------------
-}
+} # end GCM Loop
+} # End GCM case
 # -----------------------------------
 }

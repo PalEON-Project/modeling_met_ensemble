@@ -62,7 +62,7 @@ getLatLon <- function(nc1) {
       return(c(as.numeric(lat$value), as.numeric(lon$value)))
     }
   }
-  logger.severe("Could not get site location for file.")
+  warning("Could not get site location for file.")
 } # getLatLon
 
 
@@ -85,7 +85,7 @@ met2CF.Ameriflux <- function(in.path, in.prefix, outfolder, start_date, end_date
                              overwrite = FALSE, verbose = FALSE, ...) {
   
   #---------------- Load libraries. -----------------------------------------------------------------#
-  library(PEcAn.utils)
+  # library(PEcAn.utils)
   library(geonames)  ## has to be loaded as a library
   #--------------------------------------------------------------------------------------------------#  
   
@@ -98,29 +98,29 @@ met2CF.Ameriflux <- function(in.path, in.prefix, outfolder, start_date, end_date
   }
   
   rows <- end_year - start_year + 1
-  results <- data.frame(file = character(rows),
-                        host = character(rows), 
-                        mimetype = character(rows), 
-                        formatname = character(rows),
-                        startdate = character(rows), 
-                        enddate = character(rows), 
-                        dbfile.name = in.prefix, 
-                        stringsAsFactors = FALSE)
+  # results <- data.frame(file = character(rows),
+  #                       host = character(rows), 
+  #                       mimetype = character(rows), 
+  #                       formatname = character(rows),
+  #                       startdate = character(rows), 
+  #                       enddate = character(rows), 
+  #                       dbfile.name = in.prefix, 
+  #                       stringsAsFactors = FALSE)
   for (year in start_year:end_year) {
     old.file <- file.path(in.path, paste(in.prefix, year, "nc", sep = "."))
     new.file <- file.path(outfolder, paste(in.prefix, year, "nc", sep = "."))
     
     # create array with results
     row <- year - start_year + 1
-    results$file[row]       <- new.file
-    results$host[row]       <- fqdn()
-    results$startdate[row]  <- paste0(year, "-01-01 00:00:00")
-    results$enddate[row]    <- paste0(year, "-12-31 23:59:59")
-    results$mimetype[row]   <- "application/x-netcdf"
-    results$formatname[row] <- "CF"
+    # results$file[row]       <- new.file
+    # results$host[row]       <- fqdn()
+    # results$startdate[row]  <- paste0(year, "-01-01 00:00:00")
+    # results$enddate[row]    <- paste0(year, "-12-31 23:59:59")
+    # results$mimetype[row]   <- "application/x-netcdf"
+    # results$formatname[row] <- "CF"
     
     if (file.exists(new.file) && !overwrite) {
-      logger.debug("File '", new.file, "' already exists, skipping to next file.")
+      warning("File '", new.file, "' already exists, skipping to next file.")
       next
     }
     
@@ -299,5 +299,5 @@ met2CF.Ameriflux <- function(in.path, in.prefix, outfolder, start_date, end_date
     ncdf4::nc_close(nc2)
   }  ## end loop over years
   
-  return(invisible(results))
+  # return(invisible(results))
 } # met2CF.Ameriflux

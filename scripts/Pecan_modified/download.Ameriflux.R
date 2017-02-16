@@ -21,10 +21,12 @@ download.Ameriflux.site <- function(site_id) {
 ##' 
 ##' @author Josh Mantooth, Rob Kooper, Ankur Desai
 download.Ameriflux <- function(sitename, outfolder, start_date, end_date,
+                               gapfilled = FALSE,
                                overwrite = FALSE, verbose = FALSE, ...) {
   # get start/end year code works on whole years only
   
-  library(PEcAn.utils)
+  # library(PEcAn.utils)
+  library(XML)
   library(data.table)
   
   site <- sub(".* \\((.*)\\)", "\\1", sitename)
@@ -41,7 +43,11 @@ download.Ameriflux <- function(sitename, outfolder, start_date, end_date,
   }
   
   # url where Ameriflux data is stored
-  baseurl <- paste0("http://cdiac.ornl.gov/ftp/ameriflux/data/Level2/Sites_ByID/", site, "/with_gaps/")
+  if(gapfilled==T){
+    baseurl <- paste0("http://cdiac.ornl.gov/ftp/ameriflux/data/Level2/Sites_ByID/", site, "/gap_filled/")
+  } else {
+    baseurl <- paste0("http://cdiac.ornl.gov/ftp/ameriflux/data/Level2/Sites_ByID/", site, "/with_gaps/")
+  }
   # Hack needed for US-UMB which has hourly and half-hourly folders separate. This version sticks
   # with hourly which has longer site record
   if (site == "US-UMB") {
@@ -57,41 +63,41 @@ download.Ameriflux <- function(sitename, outfolder, start_date, end_date,
   
   # find all links we need based on the years and download them
   rows <- end_year - start_year + 1
-  results <- data.frame(file = character(rows), 
-                        host = character(rows), 
-                        mimetype = character(rows), 
-                        formatname = character(rows),
-                        startdate = character(rows),
-                        enddate = character(rows), 
-                        dbfile.name = site, 
-                        stringsAsFactors = FALSE)
+  # results <- data.frame(file = character(rows), 
+  #                       host = character(rows), 
+  #                       mimetype = character(rows), 
+  #                       formatname = character(rows),
+  #                       startdate = character(rows),
+  #                       enddate = character(rows), 
+  #                       dbfile.name = site, 
+  #                       stringsAsFactors = FALSE)
   for (year in start_year:end_year) {
     outputfile <- file.path(outfolder, paste(site, year, "nc", sep = "."))
     
     # create array with results
     row                     <- year - start_year + 1
-    results$file[row]       <- outputfile
-    results$host[row]       <- fqdn()
-    results$startdate[row]  <- paste0(year, "-01-01 00:00:00")
-    results$enddate[row]    <- paste0(year, "-12-31 23:59:59")
-    results$mimetype[row]   <- "application/x-netcdf"
-    results$formatname[row] <- "AmeriFlux.level2.h.nc"
+    # results$file[row]       <- outputfile
+    # results$host[row]       <- fqdn()
+    # results$startdate[row]  <- paste0(year, "-01-01 00:00:00")
+    # results$enddate[row]    <- paste0(year, "-12-31 23:59:59")
+    # results$mimetype[row]   <- "application/x-netcdf"
+    # results$formatname[row] <- "AmeriFlux.level2.h.nc"
     
     # see if file exists
     if (file.exists(outputfile) && !overwrite) {
-      logger.debug("File '", outputfile, "' already exists, skipping to next file.")
+      warning("File '", outputfile, "' already exists, skipping to next file.")
       next
     }
     
     file <- tail(as.character(links[grep(paste0("_", year, "_.*.nc"), links)]), n = 1)
     if (length(file) == 0) {
-      logger.severe("Could not download data for", site, "for the year", year)
+      warning("Could not download data for", site, "for the year", year)
     }
     download.file(paste0(baseurl, file), outputfile)
   }
   
   # return list of files downloaded
-  return(invisible(results))
+  # return(invisible(results))
 } # download.Ameriflux
 
 #site <- download.Ameriflux.site(622)
