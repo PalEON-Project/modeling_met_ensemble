@@ -13,3 +13,5 @@ scripts/.history
 *.history
 
 scripts/GetMet_Scripts/download_NLDAS2_raw.sh
+
+*.nc

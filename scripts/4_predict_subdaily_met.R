@@ -261,7 +261,9 @@ for(GCM in GCM.list){
       dat.ens[[paste0("X", e)]]$date <- strptime(paste(dat.ens[[paste0("X", e)]]$year, dat.ens[[paste0("X", e)]]$doy, dat.ens[[paste0("X", e)]]$hour, sep="-"), "%Y-%j-%H", tz="GMT")
       dat.ens[[paste0("X", e)]]$time.hr <- as.numeric(difftime(dat.ens[[paste0("X", e)]]$date, "2016-01-01", tz="GMT", units="hour"))
       dat.ens[[paste0("X", e)]] <- dat.ens[[paste0("X", e)]][order(dat.ens[[paste0("X", e)]]$time.hr, decreasing=F),]
-    }
+      
+      # ens.sims[[paste0("X", e)]] <- predict.subdaily(dat.ens[[paste0("X", e)]], n.ens=ens.hr, path.model=file.path(dat.base, "subday_models"), lags.list=lags.init, lags.init=NULL, dat.train=dat.train)
+    } # End ensembles setup
     
     # Set up the time dimension for this year
     hrs.now <- as.numeric(difftime(dat.ens[[paste0("X", ens.day[1])]]$date, "0850-01-01", tz="GMT", units="hour"))
