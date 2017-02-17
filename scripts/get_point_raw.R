@@ -133,7 +133,8 @@ if(!is.null(Ameriflux)){
 # ------------
 setwd(wd.base)
 # Figure out if we already have the LDAS we need
-if(!ldas.type %in% substr(met.done, 1, 5) & !is.null(ldas.type)) {
+if(!is.null(ldas.type)){
+if(!ldas.type %in% substr(met.done, 1, 5) ) {
   
   if(!ldas.type %in% c("NLDAS", "GLDAS")) stop("Invalid ldas.type!  Must be either 'NLDAS' or 'GLDAS'")
   if(ldas.type %in% c("GLDAS")) stop("LDAS changed permissions and GLDAS now non-functional. \n Please use another data set")
@@ -217,6 +218,7 @@ if(!ldas.type %in% substr(met.done, 1, 5) & !is.null(ldas.type)) {
   
   write.csv(ldas.df, file.path(path.out, paste0(ldas.type, "_", min(as.numeric(paste(ldas.df$year))), "-", max(as.numeric(paste(ldas.df$year))), ".csv")), row.names = F)
 }
+  }
 # -----------------------------------
 
 # -----------------------------------
@@ -225,7 +227,8 @@ if(!ldas.type %in% substr(met.done, 1, 5) & !is.null(ldas.type)) {
 setwd(wd.base)
 
 # Figure out if we've already processed the necessary CRUNCEP data
-if(!is.null(CRUNCEP) & !"CRUNCEP" %in% substr(met.done, 1, 7)) {
+if(!is.null(CRUNCEP)){
+if(!"CRUNCEP" %in% substr(met.done, 1, 7)) {
   # Get CRUNCEP data for each site if we don't already have it downloaded.  
   #  -- Uses Pecan scrip download.CRUNCEP_Global.R
   path.cruncep <- "data/paleon_sites/CRUNCEP" 
@@ -300,7 +303,7 @@ if(!is.null(CRUNCEP) & !"CRUNCEP" %in% substr(met.done, 1, 7)) {
   summary(cruncep.df)
   
   write.csv(cruncep.df, file.path(path.out, paste0("CRUNCEP_", min(as.numeric(paste(cruncep.df$year))), "-", max(as.numeric(paste(cruncep.df$year))), ".csv")), row.names = F)
-}
+}}
 # -----------------------------------
 
 

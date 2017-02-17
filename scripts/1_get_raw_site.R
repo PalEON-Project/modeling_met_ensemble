@@ -37,7 +37,10 @@
 #  -- Function will check to see if each type of data has been done yet before processing
 #  -- See get_point_raw.R for internal workflow & more details
 # -----------------------------------
-source("get_point_raw.R")
+wd.base = "~/Dropbox/PalEON_CR/met_ensemble/"
+setwd(wd.base)
+
+source("scripts/get_point_raw.R")
 
 
 # Downloading Harvard
@@ -47,14 +50,18 @@ source("get_point_raw.R")
 #         ldas.type="NLDAS", 
 #         GCM.list=c("MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1", "IPSL-CM5A-LR", "CCSM4"))
 
+path.pecan="scripts/Pecan_modified"
+
 get.raw(wd.base="~/Dropbox/PalEON_CR/met_ensemble/",
         site.name="VCM",
         lat=35.89, lon=-106.53,
-        ldas.type="NLDAS",
-        GCM.list=c("MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1", "IPSL-CM5A-LR", "CCSM4"))
+        Ameriflux=NULL,
+        ldas.type=NULL,
+        CRUNCEP=TRUE,
+        GCM.list=NULL,
+        path.pecan=path.pecan)
 
 
-path.pecan="scripts/Pecan_modified"
 # wd.base="/projectnb/dietzelab/paleon/met_ensemble/"
 # site.name="HARVARD" 
 # lat=42.54; lon=-72.18 
