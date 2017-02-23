@@ -41,13 +41,18 @@
 library(ncdf4)
 library(mgcv)
 library(MASS)
-# library(lubridate)
+library(lubridate)
 library(ggplot2)
 # library(tictoc)
 rm(list=ls())
 
-mod.out <- "/projectnb/dietzelab/paleon/met_ensemble/data/met_ensembles/HARVARD/subday_models"
+
+wd.base <- "~/Dropbox/PalEON_CR/met_ensemble/"
+setwd(wd.base)
+
+# mod.out <- "/projectnb/dietzelab/paleon/met_ensemble/data/met_ensembles/HARVARD/subday_models"
 # mod.out <- "~/Desktop/met_ensembles/HARVARD/subday_models"
+mod.out <- "~/Desktop/Research/met_ensembles/VCM/subday_models"
 fig.dir <- file.path(mod.out, "model_qaqc")
 
 if(!dir.exists(mod.out)) dir.create(mod.out, recursive = T)
@@ -63,31 +68,42 @@ if(!dir.exists(fig.dir)) dir.create(fig.dir, recursive = T)
 # ----------
 {
   # Load the data
-  dat.train <- read.csv("../data/paleon_sites/HARVARD/NLDAS_1980-2015.csv")
+  # dat.train <- read.csv("../data/paleon_sites/HARVARD/NLDAS_1980-2015.csv")
+  dat.train <- read.csv("data/paleon_sites/VCM/Ameriflux_2007-2014.csv")
+  
+  # Trying to get Andy 30-minute data
+  dat.train$minute <- minute(dat.train$date)
+  dat.train$hour2 <- dat.train$hour + minute(dat.train$date)/60
+  dat.train[1:50, c("date", "year", "doy", "hour", "minute", "hour2")]
   # dat.train$doy <- as.ordered(dat.train$doy)
   
   # order the data just o make life easier
-  dat.train <- dat.train[order(dat.train$year, dat.train$doy, dat.train$hour, decreasing=T),]
-  dat.train[1:25,]
-  head(dat.train)
+  dat.train <- dat.train[order(dat.train$year, dat.train$doy, dat.train$hour2, decreasing=T),]
+  # dat.train[1:25,]
+  dat.train[1:50, c("date", "year", "doy", "hour", "minute", "hour2")]
+  # head(dat.train)
   summary(dat.train)
   
   # Add various types of time stamps to make life easier
-  dat.train$date <- strptime(paste(dat.train$year, dat.train$doy+1, dat.train$hour, sep="-"), "%Y-%j-%H", tz="GMT")
-  dat.train$time.hr <- as.numeric(difftime(dat.train$date, "2016-01-01", tz="GMT", units="hour"))
-  dat.train$time.day <- as.numeric(difftime(dat.train$date, "2016-01-01", tz="GMT", units="day"))+1/24
-  dat.train$time.day2 <- as.integer(dat.train$time.day)-1
+  # dat.train$date <- strptime(paste(dat.train$year, dat.train$doy+1, dat.train$hour, sep="-"), "%Y-%j-%H", tz="GMT")
+  dat.train$time.hr <- as.numeric(difftime(dat.train$date, "2015-01-01", tz="GMT", units="hour"))
+  dat.train$time.day <- as.numeric(difftime(dat.train$date, "2015-01-01", tz="GMT", units="day"))
+  dat.train$time.day2 <- as.integer(dat.train$time.day+1/(48*2))-1 # Offset by half a time step to get time stamps to line up
   dat.train <- dat.train[order(dat.train$time.hr, decreasing=T),]
-  # dat.train[1:25,]
-  # head(dat.train)
+  
+  # summary(dat.train[is.na(dat.train$time.hr),])
+  summary(dat.train)
+  dat.train[1:50,c("date", "year", "doy", "hour", "hour2", "time.hr", "time.day", "time.day2")]
+  dat.train[1:100,c("date", "year", "doy", "hour", "hour2", "time.hr", "time.day", "time.day2")]
+  head(dat.train)
   
   # For some reason certain days are getting an extra hour, so make sure it lines up right
-  for(i in max(dat.train$time.day2):min(dat.train$time.day2)){
-    rows.now <- which(dat.train$time.day2==i)
-    if(length(rows.now)<=24) next
-    
-    dat.train[rows.now[25],"time.day2"] <- i-1
-  }
+  # for(i in max(dat.train$time.day2):min(dat.train$time.day2)){
+  #   rows.now <- which(dat.train$time.day2==i)
+  #   if(length(rows.now)<=48) next
+  #   
+  #   dat.train[rows.now[25],"time.day2"] <- i-1
+  # }
 }
 # ----------
 
@@ -181,7 +197,7 @@ if(!dir.exists(fig.dir)) dir.create(fig.dir, recursive = T)
 # ------------------------------------------
 # 2 Train the models for each variable and save them to be read in as needed
 # ------------------------------------------
-source("temporal_downscale_functions.R")
+source("scripts/temporal_downscale_functions.R")
 
 # ---------
 # 2.1 Generating all the daily models, save the output as .Rdata files, then clear memory

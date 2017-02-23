@@ -52,7 +52,7 @@ library(parallel)
 # library(tictoc)
 rm(list=ls())
 
-wd.base <- "/projectnb/dietzelab/paleon/met_ensemble/"
+wd.base <- "~/Dropbox/PalEON_CR/met_ensemble/"
 # wd.base <- "~/Desktop/Research/PalEON_CR/met_ensemble/"
 setwd(wd.base)
 
@@ -61,22 +61,23 @@ source("scripts/temporal_downscale.R")
 source("scripts/temporal_downscale_functions.R")
 
 
-dat.base <- "/projectnb/dietzelab/paleon/met_ensemble/data/met_ensembles/HARVARD/"
-# dat.base <- "~/Desktop/met_ensembles/HARVARD/"
+# dat.base <- "/projectnb/dietzelab/paleon/met_ensemble/data/met_ensembles/HARVARD/"
+dat.base <- "~/Desktop/Research/met_ensembles/VCM/"
 # dat.base <- "~/Desktop/met_bias_day/data/met_ensembles/HARVARD/"
 
-dat.train <- read.csv(file.path(wd.base, "data/paleon_sites/HARVARD/NLDAS_1980-2015.csv"))
+# dat.train <- read.csv(file.path(wd.base, "data/paleon_sites/HARVARD/NLDAS_1980-2015.csv"))
+dat.train <- read.csv(file.path(wd.base, "data/paleon_sites/VCM/Ameriflux_2007-2014.csv"))
 
 # Hard-coding numbers for Harvard
-site.name="HARVARD"
-site.lat=42.54
-site.lon=-72.18
+site.name="VCM"
+site.lat=35.89
+site.lon=-106.53
 
-GCM.list = c("CCSM4", "MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1")
+# GCM.list = c("CCSM4", "MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1")
 # GCM.list = "MIROC-ESM"
 ens.hr  <- 3 # Number of hourly ensemble members to create
 n.day <- 10 # Number of daily ensemble members to process
-yrs.plot <- c(2015, 1985, 1920, 1875, 1800, 1000, 850)
+yrs.plot <- c(2015, 1985, 1920, 1901)
 # years.sim=2015:1900
 years.sim=NULL
 cores.max = 12

@@ -367,7 +367,22 @@ model.precipf <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=
     if(i == 365){ # Lump leap day in with non-leap Dec 31
       dat.list[[paste(i)]] <- dat.train[dat.train$doy>=364,]
     } else {
-      dat.list[[paste(i)]] <- dat.train[dat.train$doy==i,]
+      # Ran into a weird case where there was a day of year with no rain... we can't model that!
+      if(max(dat.train[dat.train$doy==i,"precipf"], na.rm=T)>0){
+        dat.list[[paste(i)]] <- dat.train[dat.train$doy==i,]  
+      } else {
+        day.use=i
+        if(i > 30){
+          while(max(dat.train[dat.train$doy==day.use,"precipf"], na.rm=T)==0){ day.use <- day.use-1 }
+        } else {
+          while(max(dat.train[dat.train$doy==day.use,"precipf"], na.rm=T)==0){ day.use <- day.use+1 }
+        }
+        
+        warning(paste0("day ", i, " has no rain! Replacing with ", day.use))
+        dat.list[[paste(i)]] <- dat.train[dat.train$doy==day.use,]  
+        dat.list[[paste(i)]]$doy <- as.numeric(i)
+        
+      }
     }
   }
   
@@ -539,6 +554,7 @@ graph.resids <- function(var, dat.train, model.var, fig.dir){
   if(var == "precipf"){
     for(i in names(model.var)){
       if(as.numeric(i) == 365) next # 365 is weird, so lets skip it
+      if(length(dat.train[dat.train$doy==as.numeric(i) & dat.train$var.day>0, "resid"])==0) next # Skip the days with no rain!
       dat.train[dat.train$doy==as.numeric(i) & dat.train$var.day>0, "resid"] <- resid(model.var[[i]]$model)
       dat.train[dat.train$doy==as.numeric(i) & dat.train$var.day>0, "predict"] <- predict(model.var[[i]]$model)
     }
