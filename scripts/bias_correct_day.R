@@ -16,7 +16,7 @@ library(mgcv)
 library(ggplot2)
 set.seed(seed)
 dir.create(file.path(path.out, "BiasCorrect_QAQC"), recursive=T, showWarnings=F)  
-empirical = c("NLDAS", "GLDAS", "CRUNCEP", "PRISM", "DAYMET") # Empirical datasets
+empirical = c("NLDAS", "GLDAS", "CRUNCEP", "PRISM", "DAYMET", "Ameriflux") # Empirical datasets
 
 dat.train.orig <- dat.train
 
