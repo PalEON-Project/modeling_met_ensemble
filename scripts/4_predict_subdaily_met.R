@@ -62,11 +62,20 @@ source("scripts/temporal_downscale_functions.R")
 
 
 # dat.base <- "/projectnb/dietzelab/paleon/met_ensemble/data/met_ensembles/HARVARD/"
-dat.base <- "~/Desktop/Research/met_ensembles/VCM/"
+dat.base <- "~/Desktop/Research/met_ensembles/data/met_ensembles/VCM/"
 # dat.base <- "~/Desktop/met_bias_day/data/met_ensembles/HARVARD/"
 
 # dat.train <- read.csv(file.path(wd.base, "data/paleon_sites/HARVARD/NLDAS_1980-2015.csv"))
 dat.train <- read.csv(file.path(wd.base, "data/paleon_sites/VCM/Ameriflux_2007-2014.csv"))
+dat.train$hour <- dat.train$hour + minute(dat.train$date)/60
+
+# Calculate the timestep in hours to make things easier
+timestep <- unique(minute(dat.train$date)/60)
+timestep <- mean(diff(timestep))
+
+df.hour <- data.frame(hour=unique(dat.train$hour)) # match this to whatever your "hourly" timestep is
+
+
 
 # Hard-coding numbers for Harvard
 site.name="VCM"
@@ -76,11 +85,11 @@ site.lon=-106.53
 # GCM.list = c("CCSM4", "MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1")
 # GCM.list = "MIROC-ESM"
 ens.hr  <- 3 # Number of hourly ensemble members to create
-n.day <- 10 # Number of daily ensemble members to process
+n.day <- 4 # Number of daily ensemble members to process
 yrs.plot <- c(2015, 1985, 1920, 1901)
 # years.sim=2015:1900
 years.sim=NULL
-cores.max = 12
+cores.max = 4
 
 # Set up the appropriate seed
 set.seed(0017)
@@ -114,15 +123,16 @@ dimX <- ncdim_def( "lat", units="degrees", longname="longitude", vals=site.lon )
 # NOTE: all precip needs to be converted precip back to kg/m2/s from kg/m2/day
 # This gets done when formatting things for downscaling
 
-for(GCM in GCM.list){
+# for(GCM in GCM.list){
+  GCM="Ameriflux"
   # tic()
   # Set the directory where the output is & load the file
-  path.gcm <- file.path(dat.base, GCM, "day")
+  path.gcm <- file.path(dat.base, "day")
   # dat.day <- dir(path.gcm, ".Rdata")
   # load(file.path(path.gcm, dat.day)) # Loads dat.out.full
 
   # Set & create the output directory
-  path.out <- file.path(dat.base, GCM, "1hr")
+  path.out <- file.path(dat.base, paste0(timestep, "hr"))
   if(!dir.exists(path.out)) dir.create(path.out, recursive=T)
   
   # -----------------------------------
@@ -182,7 +192,6 @@ for(GCM in GCM.list){
   
   for(y in years.sim){
     dat.ens <- list() # a new list for each ensemble member as a new layer
-    df.hour <- data.frame(hour=0:23)
     
     # Create a list layer for each ensemble member
     # NOTE: NEED TO CHECK THE TIME STAMPS HERE TO MAKE SURE WE'RE PULLING AND ADDING IN THE RIGHT PLACE
@@ -259,8 +268,12 @@ for(GCM in GCM.list){
       dat.ens[[paste0("X", e)]]$time.day <- as.numeric(difftime(dat.ens[[paste0("X", e)]]$date, "2016-01-01", tz="GMT", units="day"))
       dat.ens[[paste0("X", e)]] <- merge(dat.ens[[paste0("X", e)]], df.hour, all=T)
       
-      dat.ens[[paste0("X", e)]]$date <- strptime(paste(dat.ens[[paste0("X", e)]]$year, dat.ens[[paste0("X", e)]]$doy, dat.ens[[paste0("X", e)]]$hour, sep="-"), "%Y-%j-%H", tz="GMT")
-      dat.ens[[paste0("X", e)]]$time.hr <- as.numeric(difftime(dat.ens[[paste0("X", e)]]$date, "2016-01-01", tz="GMT", units="hour"))
+      # A very ugly hack way to get the minutes in there
+      dat.ens[[paste0("X", e)]]$minute <- abs(dat.ens[[paste0("X", e)]]$hour-(round(dat.ens[[paste0("X", e)]]$hour, 0)))*60
+      
+      # timestep <- max(dat.ens[[paste0("X", e)]]$minute)/60 # Calculate the timestep to make the date function work
+      dat.ens[[paste0("X", e)]]$date <- strptime(paste(dat.ens[[paste0("X", e)]]$year, dat.ens[[paste0("X", e)]]$doy, round(dat.ens[[paste0("X", e)]]$hour-timestep/2),dat.ens[[paste0("X", e)]]$minute, sep="-"), "%Y-%j-%H-%M", tz="GMT")
+      dat.ens[[paste0("X", e)]]$time.hr <- as.numeric(difftime(dat.ens[[paste0("X", e)]]$date, "2016-01-01", tz="GMT", units="hour")) #+ minute(dat.train$date)/60
       dat.ens[[paste0("X", e)]] <- dat.ens[[paste0("X", e)]][order(dat.ens[[paste0("X", e)]]$time.hr, decreasing=F),]
       
       # ens.sims[[paste0("X", e)]] <- predict.subdaily(dat.ens[[paste0("X", e)]], n.ens=ens.hr, path.model=file.path(dat.base, "subday_models"), lags.list=lags.init, lags.init=NULL, dat.train=dat.train)
@@ -282,6 +295,8 @@ for(GCM in GCM.list){
     cores.use <- min(cores.max, length(dat.ens))
     ens.sims  <- mclapply(dat.ens, predict.subdaily, mc.cores=cores.use, n.ens=ens.hr, path.model=file.path(dat.base, "subday_models"), lags.list=lags.init, lags.init=NULL, dat.train=dat.train)
     
+    # ens.sims <- predict.subdaily(dat.ens[[1]], n.ens=ens.hr, path.model=file.path(dat.base, "subday_models"), lags.init=lags.init[[1]], dat.train=dat.train)
+    
     # If this is one of our designated QAQC years, makes some graphs
     # Now doing this for the whole GCM
     if(y %in% yrs.plot){
@@ -296,7 +311,7 @@ for(GCM in GCM.list){
           ens.plot[[i]] <- cbind(ens.plot[[i]], ens.sims[[e]][[i]])
         }
       }
-      day.name <- paste0(site.name, "_", GCM, "_1hr")
+      day.name <- paste0(site.name, "_", GCM, "_", timestep, "hr")
       fig.ens <- file.path(path.out, "subdaily_qaqc", day.name)
       if(!dir.exists(fig.ens)) dir.create(fig.ens, recursive=T)
       for(v in names(ens.plot)){
@@ -321,7 +336,7 @@ for(GCM in GCM.list){
       # Write each year for each ensemble member into its own .nc file
       # -----------------------------------
       for(i in 1:ens.hr){
-        ens.name <- paste0(site.name, "_", GCM, "_1hr_", str_pad(e, 3, pad=0), "-", str_pad(i, 3, pad=0))
+        ens.name <- paste0(site.name, "_", GCM, "_", timestep, "hr", "_", str_pad(e, 3, pad=0), "-", str_pad(i, 3, pad=0))
         
         if(!dir.exists(file.path(path.out, ens.name))) dir.create(file.path(path.out, ens.name), recursive=T)
         # path.out <- file.path(dat.base, GCM, "1hr")
@@ -358,4 +373,4 @@ for(GCM in GCM.list){
   # }
   # setwd(wd.base)
   toc()
-} # End GCM loop
+# } # End GCM loop

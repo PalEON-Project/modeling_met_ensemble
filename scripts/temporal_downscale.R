@@ -35,7 +35,7 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.list=NULL, lags.in
   dat.sim <- list() 
 
   # DOY indexing is now off from the original; fix by subtracting 1
-  dat.mod$doy = dat.mod$doy-1
+  # dat.mod$doy = dat.mod$doy-1
   # ------------------------------------------
   # Modeling SWDOWN 
   # Note: this can be generalized to just run by DOY for all years at once since there's no memory in the system
@@ -304,13 +304,15 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.list=NULL, lags.in
       dat.pred <- dat.pred^2 # because squared to prevent negative numbers
       
       # Hard-coding some sanity bounds by ball-parking things from NLDAS & CRUNCEP
-      # dat.pred[dat.pred<100] <- 100
-      # dat.pred[dat.pred>600] <- 600
+      # This is necessary if you have poorly constrained training models
+      dat.pred[dat.pred<100] <- 100
+      dat.pred[dat.pred>600] <- 600
       
       # Randomly pick which values to save & propogate
       cols.prop <- sample(1:n.ens, ncol(dat.sim$lwdown), replace=T)
       
       for(j in 1:ncol(dat.sim$lwdown)){
+        # test <- which(dat.temp$ens==paste0("X", j))
         dat.sim[["lwdown"]][rows.now,j] <- dat.pred[dat.temp$ens==paste0("X", j),cols.prop[j]]
       }
     }

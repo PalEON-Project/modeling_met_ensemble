@@ -74,7 +74,7 @@ GCM.list=NULL
 # GCM.list=c("CCSM4")
 LDAS="NLDAS"
 # ens=1:50
-ens=1:10
+ens=1:50
 n=length(ens)
 # n=10 # Number of ensemble members
 # Make some vectors with met sets to make things easier
