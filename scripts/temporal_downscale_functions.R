@@ -632,23 +632,23 @@ graph.resids <- function(var, dat.train, model.var, fig.dir){
     for(i in names(model.var)){
       if(as.numeric(i) == 365) next # 365 is weird, so lets skip it
       if(length(dat.train[dat.train$doy==as.numeric(i) & dat.train$var.day>0, "resid"])==0) next # Skip the days with no rain!
-      dat.train[dat.train$doy==as.numeric(i) & dat.train$var.day>0, "resid"] <- resid(model.var[[i]]$model)
-      dat.train[dat.train$doy==as.numeric(i) & dat.train$var.day>0, "predict"] <- predict(model.var[[i]]$model)
+      dat.train[dat.train$doy==as.numeric(i) & dat.train$var.day>0, "predict"] <- predict(model.var[[i]]$model, newdata=dat.train[dat.train$doy==as.numeric(i) & dat.train$var.day>0, ])
+      # dat.train[dat.train$doy==as.numeric(i) & dat.train$var.day>0, "resid"] <- resid(model.var[[i]]$model)
     }
   } else if(var=="swdown"){ 
     for(i in names(model.var)){
       if(as.numeric(i) == 365) next # 365 is weird, so lets skip it
       hrs.day = unique(dat.train[dat.train$doy==as.numeric(i) & dat.train$swdown>quantile(dat.train[dat.train$swdown>0,"swdown"], 0.05), "hour"])
-      dat.train[dat.train$doy==as.numeric(i) & dat.train$hour %in% hrs.day, "resid"] <- resid(mod.swdown.doy[[i]]$model)
-      dat.train[dat.train$doy==as.numeric(i) & dat.train$hour %in% hrs.day, "predict"] <- predict(mod.swdown.doy[[i]]$model)
+      dat.train[dat.train$doy==as.numeric(i) & dat.train$hour %in% hrs.day, "predict"] <- predict(mod.swdown.doy[[i]]$model, newdata=dat.train[dat.train$doy==as.numeric(i) & dat.train$hour %in% hrs.day, ])
+      # dat.train[dat.train$doy==as.numeric(i) & dat.train$hour %in% hrs.day, "resid"] <- resid(mod.swdown.doy[[i]]$model)
       
       dat.train[dat.train$doy==as.numeric(i) & !(dat.train$hour %in% hrs.day), "predict"] <- 0
     }
   } else {
     for(i in names(model.var)){
       if(as.numeric(i) == 365) next # 365 is weird, so lets skip it
-      dat.train[dat.train$doy==as.numeric(i) & !is.na(dat.train$lag.var) & !is.na(dat.train$next.var), "resid"] <- resid(model.var[[i]]$model)
-      dat.train[dat.train$doy==as.numeric(i) & !is.na(dat.train$lag.var) & !is.na(dat.train$next.var), "predict"] <- predict(model.var[[i]]$model)
+      dat.train[dat.train$doy==as.numeric(i) & !is.na(dat.train$lag.var) & !is.na(dat.train$next.var), "predict"] <- predict(model.var[[i]]$model, newdata=dat.train[dat.train$doy==as.numeric(i) & !is.na(dat.train$lag.var) & !is.na(dat.train$next.var), ])
+      # dat.train[dat.train$doy==as.numeric(i) & !is.na(dat.train$lag.var) & !is.na(dat.train$next.var), "resid"] <- resid(model.var[[i]]$model)
     }
   }
   if(var %in% c("qair")){
@@ -660,6 +660,7 @@ graph.resids <- function(var, dat.train, model.var, fig.dir){
   if(var %in% c("wind", "lwdown")){
     dat.train$predict <- (dat.train$predict)^2
   }
+  dat.train$resid <- dat.train[,var] - dat.train$predict
   
   # summary(dat.train)
   
