@@ -1,4 +1,4 @@
-model.tair <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NULL, seed=1237){
+model.tair <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NULL, day.window=5, seed=1237){
   library(MASS)
   set.seed(seed)
 
@@ -10,6 +10,14 @@ model.tair <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NUL
       # mod.doy <- lm(tair ~ as.ordered(hour)*tmax.day*(lag.tair + lag.tmin + tmin.day) +  as.ordered(hour)*tmin.day*next.tmax + as.ordered(hour)*swdown.day*(tmax.day + tmin.day) - 1 - as.ordered(hour) - swdown.day - lag.tair - lag.tmin - next.tmax - tmax.day - tmin.day - tmin.day*tmax.day - swdown.day*tmax.day*tmin.day, data=dat.subset) #
       mod.doy <- lm(tair ~ as.ordered(hour)*tmax.day*(lag.tair + lag.tmin + tmin.day) +  as.ordered(hour)*tmin.day*next.tmax - 1 - as.ordered(hour) - lag.tair - lag.tmin - next.tmax - tmax.day - tmin.day, data=dat.subset) #
 
+      # If we can't estimate the covariance matrix, double our data and try again
+      # NOTE: THIS IS NOT A GOOD PERMANENT FIX!!
+      if(is.na(summary(mod.doy)$adj.r.squared)){
+        warning(paste0("Can not estimate covariance matrix for day of year: ", unique(dat.subset$doy)))
+        dat.subset <- rbind(dat.subset, dat.subset)
+        mod.doy <- lm(tair ~ as.ordered(hour)*tmax.day*(lag.tair + lag.tmin + tmin.day) +  as.ordered(hour)*tmin.day*next.tmax - 1 - as.ordered(hour) - lag.tair - lag.tmin - next.tmax - tmax.day - tmin.day, data=dat.subset) #
+      }
+      
       # Generate a bunch of random coefficients that we can pull from 
       # without needing to do this step every day
       mod.coef <- coef(mod.doy)
@@ -42,11 +50,16 @@ model.tair <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NUL
   mod.out <- list()
 
   # Make the data into a list
+  # Training the model on ax X-day window around the actual DOY we're trying to model
+  # this helps avoid problems with lack of data in small datasets like Ameriflux
+  # Default window is 5 days (+/- 2)
   for(i in unique(dat.train$doy)){
-    if(i == 365){ # Lump leap day in with non-leap Dec 31
-      dat.list[[paste(i)]] <- dat.train[dat.train$doy>=364,]
+    if(i >= 365){ # Lump leap day in with non-leap Dec 31
+      dat.list[[paste(i)]] <- dat.train[dat.train$doy>=365-day.window/2 | dat.train$doy<=day.window/2,]
+    } else if(i == 1){
+      dat.list[[paste(i)]] <- dat.train[dat.train$doy<=i+day.window/2 | dat.train$doy>=365-day.window/2,]
     } else {
-      dat.list[[paste(i)]] <- dat.train[dat.train$doy==i,]
+      dat.list[[paste(i)]] <- dat.train[dat.train$doy>=i-day.window/2 & dat.train$doy<=i+day.window/2,]
     }
   }
   
@@ -64,7 +77,7 @@ model.tair <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NUL
   return(mod.out)
 }
 
-model.swdown <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NULL, seed=1341){
+model.swdown <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NULL, day.window=5, seed=1341){
   library(MASS)
   set.seed(seed)
   
@@ -79,6 +92,14 @@ model.swdown <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=N
     # mod.doy <- lm(swdown ~ as.factor(hour)*swdown.day, data=dat.subset[dat.subset$hour %in% hrs.day,]) ###
     mod.doy <- lm(swdown ~ as.factor(hour)*swdown.day-1 - swdown.day - as.factor(hour), data=dat.subset[dat.subset$hour %in% hrs.day,]) ###
 
+    # If we can't estimate the covariance matrix, double our data and try again
+    # NOTE: THIS IS NOT A GOOD PERMANENT FIX!!
+    if(is.na(summary(mod.doy)$adj.r.squared)){
+      warning(paste0("Can not estimate covariance matrix for day of year: ", unique(dat.subset$doy)))
+      dat.subset <- rbind(dat.subset, dat.subset)
+      mod.doy <- lm(swdown ~ as.factor(hour)*swdown.day-1 - swdown.day - as.factor(hour), data=dat.subset[dat.subset$hour %in% hrs.day,]) ###
+    }
+    
     # Generate a bunch of random coefficients that we can pull from 
     # without needing to do this step every day
     mod.coef <- coef(mod.doy)
@@ -110,11 +131,16 @@ model.swdown <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=N
   mod.out <- list()
   
   # Make the data into a list
+  # Training the model on ax X-day window around the actual DOY we're trying to model
+  # this helps avoid problems with lack of data in small datasets like Ameriflux
+  # Default window is 5 days (+/- 2)
   for(i in unique(dat.train$doy)){
-    if(i == 365){ # Lump leap day in with non-leap Dec 31
-      dat.list[[paste(i)]] <- dat.train[dat.train$doy>=364,]
+    if(i >= 365){ # Lump leap day in with non-leap Dec 31
+      dat.list[[paste(i)]] <- dat.train[dat.train$doy>=365-day.window/2 | dat.train$doy<=day.window/2,]
+    } else if(i == 1){
+      dat.list[[paste(i)]] <- dat.train[dat.train$doy<=i+day.window/2 | dat.train$doy>=365-day.window/2,]
     } else {
-      dat.list[[paste(i)]] <- dat.train[dat.train$doy==i,]
+      dat.list[[paste(i)]] <- dat.train[dat.train$doy>=i-day.window/2 & dat.train$doy<=i+day.window/2,]
     }
   }
   
@@ -132,7 +158,7 @@ model.swdown <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=N
   return(mod.out)
 }
 
-model.lwdown <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NULL, seed=341){
+model.lwdown <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NULL, day.window=5, seed=341){
   library(MASS)
   set.seed(seed)
   
@@ -141,6 +167,14 @@ model.lwdown <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=N
     
     # mod.doy <- lm(lwdown ~ as.factor(hour)*lwdown.day*(lag.lwdown + next.lwdown + swdown.day + tmax.day + tmin.day) - as.factor(hour) - tmax.day - tmin.day - swdown.day - 1, data=dat.subset) ###
     mod.doy <- lm(sqrt(lwdown) ~ as.factor(hour)*lwdown.day*(lag.lwdown + next.lwdown) - as.factor(hour) - 1 - lag.lwdown - next.lwdown - lwdown.day - lwdown.day*lag.lwdown - lwdown.day*next.lwdown, data=dat.subset) ###
+    
+    # If we can't estimate the covariance matrix, double our data and try again
+    # NOTE: THIS IS NOT A GOOD PERMANENT FIX!!
+    if(is.na(summary(mod.doy)$adj.r.squared)){
+      warning(paste0("Can not estimate covariance matrix for day of year: ", unique(dat.subset$doy)))
+      dat.subset <- rbind(dat.subset, dat.subset)
+      mod.doy <- lm(sqrt(lwdown) ~ as.factor(hour)*lwdown.day*(lag.lwdown + next.lwdown) - as.factor(hour) - 1 - lag.lwdown - next.lwdown - lwdown.day - lwdown.day*lag.lwdown - lwdown.day*next.lwdown, data=dat.subset) ###
+    }
     
     # Generate a bunch of random coefficients that we can pull from 
     # without needing to do this step every day
@@ -172,11 +206,16 @@ model.lwdown <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=N
   mod.out <- list()
   
   # Make the data into a list
+  # Training the model on ax X-day window around the actual DOY we're trying to model
+  # this helps avoid problems with lack of data in small datasets like Ameriflux
+  # Default window is 5 days (+/- 2)
   for(i in unique(dat.train$doy)){
-    if(i == 365){ # Lump leap day in with non-leap Dec 31
-      dat.list[[paste(i)]] <- dat.train[dat.train$doy>=364,]
+    if(i >= 365){ # Lump leap day in with non-leap Dec 31
+      dat.list[[paste(i)]] <- dat.train[dat.train$doy>=365-day.window/2 | dat.train$doy<=day.window/2,]
+    } else if(i == 1){
+      dat.list[[paste(i)]] <- dat.train[dat.train$doy<=i+day.window/2 | dat.train$doy>=365-day.window/2,]
     } else {
-      dat.list[[paste(i)]] <- dat.train[dat.train$doy==i,]
+      dat.list[[paste(i)]] <- dat.train[dat.train$doy>=i-day.window/2 & dat.train$doy<=i+day.window/2,]
     }
   }
   
@@ -194,7 +233,7 @@ model.lwdown <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=N
   return(mod.out)
 }
 
-model.press <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NULL, seed=1347){
+model.press <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NULL, day.window=5, seed=1347){
   library(MASS)
   set.seed(seed)
   
@@ -204,6 +243,14 @@ model.press <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NU
     # mod.doy <- lm(press ~ as.factor(hour)*(press.day + lag.press + next.press)-as.factor(hour)-1, data=dat.subset) ###
     mod.doy <- lm(press ~ as.factor(hour)*(press.day + lag.press + next.press)-as.factor(hour)-1-press.day - lag.press - next.press, data=dat.subset) ###
 
+    # If we can't estimate the covariance matrix, double our data and try again
+    # NOTE: THIS IS NOT A GOOD PERMANENT FIX!!
+    if(is.na(summary(mod.doy)$adj.r.squared)){
+      warning(paste0("Can not estimate covariance matrix for day of year: ", unique(dat.subset$doy)))
+      dat.subset <- rbind(dat.subset, dat.subset)
+      mod.doy <- lm(press ~ as.factor(hour)*(press.day + lag.press + next.press)-as.factor(hour)-1-press.day - lag.press - next.press, data=dat.subset) ###
+    }
+    
     # Generate a bunch of random coefficients that we can pull from 
     # without needing to do this step every day
     mod.coef <- coef(mod.doy)
@@ -234,11 +281,16 @@ model.press <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NU
   mod.out <- list()
   
   # Make the data into a list
+  # Training the model on ax X-day window around the actual DOY we're trying to model
+  # this helps avoid problems with lack of data in small datasets like Ameriflux
+  # Default window is 5 days (+/- 2)
   for(i in unique(dat.train$doy)){
-    if(i == 365){ # Lump leap day in with non-leap Dec 31
-      dat.list[[paste(i)]] <- dat.train[dat.train$doy>=364,]
+    if(i >= 365){ # Lump leap day in with non-leap Dec 31
+      dat.list[[paste(i)]] <- dat.train[dat.train$doy>=365-day.window/2 | dat.train$doy<=day.window/2,]
+    } else if(i == 1){
+      dat.list[[paste(i)]] <- dat.train[dat.train$doy<=i+day.window/2 | dat.train$doy>=365-day.window/2,]
     } else {
-      dat.list[[paste(i)]] <- dat.train[dat.train$doy==i,]
+      dat.list[[paste(i)]] <- dat.train[dat.train$doy>=i-day.window/2 & dat.train$doy<=i+day.window/2,]
     }
   }
   
@@ -256,7 +308,7 @@ model.press <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NU
   return(mod.out)
 }
 
-model.wind <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NULL, seed=708){
+model.wind <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NULL, day.window=5, seed=708){
   library(MASS)
   set.seed(seed)
   
@@ -266,6 +318,14 @@ model.wind <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NUL
     # mod.doy <- lm(log(wind) ~ as.factor(hour)*log(wind.day)*(log(lag.wind) + log(next.wind) + press.day + tmin.day + tmax.day)-as.factor(hour)-1 - press.day - tmin.day - tmax.day - log(wind.day)*press.day - log(wind.day)*tmin.day- log(wind.day)*tmax.day - as.factor(hour)*tmin.day - as.factor(hour)*tmax.day - as.factor(hour)*press.day, data=dat.subset) ###
     # mod.doy <- lm(log(wind) ~ as.factor(hour)*wind.day*(lag.wind + next.wind)-as.factor(hour)-1 - wind.day - lag.wind - next.wind - wind.day*lag.wind - wind.day*next.wind, data=dat.subset) ###
     mod.doy <- lm(sqrt(wind) ~ as.factor(hour)*wind.day*(lag.wind + next.wind)-as.factor(hour)-1 - wind.day - lag.wind - next.wind - wind.day*lag.wind - wind.day*next.wind, data=dat.subset) ###
+    
+    # If we can't estimate the covariance matrix, double our data and try again
+    # NOTE: THIS IS NOT A GOOD PERMANENT FIX!!
+    if(is.na(summary(mod.doy)$adj.r.squared)){
+      warning(paste0("Can not estimate covariance matrix for day of year: ", unique(dat.subset$doy)))
+      dat.subset <- rbind(dat.subset, dat.subset)
+      mod.doy <- lm(sqrt(wind) ~ as.factor(hour)*wind.day*(lag.wind + next.wind)-as.factor(hour)-1 - wind.day - lag.wind - next.wind - wind.day*lag.wind - wind.day*next.wind, data=dat.subset) ###
+    }
     
     # Generate a bunch of random coefficients that we can pull from 
     # without needing to do this step every day
@@ -297,11 +357,16 @@ model.wind <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NUL
   mod.out <- list()
   
   # Make the data into a list
+  # Training the model on ax X-day window around the actual DOY we're trying to model
+  # this helps avoid problems with lack of data in small datasets like Ameriflux
+  # Default window is 5 days (+/- 2)
   for(i in unique(dat.train$doy)){
-    if(i == 365){ # Lump leap day in with non-leap Dec 31
-      dat.list[[paste(i)]] <- dat.train[dat.train$doy>=364,]
+    if(i >= 365){ # Lump leap day in with non-leap Dec 31
+      dat.list[[paste(i)]] <- dat.train[dat.train$doy>=365-day.window/2 | dat.train$doy<=day.window/2,]
+    } else if(i == 1){
+      dat.list[[paste(i)]] <- dat.train[dat.train$doy<=i+day.window/2 | dat.train$doy>=365-day.window/2,]
     } else {
-      dat.list[[paste(i)]] <- dat.train[dat.train$doy==i,]
+      dat.list[[paste(i)]] <- dat.train[dat.train$doy>=i-day.window/2 & dat.train$doy<=i+day.window/2,]
     }
   }
   
@@ -319,7 +384,7 @@ model.wind <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NUL
   return(mod.out)
 }
 
-model.precipf <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NULL, seed=1562){
+model.precipf <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NULL, day.window=5, seed=1562){
   library(MASS)
   # library(fitdistrplus)
   set.seed(seed)
@@ -331,6 +396,14 @@ model.precipf <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=
     # we're going to estimate the probability distribution of rain occuring in a given hour
     dat.subset$rain.prop <- dat.subset$precipf/(dat.subset$precipf.day*24)
     mod.doy <- lm(rain.prop ~ as.factor(hour)*precipf.day-1 - as.factor(hour)-precipf.day, data=dat.subset)
+    
+    # If we can't estimate the covariance matrix, double our data and try again
+    # NOTE: THIS IS NOT A GOOD PERMANENT FIX!!
+    if(is.na(summary(mod.doy)$adj.r.squared)){
+      warning(paste0("Can not estimate covariance matrix for day of year: ", unique(dat.subset$doy)))
+      dat.subset <- rbind(dat.subset, dat.subset)
+      mod.doy <- lm(rain.prop ~ as.factor(hour)*precipf.day-1 - as.factor(hour)-precipf.day, data=dat.subset)
+    }
     
     # Generate a bunch of random coefficients that we can pull from 
     # without needing to do this step every day
@@ -363,26 +436,16 @@ model.precipf <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=
   mod.out <- list()
   
   # Make the data into a list
+  # Training the model on ax X-day window around the actual DOY we're trying to model
+  # this helps avoid problems with lack of data in small datasets like Ameriflux
+  # Default window is 5 days (+/- 2)
   for(i in unique(dat.train$doy)){
-    if(i == 365){ # Lump leap day in with non-leap Dec 31
-      dat.list[[paste(i)]] <- dat.train[dat.train$doy>=364,]
+    if(i >= 365){ # Lump leap day in with non-leap Dec 31
+      dat.list[[paste(i)]] <- dat.train[dat.train$doy>=365-day.window/2 | dat.train$doy<=day.window/2,]
+    } else if(i == 1){
+      dat.list[[paste(i)]] <- dat.train[dat.train$doy<=i+day.window/2 | dat.train$doy>=365-day.window/2,]
     } else {
-      # Ran into a weird case where there was a day of year with no rain... we can't model that!
-      if(max(dat.train[dat.train$doy==i,"precipf"], na.rm=T)>0){
-        dat.list[[paste(i)]] <- dat.train[dat.train$doy==i,]  
-      } else {
-        day.use=i
-        if(i > 30){
-          while(max(dat.train[dat.train$doy==day.use,"precipf"], na.rm=T)==0){ day.use <- day.use-1 }
-        } else {
-          while(max(dat.train[dat.train$doy==day.use,"precipf"], na.rm=T)==0){ day.use <- day.use+1 }
-        }
-        
-        warning(paste0("day ", i, " has no rain! Replacing with ", day.use))
-        dat.list[[paste(i)]] <- dat.train[dat.train$doy==day.use,]  
-        dat.list[[paste(i)]]$doy <- as.numeric(i)
-        
-      }
+      dat.list[[paste(i)]] <- dat.train[dat.train$doy>=i-day.window/2 & dat.train$doy<=i+day.window/2,]
     }
   }
   
@@ -400,7 +463,7 @@ model.precipf <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=
   return(mod.out)
 }
 
-model.qair <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NULL, seed=1009){
+model.qair <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NULL, day.window=5, seed=1009){
   library(MASS)
   set.seed(seed)
   
@@ -411,6 +474,15 @@ model.qair <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NUL
     # mod.doy <- lm(log(qair) ~ as.factor(hour)*qair.day*(lag.qair + next.qair)-as.factor(hour)-1 - qair.day - lag.qair - next.qair - qair.day*lag.qair - qair.day*next.qair, data=dat.subset) ###
     mod.doy <- lm(log(qair) ~ as.factor(hour)*qair.day*(lag.qair + next.qair + tmax.day)-as.factor(hour)-1 - tmax.day, data=dat.subset) ###
     # mod.doy <- glm(qair ~ as.factor(hour)*qair.day*(lag.qair + next.qair)-as.factor(hour)-1 - qair.day - lag.qair - next.qair - qair.day*lag.qair - qair.day*next.qair, data=dat.subset, family="quasibinomial") ###
+    
+    # If we can't estimate the covariance matrix, double our data and try again
+    # NOTE: THIS IS NOT A GOOD PERMANENT FIX!!
+    if(is.na(summary(mod.doy)$adj.r.squared)){
+      warning(paste0("Can not estimate covariance matrix for day of year: ", unique(dat.subset$doy)))
+      dat.subset <- rbind(dat.subset, dat.subset)
+      mod.doy <- lm(log(qair) ~ as.factor(hour)*qair.day*(lag.qair + next.qair + tmax.day)-as.factor(hour)-1 - tmax.day, data=dat.subset) ###
+    }
+    
     
     # Generate a bunch of random coefficients that we can pull from 
     # without needing to do this step every day
@@ -442,11 +514,16 @@ model.qair <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NUL
   mod.out <- list()
   
   # Make the data into a list
+  # Training the model on ax X-day window around the actual DOY we're trying to model
+  # this helps avoid problems with lack of data in small datasets like Ameriflux
+  # Default window is 5 days (+/- 2)
   for(i in unique(dat.train$doy)){
-    if(i == 365){ # Lump leap day in with non-leap Dec 31
-      dat.list[[paste(i)]] <- dat.train[dat.train$doy>=364,]
+    if(i >= 365){ # Lump leap day in with non-leap Dec 31
+      dat.list[[paste(i)]] <- dat.train[dat.train$doy>=365-day.window/2 | dat.train$doy<=day.window/2,]
+    } else if(i == 1){
+      dat.list[[paste(i)]] <- dat.train[dat.train$doy<=i+day.window/2 | dat.train$doy>=365-day.window/2,]
     } else {
-      dat.list[[paste(i)]] <- dat.train[dat.train$doy==i,]
+      dat.list[[paste(i)]] <- dat.train[dat.train$doy>=i-day.window/2 & dat.train$doy<=i+day.window/2,]
     }
   }
   
