@@ -72,23 +72,31 @@ if(!dir.exists(fig.dir)) dir.create(fig.dir, recursive = T)
   dat.train <- read.csv("data/paleon_sites/VCM/Ameriflux_2007-2014.csv")
   
   # Trying to get Andy 30-minute data
-  dat.train$minute <- minute(dat.train$date)
-  dat.train$hour <- dat.train$hour + minute(dat.train$date)/60
+  # dat.train$minute <- minute(dat.train$date)
+  # dat.train$hour <- dat.train$hour + minute(dat.train$date)/60
   # dat.train[1:50, c("date", "year", "doy", "hour", "minute", "hour2")]
   # dat.train$doy <- as.ordered(dat.train$doy)
+  
+  # aggregate to hour
+  dat.train <- aggregate(dat.train[,c("tair", "precipf", "swdown", "lwdown", "press", "qair", "uas", "vas", "wind")],
+                         by=dat.train[,c("year", "doy", "hour")],
+                         FUN=mean)
+  
+  summary(dat.train)
   
   # order the data just o make life easier
   dat.train <- dat.train[order(dat.train$year, dat.train$doy, dat.train$hour, decreasing=T),]
   # dat.train[1:25,]
   # dat.train[1:50, c("date", "year", "doy", "hour", "minute", "hour2")]
-  # head(dat.train)
+  head(dat.train)
+  dat.train$date <- as.POSIXct(paste(dat.train$year, dat.train$doy, dat.train$hour, sep="-"), "%Y-%j-%H", tz="GMT")
   summary(dat.train)
   
   # Add various types of time stamps to make life easier
   # dat.train$date <- strptime(paste(dat.train$year, dat.train$doy+1, dat.train$hour, sep="-"), "%Y-%j-%H", tz="GMT")
   dat.train$time.hr <- as.numeric(difftime(dat.train$date, "2015-01-01", tz="GMT", units="hour"))
   dat.train$time.day <- as.numeric(difftime(dat.train$date, "2015-01-01", tz="GMT", units="day"))
-  dat.train$time.day2 <- as.integer(dat.train$time.day+1/(48*2))-1 # Offset by half a time step to get time stamps to line up
+  dat.train$time.day2 <- as.integer(dat.train$time.day+1/(24*2))-1 # Offset by half a time step to get time stamps to line up
   dat.train <- dat.train[order(dat.train$time.hr, decreasing=T),]
   
   # summary(dat.train[is.na(dat.train$time.hr),])

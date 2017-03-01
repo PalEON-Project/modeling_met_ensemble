@@ -67,11 +67,20 @@ dat.base <- "~/Desktop/Research/met_ensembles/data/met_ensembles/VCM/"
 
 # dat.train <- read.csv(file.path(wd.base, "data/paleon_sites/HARVARD/NLDAS_1980-2015.csv"))
 dat.train <- read.csv(file.path(wd.base, "data/paleon_sites/VCM/Ameriflux_2007-2014.csv"))
-dat.train$hour <- dat.train$hour + minute(dat.train$date)/60
+# dat.train$hour <- dat.train$hour + minute(dat.train$date)/60
+
+# aggregate to hour
+dat.train <- aggregate(dat.train[,c("tair", "precipf", "swdown", "lwdown", "press", "qair", "uas", "vas", "wind")],
+                       by=dat.train[,c("year", "doy", "hour")],
+                       FUN=mean)
+dat.train$date <- as.POSIXct(paste(dat.train$year, dat.train$doy, dat.train$hour, sep="-"), "%Y-%j-%H", tz="GMT")
+summary(dat.train)
+
 
 # Calculate the timestep in hours to make things easier
-timestep <- unique(minute(dat.train$date)/60)
-timestep <- mean(diff(timestep))
+timestep <- unique(minute(dat.train$date)/60)+1 # add 1 so hourly data = 1 hr
+if(length(timestep)>1) timestep <- mean(diff(timestep)) # if we have more than one minute mark, do the difference
+
 
 df.hour <- data.frame(hour=unique(dat.train$hour)) # match this to whatever your "hourly" timestep is
 
@@ -85,7 +94,7 @@ site.lon=-106.53
 # GCM.list = c("CCSM4", "MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1")
 # GCM.list = "MIROC-ESM"
 ens.hr  <- 3 # Number of hourly ensemble members to create
-n.day <- 4 # Number of daily ensemble members to process
+n.day <- 10 # Number of daily ensemble members to process
 yrs.plot <- c(2015, 1985, 1920, 1901)
 # years.sim=2015:1900
 years.sim=NULL
@@ -159,7 +168,6 @@ dimX <- ncdim_def( "lat", units="degrees", longname="longitude", vals=site.lon )
     years.sim <- max(years.files):min(years.files)
   }
   
-  
   # Initialize the lags
   lags.init <- list() # Need to initialize lags first outside of the loop and then they'll get updated internally
   for(e in ens.day){
@@ -189,13 +197,19 @@ dimX <- ncdim_def( "lat", units="degrees", longname="longitude", vals=site.lon )
     lags.init[[paste0("X", e)]][["qair"   ]] <- data.frame(array(qair.init   , dim=c(1, ens.hr)))
     lags.init[[paste0("X", e)]][["wind"   ]] <- data.frame(array(wind.init   , dim=c(1, ens.hr)))
   }
+
+  # Initialize a progress bar
+  pb.index=1
+  pb <- txtProgressBar(min=1, max=length(years.sim)*length(ens.day), style=3)
   
   for(y in years.sim){
     dat.ens <- list() # a new list for each ensemble member as a new layer
-    
+    ens.sims <- list()
     # Create a list layer for each ensemble member
     # NOTE: NEED TO CHECK THE TIME STAMPS HERE TO MAKE SURE WE'RE PULLING AND ADDING IN THE RIGHT PLACE
     for(e in ens.day){
+      setTxtProgressBar(pb, pb.index) #update progress bar
+      
       path.day <- file.path(path.gcm,  paste0(site.name, "_", GCM, "_day_",e))
       file.ens <- dir(path.day, str_pad(y, 4, pad=0))
       
@@ -272,11 +286,15 @@ dimX <- ncdim_def( "lat", units="degrees", longname="longitude", vals=site.lon )
       dat.ens[[paste0("X", e)]]$minute <- abs(dat.ens[[paste0("X", e)]]$hour-(round(dat.ens[[paste0("X", e)]]$hour, 0)))*60
       
       # timestep <- max(dat.ens[[paste0("X", e)]]$minute)/60 # Calculate the timestep to make the date function work
-      dat.ens[[paste0("X", e)]]$date <- strptime(paste(dat.ens[[paste0("X", e)]]$year, dat.ens[[paste0("X", e)]]$doy, round(dat.ens[[paste0("X", e)]]$hour-timestep/2),dat.ens[[paste0("X", e)]]$minute, sep="-"), "%Y-%j-%H-%M", tz="GMT")
+      # dat.ens[[paste0("X", e)]]$date <- strptime(paste(dat.ens[[paste0("X", e)]]$year, dat.ens[[paste0("X", e)]]$doy, round(dat.ens[[paste0("X", e)]]$hour-timestep/2),dat.ens[[paste0("X", e)]]$minute, sep="-"), "%Y-%j-%H-%M", tz="GMT")
+      dat.ens[[paste0("X", e)]]$date <- strptime(paste(dat.ens[[paste0("X", e)]]$year, dat.ens[[paste0("X", e)]]$doy, dat.ens[[paste0("X", e)]]$hour,dat.ens[[paste0("X", e)]]$minute, sep="-"), "%Y-%j-%H-%M", tz="GMT")
       dat.ens[[paste0("X", e)]]$time.hr <- as.numeric(difftime(dat.ens[[paste0("X", e)]]$date, "2016-01-01", tz="GMT", units="hour")) #+ minute(dat.train$date)/60
       dat.ens[[paste0("X", e)]] <- dat.ens[[paste0("X", e)]][order(dat.ens[[paste0("X", e)]]$time.hr, decreasing=F),]
       
+      # Do the modeling here rather than in parallel
       # ens.sims[[paste0("X", e)]] <- predict.subdaily(dat.ens[[paste0("X", e)]], n.ens=ens.hr, path.model=file.path(dat.base, "subday_models"), lags.list=lags.init, lags.init=NULL, dat.train=dat.train)
+      
+      pb.index <- pb.index + 1 # Advance our progress bar  # Doing it here rather than at end of writing files because that should be fast
     } # End ensembles setup
     
     # Set up the time dimension for this year
@@ -314,8 +332,9 @@ dimX <- ncdim_def( "lat", units="degrees", longname="longitude", vals=site.lon )
       day.name <- paste0(site.name, "_", GCM, "_", timestep, "hr")
       fig.ens <- file.path(path.out, "subdaily_qaqc", day.name)
       if(!dir.exists(fig.ens)) dir.create(fig.ens, recursive=T)
+      # dat.ens.full <- dat.ens
       for(v in names(ens.plot)){
-        graph.predict(dat.mod=dat.plot, dat.ens=ens.plot, var=v, fig.dir=fig.ens)
+        graph.predict(dat.mod=dat.plot, dat.ens=ens.plot, var=v, year=y, fig.dir=fig.ens)
       }
     }
     
@@ -357,7 +376,6 @@ dimX <- ncdim_def( "lat", units="degrees", longname="longitude", vals=site.lon )
         nc_close(nc)    
       }
       # -----------------------------------
-      
     } # End ensemble member prediction for 1 year
     # -----------------------------------
   } # End Year Loop

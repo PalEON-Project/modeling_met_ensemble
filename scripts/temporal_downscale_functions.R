@@ -706,7 +706,7 @@ graph.resids <- function(var, dat.train, model.var, fig.dir){
   dev.off()
 }
 
-graph.predict <- function(dat.mod, dat.ens, var, fig.dir){
+graph.predict <- function(dat.mod, dat.ens, var, yr, fig.dir){
   # ---------
   # Graph the output
   # ---------
@@ -727,16 +727,16 @@ graph.predict <- function(dat.mod, dat.ens, var, fig.dir){
     if(var=="tair"){
       
       # If this is temperature, add lines fo the daily max and min
-      png(file.path(fig.dir, paste0(var, y, "_year.png")), height=8, width=10, units="in", res=220)
+      png(file.path(fig.dir, paste0(var, yr, "_year.png")), height=8, width=10, units="in", res=220)
       print(
-        ggplot(data=dat.mod[dat.mod$year==y,]) +
+        ggplot(data=dat.mod[dat.mod$year==yr,]) +
           geom_ribbon(aes(x=date, ymin=var.025, ymax=var.975), alpha=0.5, fill="blue") +
           geom_line(aes(x=date, y=var.pred), color="blue") +
           geom_point(aes(x=date, y=var.pred), color="blue", size=0.5) +
           # geom_point(aes(x=date, y=tmax.day), color="black", size=0.1, alpha=0.5) +
           # geom_point(aes(x=date, y=tmin.day), color="black", size=0.1, alpha=0.5) +
           scale_x_datetime(expand=c(0,0)) +
-          ggtitle(paste0(var, ": ", y)) +
+          ggtitle(paste0(var, ": ", yr)) +
           theme_bw()
       )
       dev.off()
@@ -752,9 +752,9 @@ graph.predict <- function(dat.mod, dat.ens, var, fig.dir){
       
       dat.graph <- rbind(dat.graph1, dat.graph2, dat.graph3, dat.graph4)
       
-      png(file.path(fig.dir, paste0(var, y,"_examples.png")), height=8, width=10, units="in", res=220)
+      png(file.path(fig.dir, paste(var, yr,"examples.png", sep="_")), height=8, width=10, units="in", res=220)
       print(
-        ggplot(data=dat.graph[dat.graph$year==y,]) +
+        ggplot(data=dat.graph[dat.graph$year==yr,]) +
           facet_wrap(~season, scales="free") +
           # geom_point(aes(x=date, y=tmax.day), color="black", size=0.1, alpha=0.5) +
           # geom_point(aes(x=date, y=tmin.day), color="black", size=0.1, alpha=0.5) +
@@ -763,22 +763,22 @@ graph.predict <- function(dat.mod, dat.ens, var, fig.dir){
           geom_point(aes(x=date, y=var.pred), color="blue", size=0.5) +
           scale_y_continuous(name=var) +
           scale_x_datetime(expand=c(0,0)) +
-          ggtitle(paste0(var, ": ", y)) +
+          ggtitle(paste0(var, ": ", yr)) +
           theme_bw()
       )
       dev.off()
       
     } else {
-      png(file.path(fig.dir, paste0(var, y, "_year.png")), height=8, width=10, units="in", res=220)
+      png(file.path(fig.dir, paste(var, yr, "year.png", sep="_")), height=8, width=10, units="in", res=220)
       print(
-        ggplot(data=dat.mod[dat.mod$year==y,]) +
+        ggplot(data=dat.mod[dat.mod$year==yr,]) +
           geom_ribbon(aes(x=date, ymin=var.025, ymax=var.975), alpha=0.5, fill="blue") +
           geom_line(aes(x=date, y=var.pred), color="blue") +
           geom_point(aes(x=date, y=var.pred), color="blue", size=0.5) +
           # geom_line(aes(x=date, y=swdown), color="black", alpha=0.5) +
           # geom_point(aes(x=date, y=swdown), color="black", size=0.3, alpha=0.5) +
           scale_x_datetime(expand=c(0,0)) +
-          ggtitle(paste0(var, ": ", y)) +
+          ggtitle(paste0(var, ": ", yr)) +
           theme_bw()
       )
       dev.off()
@@ -794,9 +794,9 @@ graph.predict <- function(dat.mod, dat.ens, var, fig.dir){
       
       dat.graph <- rbind(dat.graph1, dat.graph2, dat.graph3, dat.graph4)
       
-      png(file.path(fig.dir, paste0(var, y,"_examples.png")), height=8, width=10, units="in", res=220)
+      png(file.path(fig.dir, paste0(var, yr,"_examples.png")), height=8, width=10, units="in", res=220)
       print(
-        ggplot(data=dat.graph[dat.graph$year==y,]) +
+        ggplot(data=dat.graph[dat.graph$year==yr,]) +
           facet_wrap(~season, scales="free") +
           # geom_line(aes(x=date, y=swdown), color="black") +
           # geom_point(aes(x=date, y=swdown), color="black", size=0.5) +
@@ -805,7 +805,7 @@ graph.predict <- function(dat.mod, dat.ens, var, fig.dir){
           geom_point(aes(x=date, y=var.pred), color="blue", size=0.5) +
           scale_y_continuous(name=var) +
           scale_x_datetime(expand=c(0,0)) +
-          ggtitle(paste0(var, ": ", y)) +
+          ggtitle(paste0(var, ": ", yr)) +
           theme_bw()
       )
       dev.off()
