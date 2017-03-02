@@ -94,11 +94,11 @@ site.lon=-106.53
 # GCM.list = c("CCSM4", "MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1")
 # GCM.list = "MIROC-ESM"
 ens.hr  <- 3 # Number of hourly ensemble members to create
-n.day <- 10 # Number of daily ensemble members to process
+n.day <- 40 # Number of daily ensemble members to process
 yrs.plot <- c(2015, 1985, 1920, 1901)
 # years.sim=2015:1900
 years.sim=NULL
-cores.max = 4
+cores.max = 8
 
 # Set up the appropriate seed
 set.seed(0017)
@@ -153,7 +153,7 @@ dimX <- ncdim_def( "lat", units="degrees", longname="longitude", vals=site.lon )
   ens.day.all <- substr(day.dirs, nchar(day.dirs)-2, nchar(day.dirs))
   
   hrs.dir <- dir(file.path(path.out),  paste0(site.name, "_", GCM, "_1hr_"))
-  ens.day.done <- substr(hrs.dir, nchar(hrs.dir)-6, nchar(hrs.dir)-4)
+  ens.day.done <- unique(substr(hrs.dir, nchar(hrs.dir)-6, nchar(hrs.dir)-4))
   
   ens.list <- ens.day.all[!(ens.day.all %in% ens.day.done)]
   
@@ -334,7 +334,7 @@ dimX <- ncdim_def( "lat", units="degrees", longname="longitude", vals=site.lon )
       if(!dir.exists(fig.ens)) dir.create(fig.ens, recursive=T)
       # dat.ens.full <- dat.ens
       for(v in names(ens.plot)){
-        graph.predict(dat.mod=dat.plot, dat.ens=ens.plot, var=v, year=y, fig.dir=fig.ens)
+        graph.predict(dat.mod=dat.plot, dat.ens=ens.plot, var=v, yr=y, fig.dir=fig.ens)
       }
     }
     
