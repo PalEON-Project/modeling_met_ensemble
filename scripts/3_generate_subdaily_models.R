@@ -218,48 +218,19 @@ resids=F
 parallel=F
 n.cores=4
 
-model.tair   (dat.train=dat.train[,], path.out=path.out, resids=resids, parallel=parallel, n.cores=n.cores, n.beta=n.beta, day.window=5)
-# mod.tair.doy    <- model.tair   (dat.train=dat.train[,], path.out=mod.out, resids=resids, parallel=parallel, n.cores=n.cores, n.beta=n.beta, day.window=5)
-# graph.resids(var="tair", dat.train=dat.train, model.var=mod.tair.doy, fig.dir=fig.dir)
-# save.betas(model.out=mod.tair.doy, betas="betas", outfile=file.path(mod.out, "betas_tair.nc"))
-# save.model(model.out=mod.tair.doy, model="model", outfile=file.path(mod.out, "model_tair.Rdata"))
-# rm(mod.tair.doy)
+model.tair   (dat.train=dat.train[,], path.out=file.path(path.out, "tair"   ), resids=resids, parallel=parallel, n.cores=n.cores, n.beta=n.beta, day.window=5)
 
-mod.precipf.doy <- model.precipf(dat.train=dat.train[,], resids=resids, parallel=parallel, n.cores=n.cores, n.beta=n.beta, day.window=5)
-graph.resids(var="precipf", dat.train=dat.train, model.var=mod.precipf.doy, fig.dir=fig.dir)
-save.betas(model.out=mod.precipf.doy, betas="betas", outfile=file.path(mod.out, "betas_precipf.nc"))
-save.model(model.out=mod.precipf.doy, model="model", outfile=file.path(mod.out, "model_precipf.Rdata"))
-rm(mod.precipf.doy)
+model.precipf(dat.train=dat.train[,], path.out=file.path(path.out, "precipf"), resids=resids, parallel=parallel, n.cores=n.cores, n.beta=n.beta, day.window=5)
 
-mod.swdown.doy  <- model.swdown (dat.train=dat.train[,], resids=resids, parallel=parallel, n.cores=n.cores, n.beta=n.beta, day.window=5)
-graph.resids(var="swdown", dat.train=dat.train, model.var=mod.swdown.doy, fig.dir=fig.dir)
-save.betas(model.out=mod.swdown.doy, betas="betas", outfile=file.path(mod.out, "betas_swdown.nc"))
-save.model(model.out=mod.swdown.doy, model="model", outfile=file.path(mod.out, "model_swdown.Rdata"))
-rm(mod.swdown.doy)
+model.swdown (dat.train=dat.train[,], path.out=file.path(path.out, "swdown" ), resids=resids, parallel=parallel, n.cores=n.cores, n.beta=n.beta, day.window=5)
 
-mod.lwdown.doy  <- model.lwdown (dat.train=dat.train[,], resids=resids, parallel=parallel, n.cores=n.cores, n.beta=n.beta, day.window=5)
-graph.resids(var="lwdown", dat.train=dat.train, model.var=mod.lwdown.doy, fig.dir=fig.dir)
-save.betas(model.out=mod.lwdown.doy, betas="betas", outfile=file.path(mod.out, "betas_lwdown.nc"))
-save.model(model.out=mod.lwdown.doy, model="model", outfile=file.path(mod.out, "model_lwdown.Rdata"))
-rm(mod.lwdown.doy)
+model.lwdown (dat.train=dat.train[,], path.out=file.path(path.out, "lwdown" ), resids=resids, parallel=parallel, n.cores=n.cores, n.beta=n.beta, day.window=5)
 
-mod.press.doy   <- model.press  (dat.train=dat.train[,], resids=resids, parallel=parallel, n.cores=n.cores, n.beta=n.beta, day.window=5)
-graph.resids(var="press", dat.train=dat.train, model.var=mod.press.doy, fig.dir=fig.dir)
-save.betas(model.out=mod.press.doy, betas="betas", outfile=file.path(mod.out, "betas_press.nc"))
-save.model(model.out=mod.press.doy, model="model", outfile=file.path(mod.out, "model_press.Rdata"))
-rm(mod.press.doy)
+model.press  (dat.train=dat.train[,], path.out=file.path(path.out, "press"  ), resids=resids, parallel=parallel, n.cores=n.cores, n.beta=n.beta, day.window=5)
 
-mod.qair.doy    <- model.qair   (dat.train=dat.train[,], resids=resids, parallel=parallel, n.cores=n.cores, n.beta=n.beta, day.window=5)
-graph.resids(var="qair", dat.train=dat.train, model.var=mod.qair.doy, fig.dir=fig.dir)
-save.betas(model.out=mod.qair.doy, betas="betas", outfile=file.path(mod.out, "betas_qair.nc"))
-save.model(model.out=mod.qair.doy, model="model", outfile=file.path(mod.out, "model_qair.Rdata"))
-rm(mod.qair.doy)
+model.qair   (dat.train=dat.train[,], path.out=file.path(path.out, "qair"   ), resids=resids, parallel=parallel, n.cores=n.cores, n.beta=n.beta, day.window=5)
 
-mod.wind.doy    <- model.wind   (dat.train=dat.train[,], resids=resids, parallel=parallel, n.cores=n.cores, n.beta=n.beta, day.window=5)
-graph.resids(var="wind", dat.train=dat.train, model.var=mod.wind.doy, fig.dir=fig.dir)
-save.betas(model.out=mod.wind.doy, betas="betas", outfile=file.path(mod.out, "betas_wind.nc"))
-save.model(model.out=mod.wind.doy, model="model", outfile=file.path(mod.out, "model_wind.Rdata"))
-rm(mod.wind.doy)
+model.wind   (dat.train=dat.train[,], path.out=file.path(path.out, "wind"   ), resids=resids, parallel=parallel, n.cores=n.cores, n.beta=n.beta, day.window=5)
 # ---------
 
 # ------------------------------------------

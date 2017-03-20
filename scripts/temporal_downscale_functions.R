@@ -1,6 +1,7 @@
 model.tair <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, n.cores=NULL, day.window=5, seed=1237){
   library(MASS)
   set.seed(seed)
+  if(!dir.exists(path.out)) dir.create(path.out, recursive=T)
 
   # The model we're going to use
   model.train <- function(dat.subset, n.beta, resids=resids){ 
@@ -65,10 +66,26 @@ model.tair <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, n
   
   # Do the computation and save a list
   # Final list will have 2 layers per DOY: the model, and a bunch of simulated betas
-  # if(parallel==T){
-    # library(parallel)
-    # mod.out <- mclapply(dat.list, model.train, mc.cores=n.cores, n.beta=n.beta, resids=resids)
-  # } else {
+  if(parallel==T){
+    warning("Running model calculation in parallel.  This WILL crash if you do not have access to a LOT of memory!")
+    library(parallel)
+    mod.out <- mclapply(dat.list, model.train, mc.cores=n.cores, n.beta=n.beta, resids=resids)
+    
+    for(i in names(mod.out)){
+      # Save the betas as .nc
+      outfile=file.path(path.out, paste0("betas_tair_", i, ".nc"))
+      dimY <- ncdim_def( paste0("coeffs_", i), units="unitless", longname="model.out coefficients", vals=1:ncol(mod.out[[i]][["betas"]]))
+      dimX <- ncdim_def( "random", units="unitless", longname="random betas", vals=1:nrow(mod.out[[i]][["betas"]]))
+      var.list <- ncvar_def(i, units="coefficients", dim=list(dimX, dimY), longname=paste0("day ", i, " model.out coefficients"))
+      nc <- nc_create(outfile, var.list)
+      ncvar_put(nc, var.list, mod.out[[i]][["betas"]])
+      nc_close(nc)
+      
+      # Save the model as a .Rdata
+      mod.save <- mod.out[[i]][["model"]]
+      save(mod.save, file=file.path(path.out, paste0("model_tair_", i, ".Rdata")))
+    }
+  } else {
     for(i in names(dat.list)){
       mod.out <- model.train(dat.subset=dat.list[[i]], n.beta=n.beta, resids=resids)
       
@@ -85,14 +102,14 @@ model.tair <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, n
       mod.save <- mod.out$mode
       save(mod.save, file=file.path(path.out, paste0("model_tair_", i, ".Rdata")))
     }
-  # }
+  }
   # return(mod.out)
 }
 
-model.swdown <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NULL, day.window=5, seed=1341){
+model.swdown <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, n.cores=NULL, day.window=5, seed=1341){
   library(MASS)
   set.seed(seed)
-  
+  if(!dir.exists(path.out)) dir.create(path.out, recursive=T)
   # The model we're going to use
   model.train <- function(dat.subset, threshold=NULL, n.beta, resids=resids){ 
     
@@ -159,20 +176,52 @@ model.swdown <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=N
   # Do the computation and save a list
   # Final list will have 2 layers per DOY: the model, and a bunch of simulated betas
   if(parallel==T){
+    warning("Running model calculation in parallel.  This WILL crash if you do not have access to a LOT of memory!")
     library(parallel)
     mod.out <- mclapply(dat.list, model.train, mc.cores=n.cores, n.beta=n.beta, resids=resids, threshold=quantile(dat.train[dat.train$swdown>0,"swdown"], 0.05))
+    
+    # Use a loop to sace each day of year independently
+    for(i in names(mod.out)){
+      # Save the betas as .nc
+      outfile=file.path(path.out, paste0("betas_swdown_", i, ".nc"))
+      dimY <- ncdim_def( paste0("coeffs_", i), units="unitless", longname="model.out coefficients", vals=1:ncol(mod.out[[i]][["betas"]]))
+      dimX <- ncdim_def( "random", units="unitless", longname="random betas", vals=1:nrow(mod.out[[i]][["betas"]]))
+      var.list <- ncvar_def(i, units="coefficients", dim=list(dimX, dimY), longname=paste0("day ", i, " model.out coefficients"))
+      nc <- nc_create(outfile, var.list)
+      ncvar_put(nc, var.list, mod.out[[i]][["betas"]])
+      nc_close(nc)
+      
+      # Save the model as a .Rdata
+      mod.save <- mod.out[[i]][["model"]]
+      save(mod.save, file=file.path(path.out, paste0("model_swdown_", i, ".Rdata")))
+    }
+    
   } else {
     for(i in names(dat.list)){
-      mod.out[[i]] <- model.train(dat.subset=dat.list[[i]], threshold=quantile(dat.train[dat.train$swdown>0,"swdown"], 0.05), n.beta=n.beta, resids=resids)
+      mod.out <- model.train(dat.subset=dat.list[[i]], threshold=quantile(dat.train[dat.train$swdown>0,"swdown"], 0.05), n.beta=n.beta, resids=resids)
+      
+      # Save the betas as .nc
+      outfile=file.path(path.out, paste0("betas_swdown_", i, ".nc"))
+      dimY <- ncdim_def( paste0("coeffs_", i), units="unitless", longname="model.out coefficients", vals=1:ncol(mod.out[["betas"]]))
+      dimX <- ncdim_def( "random", units="unitless", longname="random betas", vals=1:nrow(mod.out[["betas"]]))
+      var.list <- ncvar_def(i, units="coefficients", dim=list(dimX, dimY), longname=paste0("day ", i, " model.out coefficients"))
+      nc <- nc_create(outfile, var.list)
+      ncvar_put(nc, var.list, mod.out[["betas"]])
+      nc_close(nc)
+      
+      # Save the model as a .Rdata
+      mod.save <- mod.out$mode
+      save(mod.save, file=file.path(path.out, paste0("model_swdown_", i, ".Rdata")))
     }
   }
   
   return(mod.out)
 }
 
-model.lwdown <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NULL, day.window=5, seed=341){
+model.lwdown <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, n.cores=NULL, day.window=5, seed=341){
   library(MASS)
   set.seed(seed)
+  if(!dir.exists(path.out)) dir.create(path.out, recursive=T)
   
   # The model we're going to use
   model.train <- function(dat.subset, n.beta, resids=resids){ 
@@ -180,12 +229,9 @@ model.lwdown <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=N
     # mod.doy <- lm(lwdown ~ as.factor(hour)*lwdown.day*(lag.lwdown + next.lwdown + swdown.day + tmax.day + tmin.day) - as.factor(hour) - tmax.day - tmin.day - swdown.day - 1, data=dat.subset) ###
     mod.doy <- lm(sqrt(lwdown) ~ as.factor(hour)*lwdown.day*(lag.lwdown + next.lwdown) - as.factor(hour) - 1 - lag.lwdown - next.lwdown - lwdown.day - lwdown.day*lag.lwdown - lwdown.day*next.lwdown, data=dat.subset) ###
     
-    # If we can't estimate the covariance matrix, double our data and try again
-    # NOTE: THIS IS NOT A GOOD PERMANENT FIX!!
+    # If we can't estimate the covariance matrix, stop & increase the moving window
     if(is.na(summary(mod.doy)$adj.r.squared)){
-      warning(paste0("Can not estimate covariance matrix for day of year: ", unique(dat.subset$doy)))
-      dat.subset <- rbind(dat.subset, dat.subset)
-      mod.doy <- lm(sqrt(lwdown) ~ as.factor(hour)*lwdown.day*(lag.lwdown + next.lwdown) - as.factor(hour) - 1 - lag.lwdown - next.lwdown - lwdown.day - lwdown.day*lag.lwdown - lwdown.day*next.lwdown, data=dat.subset) ###
+      stop(paste0("Can not estimate covariance matrix for day of year: ", unique(dat.subset$doy), ";  Increase day.window and try again"))
     }
     
     # Generate a bunch of random coefficients that we can pull from 
@@ -235,19 +281,51 @@ model.lwdown <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=N
   # Final list will have 2 layers per DOY: the model, and a bunch of simulated betas
   if(parallel==T){
     library(parallel)
+    warning("Running model calculation in parallel.  This WILL crash if you do not have access to a LOT of memory!")
     mod.out <- mclapply(dat.list, model.train, mc.cores=n.cores, n.beta=n.beta, resids=resids)
+    
+    # Use a loop to sace each day of year independently
+    for(i in names(mod.out)){
+      # Save the betas as .nc
+      outfile=file.path(path.out, paste0("betas_lwdown_", i, ".nc"))
+      dimY <- ncdim_def( paste0("coeffs_", i), units="unitless", longname="model.out coefficients", vals=1:ncol(mod.out[[i]][["betas"]]))
+      dimX <- ncdim_def( "random", units="unitless", longname="random betas", vals=1:nrow(mod.out[[i]][["betas"]]))
+      var.list <- ncvar_def(i, units="coefficients", dim=list(dimX, dimY), longname=paste0("day ", i, " model.out coefficients"))
+      nc <- nc_create(outfile, var.list)
+      ncvar_put(nc, var.list, mod.out[[i]][["betas"]])
+      nc_close(nc)
+      
+      # Save the model as a .Rdata
+      mod.save <- mod.out[[i]][["model"]]
+      save(mod.save, file=file.path(path.out, paste0("model_lwdown_", i, ".Rdata")))
+    }
   } else {
     for(i in names(dat.list)){
-      mod.out[[i]] <- model.train(dat.subset=dat.list[[i]], n.beta=n.beta, resids=resids)
+      mod.out <- model.train(dat.subset=dat.list[[i]], n.beta=n.beta, resids=resids)
+      
+      # Save the betas as .nc
+      outfile=file.path(path.out, paste0("betas_lwdown_", i, ".nc"))
+      dimY <- ncdim_def( paste0("coeffs_", i), units="unitless", longname="model.out coefficients", vals=1:ncol(mod.out[["betas"]]))
+      dimX <- ncdim_def( "random", units="unitless", longname="random betas", vals=1:nrow(mod.out[["betas"]]))
+      var.list <- ncvar_def(i, units="coefficients", dim=list(dimX, dimY), longname=paste0("day ", i, " model.out coefficients"))
+      nc <- nc_create(outfile, var.list)
+      ncvar_put(nc, var.list, mod.out[["betas"]])
+      nc_close(nc)
+      
+      # Save the model as a .Rdata
+      mod.save <- mod.out$mode
+      save(mod.save, file=file.path(path.out, paste0("model_lwdown_", i, ".Rdata")))
+      
     }
   }
   
   return(mod.out)
 }
 
-model.press <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NULL, day.window=5, seed=1347){
+model.press <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, n.cores=NULL, day.window=5, seed=1347){
   library(MASS)
   set.seed(seed)
+  if(!dir.exists(path.out)) dir.create(path.out, recursive=T)
   
   # The model we're going to use
   model.train <- function(dat.subset, n.beta, resids=resids){ 
@@ -258,9 +336,9 @@ model.press <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NU
     # If we can't estimate the covariance matrix, double our data and try again
     # NOTE: THIS IS NOT A GOOD PERMANENT FIX!!
     if(is.na(summary(mod.doy)$adj.r.squared)){
-      warning(paste0("Can not estimate covariance matrix for day of year: ", unique(dat.subset$doy)))
-      dat.subset <- rbind(dat.subset, dat.subset)
-      mod.doy <- lm(press ~ as.factor(hour)*(press.day + lag.press + next.press)-as.factor(hour)-1-press.day - lag.press - next.press, data=dat.subset) ###
+      stop(paste0("Can not estimate covariance matrix for day of year: ", unique(dat.subset$doy), ";  Increase day.window and try again"))
+      # dat.subset <- rbind(dat.subset, dat.subset)
+      # mod.doy <- lm(press ~ as.factor(hour)*(press.day + lag.press + next.press)-as.factor(hour)-1-press.day - lag.press - next.press, data=dat.subset) ###
     }
     
     # Generate a bunch of random coefficients that we can pull from 
@@ -309,20 +387,54 @@ model.press <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NU
   # Do the computation and save a list
   # Final list will have 2 layers per DOY: the model, and a bunch of simulated betas
   if(parallel==T){
+    warning("Running model calculation in parallel.  This WILL crash if you do not have access to a LOT of memory!")
     library(parallel)
+    
     mod.out <- mclapply(dat.list, model.train, mc.cores=n.cores, n.beta=n.beta, resids=resids)
+    
+    # Use a loop to sace each day of year independently
+    for(i in names(mod.out)){
+      # Save the betas as .nc
+      outfile=file.path(path.out, paste0("betas_press_", i, ".nc"))
+      dimY <- ncdim_def( paste0("coeffs_", i), units="unitless", longname="model.out coefficients", vals=1:ncol(mod.out[[i]][["betas"]]))
+      dimX <- ncdim_def( "random", units="unitless", longname="random betas", vals=1:nrow(mod.out[[i]][["betas"]]))
+      var.list <- ncvar_def(i, units="coefficients", dim=list(dimX, dimY), longname=paste0("day ", i, " model.out coefficients"))
+      nc <- nc_create(outfile, var.list)
+      ncvar_put(nc, var.list, mod.out[[i]][["betas"]])
+      nc_close(nc)
+      
+      # Save the model as a .Rdata
+      mod.save <- mod.out[[i]][["model"]]
+      save(mod.save, file=file.path(path.out, paste0("model_press_", i, ".Rdata")))
+    }
+    
   } else {
     for(i in names(dat.list)){
-      mod.out[[i]] <- model.train(dat.subset=dat.list[[i]], n.beta=n.beta, resids=resids)
+      mod.out <- model.train(dat.subset=dat.list[[i]], n.beta=n.beta, resids=resids)
+      
+      # Save the betas as .nc
+      outfile=file.path(path.out, paste0("betas_press_", i, ".nc"))
+      dimY <- ncdim_def( paste0("coeffs_", i), units="unitless", longname="model.out coefficients", vals=1:ncol(mod.out[["betas"]]))
+      dimX <- ncdim_def( "random", units="unitless", longname="random betas", vals=1:nrow(mod.out[["betas"]]))
+      var.list <- ncvar_def(i, units="coefficients", dim=list(dimX, dimY), longname=paste0("day ", i, " model.out coefficients"))
+      nc <- nc_create(outfile, var.list)
+      ncvar_put(nc, var.list, mod.out[["betas"]])
+      nc_close(nc)
+      
+      # Save the model as a .Rdata
+      mod.save <- mod.out$mode
+      save(mod.save, file=file.path(path.out, paste0("model_press_", i, ".Rdata")))
+      
     }
   }
   
   return(mod.out)
 }
 
-model.wind <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NULL, day.window=5, seed=708){
+model.wind <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, n.cores=NULL, day.window=5, seed=708){
   library(MASS)
   set.seed(seed)
+  if(!dir.exists(path.out)) dir.create(path.out, recursive=T)
   
   # The model we're going to use
   model.train <- function(dat.subset, n.beta, resids=resids){ 
@@ -331,12 +443,9 @@ model.wind <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NUL
     # mod.doy <- lm(log(wind) ~ as.factor(hour)*wind.day*(lag.wind + next.wind)-as.factor(hour)-1 - wind.day - lag.wind - next.wind - wind.day*lag.wind - wind.day*next.wind, data=dat.subset) ###
     mod.doy <- lm(sqrt(wind) ~ as.factor(hour)*wind.day*(lag.wind + next.wind)-as.factor(hour)-1 - wind.day - lag.wind - next.wind - wind.day*lag.wind - wind.day*next.wind, data=dat.subset) ###
     
-    # If we can't estimate the covariance matrix, double our data and try again
-    # NOTE: THIS IS NOT A GOOD PERMANENT FIX!!
+    # If we can't estimate the covariance matrix, stop & increase the moving window
     if(is.na(summary(mod.doy)$adj.r.squared)){
-      warning(paste0("Can not estimate covariance matrix for day of year: ", unique(dat.subset$doy)))
-      dat.subset <- rbind(dat.subset, dat.subset)
-      mod.doy <- lm(sqrt(wind) ~ as.factor(hour)*wind.day*(lag.wind + next.wind)-as.factor(hour)-1 - wind.day - lag.wind - next.wind - wind.day*lag.wind - wind.day*next.wind, data=dat.subset) ###
+      stop(paste0("Can not estimate covariance matrix for day of year: ", unique(dat.subset$doy), ";  Increase day.window and try again"))
     }
     
     # Generate a bunch of random coefficients that we can pull from 
@@ -385,21 +494,54 @@ model.wind <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NUL
   # Do the computation and save a list
   # Final list will have 2 layers per DOY: the model, and a bunch of simulated betas
   if(parallel==T){
+    warning("Running model calculation in parallel.  This WILL crash if you do not have access to a LOT of memory!")
     library(parallel)
     mod.out <- mclapply(dat.list, model.train, mc.cores=n.cores, n.beta=n.beta, resids=resids)
+    
+    # Use a loop to sace each day of year independently
+    for(i in names(mod.out)){
+      # Save the betas as .nc
+      outfile=file.path(path.out, paste0("betas_wind_", i, ".nc"))
+      dimY <- ncdim_def( paste0("coeffs_", i), units="unitless", longname="model.out coefficients", vals=1:ncol(mod.out[[i]][["betas"]]))
+      dimX <- ncdim_def( "random", units="unitless", longname="random betas", vals=1:nrow(mod.out[[i]][["betas"]]))
+      var.list <- ncvar_def(i, units="coefficients", dim=list(dimX, dimY), longname=paste0("day ", i, " model.out coefficients"))
+      nc <- nc_create(outfile, var.list)
+      ncvar_put(nc, var.list, mod.out[[i]][["betas"]])
+      nc_close(nc)
+      
+      # Save the model as a .Rdata
+      mod.save <- mod.out[[i]][["model"]]
+      save(mod.save, file=file.path(path.out, paste0("model_wind_", i, ".Rdata")))
+    }
+    
   } else {
     for(i in names(dat.list)){
-      mod.out[[i]] <- model.train(dat.subset=dat.list[[i]], n.beta=n.beta, resids=resids)
+      mod.out <- model.train(dat.subset=dat.list[[i]], n.beta=n.beta, resids=resids)
+      
+      # Save the betas as .nc
+      outfile=file.path(path.out, paste0("betas_wind_", i, ".nc"))
+      dimY <- ncdim_def( paste0("coeffs_", i), units="unitless", longname="model.out coefficients", vals=1:ncol(mod.out[["betas"]]))
+      dimX <- ncdim_def( "random", units="unitless", longname="random betas", vals=1:nrow(mod.out[["betas"]]))
+      var.list <- ncvar_def(i, units="coefficients", dim=list(dimX, dimY), longname=paste0("day ", i, " model.out coefficients"))
+      nc <- nc_create(outfile, var.list)
+      ncvar_put(nc, var.list, mod.out[["betas"]])
+      nc_close(nc)
+      
+      # Save the model as a .Rdata
+      mod.save <- mod.out$mode
+      save(mod.save, file=file.path(path.out, paste0("model_wind_", i, ".Rdata")))
+      
     }
   }
   
   return(mod.out)
 }
 
-model.precipf <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NULL, day.window=5, seed=1562){
+model.precipf <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, n.cores=NULL, day.window=5, seed=1562){
   library(MASS)
   # library(fitdistrplus)
   set.seed(seed)
+  if(!dir.exists(path.out)) dir.create(path.out, recursive=T)
   
   # The model we're going to use
   model.train <- function(dat.subset, n.beta, resids=resids){ 
@@ -409,12 +551,11 @@ model.precipf <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=
     dat.subset$rain.prop <- dat.subset$precipf/(dat.subset$precipf.day*24)
     mod.doy <- lm(rain.prop ~ as.factor(hour)*precipf.day-1 - as.factor(hour)-precipf.day, data=dat.subset)
     
-    # If we can't estimate the covariance matrix, double our data and try again
-    # NOTE: THIS IS NOT A GOOD PERMANENT FIX!!
+    # If we can't estimate the covariance matrix, increase the moving window
     if(is.na(summary(mod.doy)$adj.r.squared)){
-      warning(paste0("Can not estimate covariance matrix for day of year: ", unique(dat.subset$doy)))
-      dat.subset <- rbind(dat.subset, dat.subset)
-      mod.doy <- lm(rain.prop ~ as.factor(hour)*precipf.day-1 - as.factor(hour)-precipf.day, data=dat.subset)
+      stop(paste0("Can not estimate covariance matrix for day of year: ", unique(dat.subset$doy), ";  Increase day.window and try again"))
+      # dat.subset <- rbind(dat.subset, dat.subset)
+      # mod.doy <- lm(rain.prop ~ as.factor(hour)*precipf.day-1 - as.factor(hour)-precipf.day, data=dat.subset)
     }
     
     # Generate a bunch of random coefficients that we can pull from 
@@ -464,20 +605,53 @@ model.precipf <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=
   # Do the computation and save a list
   # Final list will have 2 layers per DOY: the model, and a bunch of simulated betas
   if(parallel==T){
+    warning("Running model calculation in parallel.  This WILL crash if you do not have access to a LOT of memory!")
     library(parallel)
     mod.out <- mclapply(dat.list, model.train, mc.cores=n.cores, n.beta=n.beta, resids=resids)
+    
+    # Use a loop to sace each day of year independently
+    for(i in names(mod.out)){
+      # Save the betas as .nc
+      outfile=file.path(path.out, paste0("betas_precipf_", i, ".nc"))
+      dimY <- ncdim_def( paste0("coeffs_", i), units="unitless", longname="model.out coefficients", vals=1:ncol(mod.out[[i]][["betas"]]))
+      dimX <- ncdim_def( "random", units="unitless", longname="random betas", vals=1:nrow(mod.out[[i]][["betas"]]))
+      var.list <- ncvar_def(i, units="coefficients", dim=list(dimX, dimY), longname=paste0("day ", i, " model.out coefficients"))
+      nc <- nc_create(outfile, var.list)
+      ncvar_put(nc, var.list, mod.out[[i]][["betas"]])
+      nc_close(nc)
+      
+      # Save the model as a .Rdata
+      mod.save <- mod.out[[i]][["model"]]
+      save(mod.save, file=file.path(path.out, paste0("model_precipf_", i, ".Rdata")))
+    }
+    
   } else {
     for(i in names(dat.list)){
-      mod.out[[i]] <- model.train(dat.subset=dat.list[[i]], n.beta=n.beta, resids=resids)
+      mod.out <- model.train(dat.subset=dat.list[[i]], n.beta=n.beta, resids=resids)
+      
+      # Save the betas as .nc
+      outfile=file.path(path.out, paste0("betas_precipf_", i, ".nc"))
+      dimY <- ncdim_def( paste0("coeffs_", i), units="unitless", longname="model.out coefficients", vals=1:ncol(mod.out[["betas"]]))
+      dimX <- ncdim_def( "random", units="unitless", longname="random betas", vals=1:nrow(mod.out[["betas"]]))
+      var.list <- ncvar_def(i, units="coefficients", dim=list(dimX, dimY), longname=paste0("day ", i, " model.out coefficients"))
+      nc <- nc_create(outfile, var.list)
+      ncvar_put(nc, var.list, mod.out[["betas"]])
+      nc_close(nc)
+      
+      # Save the model as a .Rdata
+      mod.save <- mod.out$mode
+      save(mod.save, file=file.path(path.out, paste0("model_precipf_", i, ".Rdata")))
+      
     }
   }
   
   return(mod.out)
 }
 
-model.qair <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NULL, day.window=5, seed=1009){
+model.qair <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, n.cores=NULL, day.window=5, seed=1009){
   library(MASS)
   set.seed(seed)
+  if(!dir.exists(path.out)) dir.create(path.out, recursive=T)
   
   # The model we're going to use
   model.train <- function(dat.subset, n.beta, resids=resids){ 
@@ -487,12 +661,11 @@ model.qair <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NUL
     mod.doy <- lm(log(qair) ~ as.factor(hour)*qair.day*(lag.qair + next.qair + tmax.day)-as.factor(hour)-1 - tmax.day, data=dat.subset) ###
     # mod.doy <- glm(qair ~ as.factor(hour)*qair.day*(lag.qair + next.qair)-as.factor(hour)-1 - qair.day - lag.qair - next.qair - qair.day*lag.qair - qair.day*next.qair, data=dat.subset, family="quasibinomial") ###
     
-    # If we can't estimate the covariance matrix, double our data and try again
-    # NOTE: THIS IS NOT A GOOD PERMANENT FIX!!
+    # If we can't estimate the covariance matrix, stop & increasing the moving window
     if(is.na(summary(mod.doy)$adj.r.squared)){
-      warning(paste0("Can not estimate covariance matrix for day of year: ", unique(dat.subset$doy)))
-      dat.subset <- rbind(dat.subset, dat.subset)
-      mod.doy <- lm(log(qair) ~ as.factor(hour)*qair.day*(lag.qair + next.qair + tmax.day)-as.factor(hour)-1 - tmax.day, data=dat.subset) ###
+      stop(paste0("Can not estimate covariance matrix for day of year: ", unique(dat.subset$doy), ";  Increase day.window and try again"))
+      # dat.subset <- rbind(dat.subset, dat.subset)
+      # mod.doy <- lm(log(qair) ~ as.factor(hour)*qair.day*(lag.qair + next.qair + tmax.day)-as.factor(hour)-1 - tmax.day, data=dat.subset) ###
     }
     
     
@@ -542,11 +715,43 @@ model.qair <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NUL
   # Do the computation and save a list
   # Final list will have 2 layers per DOY: the model, and a bunch of simulated betas
   if(parallel==T){
+    warning("Running model calculation in parallel.  This WILL crash if you do not have access to a LOT of memory!")
     library(parallel)
     mod.out <- mclapply(dat.list, model.train, mc.cores=n.cores, n.beta=n.beta, resids=resids)
+    
+    # Use a loop to sace each day of year independently
+    for(i in names(mod.out)){
+      # Save the betas as .nc
+      outfile=file.path(path.out, paste0("betas_qair_", i, ".nc"))
+      dimY <- ncdim_def( paste0("coeffs_", i), units="unitless", longname="model.out coefficients", vals=1:ncol(mod.out[[i]][["betas"]]))
+      dimX <- ncdim_def( "random", units="unitless", longname="random betas", vals=1:nrow(mod.out[[i]][["betas"]]))
+      var.list <- ncvar_def(i, units="coefficients", dim=list(dimX, dimY), longname=paste0("day ", i, " model.out coefficients"))
+      nc <- nc_create(outfile, var.list)
+      ncvar_put(nc, var.list, mod.out[[i]][["betas"]])
+      nc_close(nc)
+      
+      # Save the model as a .Rdata
+      mod.save <- mod.out[[i]][["model"]]
+      save(mod.save, file=file.path(path.out, paste0("model_qair_", i, ".Rdata")))
+    }
+    
   } else {
     for(i in names(dat.list)){
-      mod.out[[i]] <- model.train(dat.subset=dat.list[[i]], n.beta=n.beta, resids=resids)
+      mod.out <- model.train(dat.subset=dat.list[[i]], n.beta=n.beta, resids=resids)
+      
+      # Save the betas as .nc
+      outfile=file.path(path.out, paste0("betas_qair_", i, ".nc"))
+      dimY <- ncdim_def( paste0("coeffs_", i), units="unitless", longname="model.out coefficients", vals=1:ncol(mod.out[["betas"]]))
+      dimX <- ncdim_def( "random", units="unitless", longname="random betas", vals=1:nrow(mod.out[["betas"]]))
+      var.list <- ncvar_def(i, units="coefficients", dim=list(dimX, dimY), longname=paste0("day ", i, " model.out coefficients"))
+      nc <- nc_create(outfile, var.list)
+      ncvar_put(nc, var.list, mod.out[["betas"]])
+      nc_close(nc)
+      
+      # Save the model as a .Rdata
+      mod.save <- mod.out$mode
+      save(mod.save, file=file.path(path.out, paste0("model_qair_", i, ".Rdata")))
+      
     }
   }
   
