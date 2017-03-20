@@ -1,4 +1,4 @@
-model.tair <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NULL, day.window=5, seed=1237){
+model.tair <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, n.cores=NULL, day.window=5, seed=1237){
   library(MASS)
   set.seed(seed)
 
@@ -65,16 +65,28 @@ model.tair <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NUL
   
   # Do the computation and save a list
   # Final list will have 2 layers per DOY: the model, and a bunch of simulated betas
-  if(parallel==T){
-    library(parallel)
-    mod.out <- mclapply(dat.list, model.train, mc.cores=n.cores, n.beta=n.beta, resids=resids)
-  } else {
+  # if(parallel==T){
+    # library(parallel)
+    # mod.out <- mclapply(dat.list, model.train, mc.cores=n.cores, n.beta=n.beta, resids=resids)
+  # } else {
     for(i in names(dat.list)){
-      mod.out[[i]] <- model.train(dat.subset=dat.list[[i]], n.beta=n.beta, resids=resids)
+      mod.out <- model.train(dat.subset=dat.list[[i]], n.beta=n.beta, resids=resids)
+      
+      # Save the betas as .nc
+      outfile=file.path(path.out, paste0("betas_tair_", i, ".nc"))
+      dimY <- ncdim_def( paste0("coeffs_", i), units="unitless", longname="model.out coefficients", vals=1:ncol(mod.out[["betas"]]))
+      dimX <- ncdim_def( "random", units="unitless", longname="random betas", vals=1:nrow(mod.out[["betas"]]))
+      var.list <- ncvar_def(i, units="coefficients", dim=list(dimX, dimY), longname=paste0("day ", i, " model.out coefficients"))
+      nc <- nc_create(outfile, var.list)
+      ncvar_put(nc, var.list, mod.out[["betas"]])
+      nc_close(nc)
+      
+      # Save the model as a .Rdata
+      mod.save <- mod.out$mode
+      save(mod.save, file=file.path(path.out, paste0("model_tair_", i, ".Rdata")))
     }
-  }
-  
-  return(mod.out)
+  # }
+  # return(mod.out)
 }
 
 model.swdown <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=NULL, day.window=5, seed=1341){

@@ -52,7 +52,7 @@ setwd(wd.base)
 
 # mod.out <- "/projectnb/dietzelab/paleon/met_ensemble/data/met_ensembles/HARVARD/subday_models"
 # mod.out <- "~/Desktop/met_ensembles/HARVARD/subday_models"
-mod.out <- "~/Desktop/Research/met_ensembles/data/met_ensembles/VCM/subday_models"
+path.out <- "~/Desktop/Research/met_ensembles/data/met_ensembles/VCM/subday_models2"
 fig.dir <- file.path(mod.out, "model_qaqc")
 
 if(!dir.exists(mod.out)) dir.create(mod.out, recursive = T)
@@ -213,16 +213,17 @@ source("scripts/temporal_downscale_functions.R")
 # Note: To avoid propogating too much wonkiness in hourly data, any co-variates are at the daily level
 # ---------
 # Settings for the calculations
-n.beta=1000
+n.beta=10
 resids=F
 parallel=F
 n.cores=4
 
-mod.tair.doy    <- model.tair   (dat.train=dat.train[,], resids=resids, parallel=parallel, n.cores=n.cores, n.beta=n.beta, day.window=5)
-graph.resids(var="tair", dat.train=dat.train, model.var=mod.tair.doy, fig.dir=fig.dir)
-save.betas(model.out=mod.tair.doy, betas="betas", outfile=file.path(mod.out, "betas_tair.nc"))
-save.model(model.out=mod.tair.doy, model="model", outfile=file.path(mod.out, "model_tair.Rdata"))
-rm(mod.tair.doy)
+model.tair   (dat.train=dat.train[,], path.out=path.out, resids=resids, parallel=parallel, n.cores=n.cores, n.beta=n.beta, day.window=5)
+# mod.tair.doy    <- model.tair   (dat.train=dat.train[,], path.out=mod.out, resids=resids, parallel=parallel, n.cores=n.cores, n.beta=n.beta, day.window=5)
+# graph.resids(var="tair", dat.train=dat.train, model.var=mod.tair.doy, fig.dir=fig.dir)
+# save.betas(model.out=mod.tair.doy, betas="betas", outfile=file.path(mod.out, "betas_tair.nc"))
+# save.model(model.out=mod.tair.doy, model="model", outfile=file.path(mod.out, "model_tair.Rdata"))
+# rm(mod.tair.doy)
 
 mod.precipf.doy <- model.precipf(dat.train=dat.train[,], resids=resids, parallel=parallel, n.cores=n.cores, n.beta=n.beta, day.window=5)
 graph.resids(var="precipf", dat.train=dat.train, model.var=mod.precipf.doy, fig.dir=fig.dir)
