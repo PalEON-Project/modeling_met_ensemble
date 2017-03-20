@@ -215,7 +215,7 @@ model.swdown <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F,
     }
   }
   
-  return(mod.out)
+  # return(mod.out)
 }
 
 model.lwdown <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, n.cores=NULL, day.window=5, seed=341){
@@ -319,7 +319,7 @@ model.lwdown <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F,
     }
   }
   
-  return(mod.out)
+  # return(mod.out)
 }
 
 model.press <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, n.cores=NULL, day.window=5, seed=1347){
@@ -428,7 +428,7 @@ model.press <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, 
     }
   }
   
-  return(mod.out)
+  # return(mod.out)
 }
 
 model.wind <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, n.cores=NULL, day.window=5, seed=708){
@@ -534,7 +534,7 @@ model.wind <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, n
     }
   }
   
-  return(mod.out)
+  # return(mod.out)
 }
 
 model.precipf <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, n.cores=NULL, day.window=5, seed=1562){
@@ -645,7 +645,7 @@ model.precipf <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F
     }
   }
   
-  return(mod.out)
+  # return(mod.out)
 }
 
 model.qair <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, n.cores=NULL, day.window=5, seed=1009){
@@ -755,7 +755,7 @@ model.qair <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, n
     }
   }
   
-  return(mod.out)
+  # return(mod.out)
 }
 
 predict.met <- function(newdata, model.predict, Rbeta, resid.err=F, model.resid=NULL, Rbeta.resid=NULL, n.ens){
