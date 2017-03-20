@@ -141,7 +141,7 @@ dimX <- ncdim_def( "lat", units="degrees", longname="longitude", vals=site.lon )
   # load(file.path(path.gcm, dat.day)) # Loads dat.out.full
 
   # Set & create the output directory
-  path.out <- file.path(dat.base, paste0(timestep, "hr"))
+  path.out <- file.path(dat.base, paste0(timestep, "hr2"))
   if(!dir.exists(path.out)) dir.create(path.out, recursive=T)
   
   # -----------------------------------
