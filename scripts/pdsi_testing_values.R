@@ -25,17 +25,28 @@ row.names(precip) <- precip$year
 precip <- precip[complete.cases(precip), 2:13]
 summary(precip)
 
-C2F <- function(x){x*9/5 + 32}
-Temp <- C2F(temp)
-Precip <- precip/25.4
-lat <- mean(dat.clim$lat.plot)
-
 awcs <- 0.32 # cm3/cm3 = in3/in3
 awcu <- 0.14 # cm3/cm3 = in3/in3
 
+Temp <- temp
+Precip <- precip
+awcs <- awcs*10*30 # in mm w/ 30 cm depth
+awcu <- awcu*10*30 # in mm w/ 30 cm depth
+
+# English unit conversions
+# C2F <- function(x){x*9/5 + 32}
+# Temp <- C2F(temp)
+# Precip <- precip/25.4
+# lat <- mean(dat.clim$lat.plot)
+
 # awcs*(1/2.54^3)
-awcs <- awcs*1 # assuming top depth of 30 cm; x10^3 to put in mm3
-awcu <- awcu*5 # assuming under depth of 30 cm; x10 to put in mm
+# awcs <- awcs*11.81 # assuming top depth of 30 cm; x10^3 to put in mm3
+# awcu <- awcu*11.81 # assuming under depth of 30 cm; x10 to put in mm
 
 
 # Converting 
+library(R.matlab)
+dayz <- readMat("PDSI_fromBenCook/PDSICODE/daylennh.mat")$dayz
+
+
+pdsi.inches <- pdsi$x

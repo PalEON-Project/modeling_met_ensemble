@@ -9,7 +9,7 @@
 # -----------------------
 #  1. Temp = matrix/dataframe/array of and 12 monthly temperatures (mean values) 
 #            dim = nyear X 12; with years as rownames
-#            units = degrees Fahrenheit 
+#            units = degrees Celcius (Ben's script was Fahrenheit) 
 #            * Note: this deviates from Ben's script because he has year in column 1
 #  2. yrs.calib = start & end years of 'calibration' period to compute heat index
 #           length = 2
@@ -102,8 +102,8 @@ PE.thorn <- function(Temp, yrs.calib, lat, dayz){
    
    
    # handy functions to convert to/from Fahrenheit
-   F2C <- function(x){5/9*(x-32)}
-   C2F <- function(x){x*9/5 + 32}
+   # F2C <- function(x){5/9*(x-32)}
+   # C2F <- function(x){x*9/5 + 32}
    mm2in <- 1/25.4
    # ------------------------------------------
    
@@ -112,7 +112,7 @@ PE.thorn <- function(Temp, yrs.calib, lat, dayz){
    # ------------------------------------------
    yrs.norm <- which(yrs>=yrs.calib[1] & yrs<=yrs.calib[2])
    norms <- colMeans(Temp[yrs.norm,])
-   norms <- F2C(norms)
+   # norms <- F2C(norms)
    # ------------------------------------------
 
    
@@ -136,7 +136,7 @@ PE.thorn <- function(Temp, yrs.calib, lat, dayz){
    # 4. Calculate *un-adjusted PE (30-day month, 12 hrs sun)
    #     ** NOTE: This could probably be adjusted for different time steps
    # ------------------------------------------
-   Temp2 = F2C(Temp)
+   # Temp2 = F2C(Temp)
    
    # Identifying cells that go out of boundary conditions
    Lwarm <- which(Temp2>=26.5)
@@ -192,7 +192,7 @@ PE.thorn <- function(Temp, yrs.calib, lat, dayz){
    PE <- t(apply(PE, 1, FUN=function(x){x * dayfact}))
    PE[yrs.leap,] <- PE[yrs.leap,] * 28/29
    
-   # Convert PE from mm/mo to in/mo
+   # # Convert PE from mm/mo to in/mo
    PE <- PE*mm2in
    # ------------------------------------------
 

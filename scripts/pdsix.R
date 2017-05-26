@@ -29,10 +29,10 @@ pdsix <- function(z) {
 	nz = length(z)
 	Uw=rep(NA, length=nz) # Effective wetness
 	Ud=rep(NA, length=nz) # Effective dryness
-	V=rep(NA, length=nz) # numerator for probability of ending wet/dry
+	V=rep(0, length=nz) # numerator for probability of ending wet/dry
 	Q=rep(NA, length=nz) # denominator for probability of ending wet/dry
 	Ze=rep(NA, length=nz) # Z-value needed to end wet/dry
-	Pe=rep(NA, length=nz) # Probability that drought has ended
+	Pe=rep(0, length=nz) # Probability that drought has ended
 	x1=rep(0, length=nz)
 	x2=rep(0, nz)
 	x3=rep(0, nz)

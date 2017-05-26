@@ -12,9 +12,11 @@
 # variables.  The code was intended for inches & months, but since it's just accounting,
 # units just need to be internally consistent with AWC matching the unit of P & PE
 #
+# Notes: I think units for p, pe, and awc need to match (mm/time), but actual units
+#        don't matter (in other words in/mo should work the same)
 # Inputs:
-#   1. p    = monthly precipitation in inches, jan - dec; length = 12*nyrs
-#   2. pe   = potential evapotranspiration in inches; lenght = 12*nyrs
+#   1. p    = monthly precipitation in (inches), jan - dec; length = 12*nyrs
+#   2. pe   = potential evapotranspiration in (inches); length = 12*nyrs
 #   3. awcs = available water capacity (inches) in surface (sfc) layer
 #   4. awcu = available water capacity (inches) in underlying layer
 #   5. ssgo = starting soil moisture (inches) in sfc layer

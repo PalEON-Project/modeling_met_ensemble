@@ -17,11 +17,10 @@
 #       met drivers alone
 # 
 # Unit Notes:
-#  - soilmoi1:
-#     - P & AWC must match; code is written for inches/mo; but soilmoi1 will return 
-#       whatever units are provided; for example if P = inches/mo and AWC=inches, 
-#       ET, will be in/mo;  this means no unit conversions should be necessary to make
-#       things in mm/day
+#  - Outputs DO need to be in INCHES because of coefficients; patterns are similar with metric, 
+#    but not identical; Temperature is only used in PE, which requires celcius, so that doesn't 
+#    need to be converted; 
+#  - The only place that needs to be adjusted to work with daily data is PE.thorntwaite
 #
 # --------------
 # Inputs:
@@ -30,22 +29,23 @@
 #     ** redo to work with daily?
 #     ** redo units to metric??
 #     1. Precip = precipitation; data frame; units=total units per observation; 
-#                 preferred units: "inches" (per month)
+#                 preferred units: "mm" (per month)
 #                 dim=c(nyr, ntime); row names = years
 #     2. Temp   = temperature; data frame; 
 #                 units="Fahrenheit"; 
 #                 dim=c(nyr, ntime); row names = years
 #  2. datother: list, length=4
-#     1. lat = latitude; numeric
+#     1. metric = T/F; is moisture in metric (mm) or inches?
+#     2. lat = latitude; numeric
 #              units="decimal degrees"
 #              length=1
-#     2. watcap = water capacity; list, length=2; units="mm"  (volumetric * depth)
+#     3. watcap = water capacity; list, length=2; units="mm"  (volumetric * depth)
 #         ** Note: to get to units multiply volumetric awc by depth
 #            for PalEON drivers, topsoil = 1-30 cm; subsoil = 30-depth
 #         awcs = awc surface layer (standard = 1"; paleon drivers: 30 cm (or depth-1))
 #         awcu = awc underlying layer (standard = 5"; paleon drivers: depth-30 cm)
-#     3. yrs.calib = window for normals & calibrations
-#     4. dayz = lookup table for percentage of possible sunshine
+#     4. yrs.calib = window for normals & calibrations
+#     5. dayz = lookup table for percentage of possible sunshine
 #  4. siteID: character string; site ID
 #  5. method.PE = method of potential evapotranspiration
 #     - "Thornthwaite" (default)
@@ -158,6 +158,17 @@ pdsi1 <- function(datmet, datother, siteID, method.PE="Thornthwaite", snow=NULL,
   lat <- datother$lat
   awcs <- datother$watcap$awcs
   awcu <- datother$watcap$awcu
+
+  # Convert Precip from mm to inches
+  # Do unit conversions on moisture if necessary
+  #  Assumes that if not in inches, it's in mm
+  if(metric==F){
+    Precip <- Precip/25.4
+    awcs   <- awcs/25.4
+    awcu   <- awcu/25.4
+  }
+  # Precip <- Precip/25.4
+  
   # ------------------------------------------
   
   # ------------------------------------------
