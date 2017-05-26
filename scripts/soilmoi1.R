@@ -9,7 +9,8 @@
 # on pages 6-11.
 #
 # soilmoi1.m carries out the actual monthly accounting of soil moisture and other
-# variables.
+# variables.  The code was intended for inches & months, but since it's just accounting,
+# units just need to be internally consistent with AWC matching the unit of P & PE
 #
 # Inputs:
 #   1. p    = monthly precipitation in inches, jan - dec; length = 12*nyrs
@@ -59,25 +60,25 @@ calc.soilmoist <- function(p, pe, awcs, awcu, ssgo, sugo) {
 	
 	# Creating place holders for variables
 	# Soil Moisture
-	ss1  <- rep(NaN, nmos)
-	ss2  <- rep(NaN, nmos)
-	su1  <- rep(NaN, nmos)
-	su2  <- rep(NaN, nmos)
+	ss1  <- rep(0, ntime)
+	ss2  <- rep(0, ntime)
+	su1  <- rep(0, ntime)
+	su2  <- rep(0, ntime)
 
 	# Recharge
-	rs   <- rep(NaN, nmos)
-	ru   <- rep(NaN, nmos)
+	rs   <- rep(0, ntime)
+	ru   <- rep(0, ntime)
 	
 	# Runoff
-	ro   <- rep(NaN, nmos)
+	ro   <- rep(0, ntime)
 
 	# Net loss to Evapotranspiration
-	es   <- rep(NaN, nmos)
-	eu   <- rep(NaN, nmos)
+	es   <- rep(0, ntime)
+	eu   <- rep(0, ntime)
 
 	# Change in soil moisture
-	dels <- rep(NaN, nmos)
-	delu <- rep(NaN, nmos)	
+	dels <- rep(0, ntime)
+	delu <- rep(0, ntime)	
 	# ------------------------------------------
 
 	# ------------------------------------------
@@ -92,7 +93,7 @@ calc.soilmoist <- function(p, pe, awcs, awcu, ssgo, sugo) {
 	# ------------------------------------------
 	# Start things with the values provided
 	ss1this = ssgo
-	ssuthis = sugo
+	su1this = sugo
 	# ------------------------------------------
 
 	# ------------------------------------------
@@ -102,7 +103,7 @@ calc.soilmoist <- function(p, pe, awcs, awcu, ssgo, sugo) {
 	#    4.3 Calculate some additional variables for total soil
 	#    4.4 Calculate recharge, loss, and runoff
 	# ------------------------------------------
-	for(i in 1:nmos){
+	for(i in 1:ntime){
 		dthis = d[i] # pe-p for right now
 		
 		# -------------------------
@@ -113,7 +114,7 @@ calc.soilmoist <- function(p, pe, awcs, awcu, ssgo, sugo) {
 		if(dthis >= 0){ # if pe exceeds precip, we're going to lose soil moisture
 			dels[i] <- -dthis # tentatively set the soil moisture to pe-pe
 			if(dthis > ss1this) { # if pe - p exceeds what we have in the sfc layer, get rid of what we have
-				dels[i] <- -s1this
+				dels[i] <- -ss1this
 
 			}
 			
@@ -131,13 +132,13 @@ calc.soilmoist <- function(p, pe, awcs, awcu, ssgo, sugo) {
 		} else { # ppt exceeds pe, so our soils will get wetter (or stay at capacity)
 			dels[i]   <- min(sempty, -dthis) # either all the precip, or as much as the soils can take in
 			rs[i]     <- dels[i] # surface recharge
-			excess[i] <- -dthis - dels[i] #
+			excess <- -dthis - dels[i] #
 			es[i]     <- 0			
 		} # End surface balance ifelse
 		
 		ss1[i]  <- ss1this # save our starting point
 		ss2[i]  <- ss1this + dels[i] #
-		ss1this <- ss2[n] # Next starting point will be our current end
+		ss1this <- ss2[i] # Next starting point will be our current end
 		# -------------------------
 
 		# -------------------------
@@ -158,12 +159,12 @@ calc.soilmoist <- function(p, pe, awcs, awcu, ssgo, sugo) {
 			delu[i] = min(uempty, excess) # change is how much it could take or how much there is
 			ru[i] = delu[i] # setting the recharge
 			if(excess > uempty) { # We have more than the soil can take --> runoff!
-				ro[i] <- excesss - uempty
+				ro[i] <- excess - uempty
 			} else { # no runoff because we can take it all
 				ro[i] <- 0
 			}
 			
-			su[i] <- su1this # Save our starting point
+			su1[i] <- su1this # Save our starting point
 			su2[i] <- su1this + delu[i] # save our ending point
 			su1this <- su2[i] # This ending point is the next time step's starting point
 		}
@@ -180,7 +181,7 @@ calc.soilmoist <- function(p, pe, awcs, awcu, ssgo, sugo) {
 	loss  <- es + eu # total losses
 	s1    <- ss1 + su1 # total starting soil moisture
 	s2    <- ss2 + su2 # total ending soil moisture
-	smean <- mean(c(s1, s2)) # mean starting and ending soil moisture
+	smean <- (s1 + s2)/2 # mean starting and ending soil moisture
 	# -------------------------
 
 	# -------------------------

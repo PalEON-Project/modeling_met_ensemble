@@ -12,6 +12,7 @@ calc.awc <- function(sand, clay){
 	# fc = field capacity (m^3/m^3)
 	# pwp = permanent wilting point at -1.5 MPa (m^3/m^3)
 	# awc = available water capacity = field capacity - permanent wilting point 
+  #       units: m3/m3
 	#       https://en.wikipedia.org/wiki/Available_water_capacity
 	
 	# Calculating percentage silt

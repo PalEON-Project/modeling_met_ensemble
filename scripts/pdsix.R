@@ -32,7 +32,7 @@ pdsix <- function(z) {
 	V=rep(NA, length=nz) # numerator for probability of ending wet/dry
 	Q=rep(NA, length=nz) # denominator for probability of ending wet/dry
 	Ze=rep(NA, length=nz) # Z-value needed to end wet/dry
-	Pe=rep(NA, length=nz) # Probability htat drought has ended
+	Pe=rep(NA, length=nz) # Probability that drought has ended
 	x1=rep(0, length=nz)
 	x2=rep(0, nz)
 	x3=rep(0, nz)
@@ -44,10 +44,10 @@ pdsix <- function(z) {
  	# Some Allocation vectors
  	LLd = rep(0, nz)
  	LLw = rep(0, nz)
- 	LLn = vector(1, nz)
- 	pullx1 = rep(1, nz)
- 	pullx2 = rep(1, nz)
- 	pullnorm = rep(1, nz)
+ 	LLn = rep(1, nz)
+ 	pullx1 = rep(0, nz)
+ 	pullx2 = rep(0, nz)
+ 	pullnorm = rep(0, nz)
 	# ------------------------------------------
 
 
@@ -56,9 +56,9 @@ pdsix <- function(z) {
 	# ------------------------------------------
 	Uw[1] = NA # effective wetness; applies only with pre-existing drought
 	Ud[1] = NA # effective dryness; applies only with pre-existing wet
-	V[1] = 0 # numerator for probability (end of wet/dry)
+	V[1]  = 0 # numerator for probability (end of wet/dry)
 	Ze[1] = NA # z-value needed to end wet/dry
-	Q[1] = NA # denominator
+	Q[1]  = NA # denominator
 	Pe[1] = 0 # probability that drought/wet has ended
 	x1[1] = max(0, z3[1])
 	x2[1] = min(0, z3[1])
@@ -94,19 +94,19 @@ pdsix <- function(z) {
 		x4[i] = 0.897*x4[i-1] + z3[i]
 		
 		if(status == "normal") {
-			x1[i] = max(0, 0.897*x1[i-1] + x3[i])
-			x2[i] = min(0, 0.897*x2[i-1] + x3[i])
+			x1[i] = max(0, 0.897*x1[i-1] + z3[i])
+			x2[i] = min(0, 0.897*x2[i-1] + z3[i])
 			x3[i] = 0
 			
 			# Figure out the new state
-			if(x1[i] < 1.0 & x2[I] >-1.0 ) {  # No new drought 
+			if(x1[i] < 1.0 & x2[i] >-1.0 ) { # No new drought 
 				LLn[i] = 1
 				pullnorm[i] = 1
-			} else if(x1[i] >= 1.0 ) { # new wet period 
+			} else if(x1[i] >= 1.0 ) { # new wet period 
 				status = "wet"; newwet=1; firstdry=0; nump=0
 				LLw[i] = 1
 				x3[i] = x1[i]
-			} else if(x2[I] <= -1.0) {# new dry period 
+			} else if(x2[i] <= -1.0) {# new dry period 
 				status = "dry"; newdry=1; firstwet=0; nump=0
 				LLd[i] = 1
 				x3[i] = x2[i]
@@ -115,7 +115,7 @@ pdsix <- function(z) {
 			x1[i] = max(0, 0.897*x1[i-1] + z3[i])
 			x2[i] = min(0, 0.897*x2[i-1] + z3[i])
 			x3[i] = 0.897*x3[i-1] + z3[i]
-			Ud[i] = Z[i] - 0.15
+			Ud[i] = z[i] - 0.15
 			if(newwet==1) {
 				newwet=0
 				x1[i] = 0
@@ -156,14 +156,14 @@ pdsix <- function(z) {
 					x2[i] = 0
 					firstdry=0; Ze[i] = NaN; V[i] = 0; Q[i] = NaN; nump=0
 				}
-			} else if(Pe[i] = 100 ) { # wet period ends!
+			} else if(Pe[i] == 100 ) { # wet period ends!
 				if(x2[i] <= -1.0 ) { # going straight into a drought
 					status="dry"; LLd[i] = 1; newdry=1; firstwet=0
 					x3[i] = x2[i]
 					pullx2[(i-nump):i] <- 1
 				} else if (x1[i] >= 1.0) { 
 					stop("Something's Wrong: Ended wet period with start of a new one!")
-				} else { # going to a "normal" stateof being
+				} else { # going to a "normal" state of being
 					status="normal"; LLn[i] = 1
 					x3[i] = 0
 					pullnorm[(i-nump):i] <- 1
@@ -176,18 +176,18 @@ pdsix <- function(z) {
 			x1[i] = max(0, 0.897*x1[i-1] + z3[i])
 			x2[i] = min(0, 0.897*x2[i-1] + z3[i])
 			x3[i] = 0.897*x3[i-1] + z3[i]
-			Uw[i] = Z[i] + 0.15
+			Uw[i] = z[i] + 0.15
 
 			if(newdry==1) {
 				newdry=0
 				x2[i] = 0
 			}
-			if(firstwet==0){ # have not previously hit effective wet U2
-				if(Uw[i] >= 0){
+			if(firstwet==0){ # have not previously hit effective wet Uw
+				if(Uw[i] <= 0){
 					Uw[i] = NaN
 					Pe[i] = 0
 				} else {
-					firstwet=1 # Flag that we have now hit the first effective wet Ud
+					firstwet=1 # Flag that we have now hit the first effective wet Uw
 					Ze[i] = -2.691 * x3[i-1] - 1.5 # Z-value needed to end wet period
 					# Calculate probability that wet period has ended
 					V[i] = Uw[i]
@@ -195,7 +195,7 @@ pdsix <- function(z) {
 					Pe[i] = V[i] * 100/Q[i]
 				}
 			} else { # firstwet==1
-				Ze[i] = -2.691 * x3[i-1] - 1.5 # Z-value needed to end wet
+				Ze[i] = -2.691 * x3[i-1] - 1.5 # Z-value needed to end dry
 				
 				# Calculate probability that wet period has ended
 				V[i] = V[i-1] + Uw[i]
@@ -203,7 +203,7 @@ pdsix <- function(z) {
 				Pe[i] = V[i] * 100/Q[i]				
 			} # End first wet case
 			
-			# Bound out probability of ending wet period to 0 - 100
+			# Bound out probability of ending dry period to 0 - 100
 			if(Pe[i] < 0) {
 				Pe[i] = 0
 			} else if (Pe[i] >= 100 ){
@@ -218,7 +218,7 @@ pdsix <- function(z) {
 					x2[i] = 0
 					firstwet=0; Ze[i] = NaN; V[i] = 0; Q[i] = NaN; nump=0
 				}
-			} else if(Pe[i] = 100 ) { # wet period ends!
+			} else if(Pe[i] == 100 ) { # drought period ends!
 				if(x1[i] >= 1.0 ) { # going straight into a wet period
 					status="wet"; LLw[i] = 1; newwet=1; firstdry=0
 					x3[i] = x1[i]
