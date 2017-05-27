@@ -384,11 +384,6 @@ pdsi1 <- function(datmet, datother, siteID, method.PE="Thornthwaite", snow=NULL,
   
   ztemp <- as.vector(t(Z))
   pdsi  <- pdsix(z=ztemp)
-  
-  plot(pdsi$x, type="l")
-  abline(h=0, col="red")
-  ggplot(pdsi) +
-    geom_line(aes(x=))
   # ------------------------------------------
 
   # ------------------------------------------
