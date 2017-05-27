@@ -46,6 +46,7 @@
 #         awcu = awc underlying layer (standard = 5"; paleon drivers: depth-30 cm)
 #     4. yrs.calib = window for normals & calibrations
 #     5. dayz = lookup table for percentage of possible sunshine
+#     6. daylength = provided values of day length (in hours); alternative to using dayz
 #  4. siteID: character string; site ID
 #  5. method.PE = method of potential evapotranspiration
 #     - "Thornthwaite" (default)
@@ -158,6 +159,8 @@ pdsi1 <- function(datmet, datother, siteID, method.PE="Thornthwaite", snow=NULL,
   lat <- datother$lat
   awcs <- datother$watcap$awcs
   awcu <- datother$watcap$awcu
+  dayz <- datother$dayz
+  dayl <- datother$daylength
 
   # Convert Precip from mm to inches
   # Do unit conversions on moisture if necessary
@@ -167,15 +170,23 @@ pdsi1 <- function(datmet, datother, siteID, method.PE="Thornthwaite", snow=NULL,
     awcs   <- awcs/25.4
     awcu   <- awcu/25.4
   }
-  # Precip <- Precip/25.4
-  
+
+  # # Daylength stuff
+  # library(R.matlab)
+  # dayz <- readMat("PDSI_fromBenCook/PDSICODE/daylennh.mat")$dayz
+  # dayl <- NULL
   # ------------------------------------------
   
   # ------------------------------------------
   #  2. Compute PE (potential evapotranspiration) for full time series
   #     Output Units: mm/time
   # ------------------------------------------
-  if(method.PE=="Thornthwaite") PE = PE.thorn(Temp, yrs.calib, lat, dayz)
+  if(method.PE=="Thornthwaite"){ 
+    if(ncol(Temp)==12) timestep = "monthly"
+    dayfact = calc.dayfact(timestep=timestep, lat=lat, dayz=dayz)
+    dayfact = calc.dayfact(timestep="daily", daylength=dayl, lat=lat, dayz=dayz)
+    PE = PE.thorn(Temp, yrs.calib, lat, dayfact)
+  }
   row.names(PE) <- row.names(Temp)
   # ------------------------------------------
 

@@ -30,6 +30,7 @@ awcu <- 0.14 # cm3/cm3 = in3/in3
 
 Temp <- temp
 Precip <- precip
+lat <- mean(dat.clim$lat.plot)
 awcs <- awcs*10*30 # in mm w/ 30 cm depth
 awcu <- awcu*10*30 # in mm w/ 30 cm depth
 
@@ -37,7 +38,6 @@ awcu <- awcu*10*30 # in mm w/ 30 cm depth
 # C2F <- function(x){x*9/5 + 32}
 # Temp <- C2F(temp)
 # Precip <- precip/25.4
-# lat <- mean(dat.clim$lat.plot)
 
 # awcs*(1/2.54^3)
 # awcs <- awcs*11.81 # assuming top depth of 30 cm; x10^3 to put in mm3
@@ -49,4 +49,4 @@ library(R.matlab)
 dayz <- readMat("PDSI_fromBenCook/PDSICODE/daylennh.mat")$dayz
 
 
-pdsi.inches <- pdsi$x
+# pdsi.inches <- pdsi$x

@@ -65,7 +65,7 @@
 # 7. Format & return output
 # -----------------------
 
-PE.thorn <- function(Temp, yrs.calib, lat, dayz){
+PE.thorn <- function(Temp, yrs.calib, lat, dayfact){
 
   # ------------------------------------------
   # 1. Check inputs, build some tables for reference
@@ -146,8 +146,8 @@ PE.thorn <- function(Temp, yrs.calib, lat, dayz){
    # Replace anything above 38C with 38 C
    if(length(Lhot)>0) Temp2[Lhot] <- 38.0
    
-   # Compute unadjusted PE; in mm/mo
-   PE = 16 * ((10.0 * Temp2 / I)^a)
+   # Compute unadjusted PE; in mm/day; assumes 30 days per month
+   PE = 16 * ((10.0 * Temp2 / I)^a)/30
    
    # Replace anything with Temp <=0, as 0
    if(length(Lcold)>0) PE[Lcold] <- 0
@@ -160,17 +160,23 @@ PE.thorn <- function(Temp, yrs.calib, lat, dayz){
      # Extract PE from Table using interpolation/approximation
      # in matlab this was interp1; in R, it looks like approx() works
      # This returns values in mm/day
-     S[Lwarm] <- apprsuox(xThot, Thot, toast)$y
+     S[Lwarm] <- approx(xThot, Thot, toast)$y
      
-     # convert mm/day to mm/mo
-     S <- t(apply(S, 1, FUN=function(x){x * dpm}))
+     # # convert mm/day to mm/mo
+     # S <- t(apply(S, 1, FUN=function(x){x * dpm}))
      
-     # Add an extra day to leap year
-     S[yrs.leap,2] <- S[yrs.leap,2]*29/28
+     # # Add an extra day to leap year
+     # S[yrs.leap,2] <- S[yrs.leap,2]*29/28
      
      # Putting our warm-adjusted values in our PE matrix
-     # Units = mm/mo
+     # Units = mm/day
      PE[Lwarm] <- S[Lwarm]
+   }
+   
+   # If we have monthly data, convert mm/day to mm/mo
+   if(ncol(PE)==12) {
+     PE <- t(apply(PE, 1, FUN=function(x){x * dpm}))
+     PE[yrs.leap,2] <- PE[yrs.leap,2]*29/28
    }
    # ------------------------------------------
 
@@ -184,13 +190,22 @@ PE.thorn <- function(Temp, yrs.calib, lat, dayz){
    # 
    # Note: I *think* we could do this on a daily scale by leveraging our met data 
    # by calculating day length from SWdown>0 per day and dividing by 12
-   dayfact <- apply(dayz, 2, FUN=function(x){approx(0:50, x, min(lat, 50))$y/30}) 
+   if(is.null(dayfact)){
+     dayfact <- apply(dayz, 2, FUN=function(x){approx(0:50, x, min(lat, 50))$y})
+   }
+   if(ncol(PE)==12){
+     dayfact <- dayfact/30
+   }
    
    # Calculating adjusted PE; will do leap year adjustment in 
    # next step to keep matrices smaller
    # Will return PE in mm/mo
    PE <- t(apply(PE, 1, FUN=function(x){x * dayfact}))
-   PE[yrs.leap,] <- PE[yrs.leap,] * 28/29
+   
+   if(ncol(PE)==12){
+     PE[yrs.leap,] <- PE[yrs.leap,] * 28/29
+   }
+   
    
    # # Convert PE from mm/mo to in/mo
    PE <- PE*mm2in
