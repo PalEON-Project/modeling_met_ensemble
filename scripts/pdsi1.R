@@ -35,18 +35,19 @@
 #                 units="Fahrenheit"; 
 #                 dim=c(nyr, ntime); row names = years
 #  2. datother: list, length=4
-#     1. metric = T/F; is moisture in metric (mm) or inches?
-#     2. lat = latitude; numeric
+#     1. pdsi.fun = file path to where the necessary PDSI helper functions are
+#     2. metric = T/F; is moisture in metric (mm) or inches?
+#     3. lat = latitude; numeric
 #              units="decimal degrees"
 #              length=1
-#     3. watcap = water capacity; list, length=2; units="mm"  (volumetric * depth)
+#     4. watcap = water capacity; list, length=2; units="mm"  (volumetric * depth)
 #         ** Note: to get to units multiply volumetric awc by depth
 #            for PalEON drivers, topsoil = 1-30 cm; subsoil = 30-depth
 #         awcs = awc surface layer (standard = 1"; paleon drivers: 30 cm (or depth-1))
 #         awcu = awc underlying layer (standard = 5"; paleon drivers: depth-30 cm)
-#     4. yrs.calib = window for normals & calibrations
-#     5. dayz = lookup table for percentage of possible sunshine
-#     6. daylength = provided values of day length (in hours); alternative to using dayz
+#     5. yrs.calib = window for normals & calibrations
+#     6. dayz = lookup table for percentage of possible sunshine
+#     7. daylength = provided values of day length (in hours); alternative to using dayz
 #  4. siteID: character string; site ID
 #  5. method.PE = method of potential evapotranspiration
 #     - "Thornthwaite" (default)
@@ -131,7 +132,7 @@
 # --------------
 
 
-pdsi1 <- function(datmet, datother, siteID, method.PE="Thornthwaite", snow=NULL, snowopts, penopts, datpen){
+pdsi1 <- function(datmet, datother, metric=F, siteID, method.PE="Thornthwaite", snow=NULL, snowopts=NULL, penopts=NULL, datpen=NULL){
 
   # ------------------------------------------
   #  1. Check input, calculate AWC if needed, unit conversions, make pointers
@@ -140,17 +141,18 @@ pdsi1 <- function(datmet, datother, siteID, method.PE="Thornthwaite", snow=NULL,
   # about things I haven't implemented yet
   if(method.PE!="Thornthwaite") stop("invalid method.PE! Only Thornthwaite available currently")
   if(!is.null(snow)) stop("Snow redistribution not implemented yet. Please set to NULL for now")
-  if(any(dim(dat.met$Temp) != dim(dat.met$Precip))) stop("Temperature & Precipitation time series do not align!")
+  if(any(dim(datmet$Temp) != dim(datmet$Precip))) stop("Temperature & Precipitation time series do not align!")
 
   # Sourcing scripts we'll need
-  source("PE.thornthwaite.R")
-  source("soilmoi1.R")
-  source("pdsix.R")
+  pdsi.fun <- datother$pdsi.fun
+  source(file.path(pdsi.fun, "dayfact.R"))
+  source(file.path(pdsi.fun, "soilmoi1.R"))
+  source(file.path(pdsi.fun, "pdsix.R"))
   
   
   # Extract some constants from datother
-  Temp <- matrix(dat.met$Temp)
-  Precip <- matrix(dat.met$Precip)
+  Temp <- as.matrix(datmet$Temp)
+  Precip <- as.matrix(datmet$Precip)
   
   yrs <- as.numeric(row.names(Temp))
   nyrs <- length(yrs)
@@ -161,14 +163,18 @@ pdsi1 <- function(datmet, datother, siteID, method.PE="Thornthwaite", snow=NULL,
   awcu <- datother$watcap$awcu
   dayz <- datother$dayz
   dayl <- datother$daylength
+  timestep <- datother$timestep
 
   # Convert Precip from mm to inches
   # Do unit conversions on moisture if necessary
   #  Assumes that if not in inches, it's in mm
-  if(metric==F){
+  if(metric==T){
     Precip <- Precip/25.4
     awcs   <- awcs/25.4
     awcu   <- awcu/25.4
+    
+    C2F <- function(x){x*9/5 + 32}
+    Temp   <- C2F(Temp)
   }
 
   # # Daylength stuff
@@ -182,10 +188,11 @@ pdsi1 <- function(datmet, datother, siteID, method.PE="Thornthwaite", snow=NULL,
   #     Output Units: mm/time
   # ------------------------------------------
   if(method.PE=="Thornthwaite"){ 
+    source(file.path(pdsi.fun, "PE.thornthwaite.R"))
     if(ncol(Temp)==12) timestep = "monthly"
-    dayfact = calc.dayfact(timestep=timestep, lat=lat, dayz=dayz)
-    dayfact = calc.dayfact(timestep="daily", daylength=dayl, lat=lat, dayz=dayz)
-    PE = PE.thorn(Temp, yrs.calib, lat, dayfact)
+    dayfact = calc.dayfact(timestep=timestep, daylength=dayl, lat=lat, dayz=dayz)
+    # dayfact = calc.dayfact(timestep="daily", daylength=dayl, lat=lat, dayz=dayz)
+    PE = PE.thorn(Temp, yrs.calib, lat, dayfact, celcius=F)
   }
   row.names(PE) <- row.names(Temp)
   # ------------------------------------------
@@ -389,10 +396,33 @@ pdsi1 <- function(datmet, datother, siteID, method.PE="Thornthwaite", snow=NULL,
   # ------------------------------------------
   #  9. Format & return output
   # ------------------------------------------
+  # datout: list; length = 8
+  #  1. Z  = Z index (unitless); data frame; dim=c(nyr, 13)
+  #  2. X  = PDSI value (unitless); data frame; dim=c(nyr, 13)
+  #  3. XM = modified PDSI (unitless); data frame; dim=c(nyr, 13)
+  #  4. W  = avg soil moist (unit="in"); data frame; dim=c(nyr, 13)
+  #  5. RO = monthly runoff (unit=??); dataframe; dim=c(nyr, 13)
+  #  6. S1 = effective ppt (unit="in"); array; dim=c(nyr, 13, 10)
+  #        = max(0, p - f*pe)
+  #  7. P  = precip input; data frame; dim=c(nyr, 13)
+  #  8. T  = temperature input; data frame; dim=c(nyr, 13)
+
+  datout <- list()
+  datout$Z  <- Z
+  datout$X  <- matrix(pdsi$x, nrow=nrow(Precip), byrow=T)
+  datout$XM <- matrix(pdsi$xm, nrow=nrow(Precip), byrow=T)
+  datout$XH <- matrix(pdsi$x4, nrow=nrow(Precip), byrow=T)
+  datout$PE <- PE
+  datout$W  <- W
+  datout$RO <- RO
+  datout$S1 <- S1
+  datout$P  <- Precip
+  datout$T  <- Temp
+  
+  
+  return(datout)
   # ------------------------------------------
  
   
-  datout <- list()
-  return(datout)
 }
 

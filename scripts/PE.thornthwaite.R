@@ -65,7 +65,7 @@
 # 7. Format & return output
 # -----------------------
 
-PE.thorn <- function(Temp, yrs.calib, lat, dayfact){
+PE.thorn <- function(Temp, yrs.calib, lat, dayfact, celcius=T){
 
   # ------------------------------------------
   # 1. Check inputs, build some tables for reference
@@ -102,9 +102,13 @@ PE.thorn <- function(Temp, yrs.calib, lat, dayfact){
    
    
    # handy functions to convert to/from Fahrenheit
-   # F2C <- function(x){5/9*(x-32)}
-   # C2F <- function(x){x*9/5 + 32}
+   F2C <- function(x){5/9*(x-32)}
+   C2F <- function(x){x*9/5 + 32}
    mm2in <- 1/25.4
+
+   if(celcius==F){ 
+     Temp = F2C(Temp)
+   }
    # ------------------------------------------
    
    # ------------------------------------------
@@ -136,25 +140,25 @@ PE.thorn <- function(Temp, yrs.calib, lat, dayfact){
    # 4. Calculate *un-adjusted PE (30-day month, 12 hrs sun)
    #     ** NOTE: This could probably be adjusted for different time steps
    # ------------------------------------------
-   # Temp2 = F2C(Temp)
+   # Temp = F2C(Temp)
    
    # Identifying cells that go out of boundary conditions
-   Lwarm <- which(Temp2>=26.5)
-   Lhot  <- which(Temp2> 38.0)
-   Lcold <- which(Temp2<= 0.0)
+   Lwarm <- which(Temp>=26.5)
+   Lhot  <- which(Temp> 38.0)
+   Lcold <- which(Temp<= 0.0)
    
    # Replace anything above 38C with 38 C
-   if(length(Lhot)>0) Temp2[Lhot] <- 38.0
+   if(length(Lhot)>0) Temp[Lhot] <- 38.0
    
    # Compute unadjusted PE; in mm/day; assumes 30 days per month
-   PE = 16 * ((10.0 * Temp2 / I)^a)/30
+   PE = 16 * ((10.0 * Temp / I)^a)/30
    
    # Replace anything with Temp <=0, as 0
    if(length(Lcold)>0) PE[Lcold] <- 0
    
    # Dealing with high temperature cases using the table "Thot" defined above
    if(length(Lwarm)>0){
-     toast <- Temp2[Lwarm]
+     toast <- Temp[Lwarm]
      S <- matrix(0, ncol=ncol(Temp), nrow=nyr)
      
      # Extract PE from Table using interpolation/approximation
@@ -203,11 +207,11 @@ PE.thorn <- function(Temp, yrs.calib, lat, dayfact){
    PE <- t(apply(PE, 1, FUN=function(x){x * dayfact}))
    
    if(ncol(PE)==12){
-     PE[yrs.leap,] <- PE[yrs.leap,] * 28/29
+     PE[yrs.leap,2] <- PE[yrs.leap,2] * 28/29
    }
    
    
-   # # Convert PE from mm/mo to in/mo
+   # # Convert PE from mm to in
    PE <- PE*mm2in
    # ------------------------------------------
 
