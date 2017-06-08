@@ -151,7 +151,8 @@ PE.thorn <- function(Temp, yrs.calib, lat, dayfact, celcius=T){
    if(length(Lhot)>0) Temp[Lhot] <- 38.0
    
    # Compute unadjusted PE; in mm/day; assumes 30 days per month
-   PE = 16 * ((10.0 * Temp / I)^a)/30
+   # PE = 16 * ((10.0 * Temp / I)^a)/30
+   PE = 16 * ((10.0 * Temp / I)^a) # mm/mo
    
    # Replace anything with Temp <=0, as 0
    if(length(Lcold)>0) PE[Lcold] <- 0
@@ -167,10 +168,10 @@ PE.thorn <- function(Temp, yrs.calib, lat, dayfact, celcius=T){
      S[Lwarm] <- approx(xThot, Thot, toast)$y
      
      # # convert mm/day to mm/mo
-     # S <- t(apply(S, 1, FUN=function(x){x * dpm}))
+     S <- t(apply(S, 1, FUN=function(x){x * dpm}))
      
      # # Add an extra day to leap year
-     # S[yrs.leap,2] <- S[yrs.leap,2]*29/28
+     S[yrs.leap,2] <- S[yrs.leap,2]*29/28
      
      # Putting our warm-adjusted values in our PE matrix
      # Units = mm/day
@@ -178,10 +179,10 @@ PE.thorn <- function(Temp, yrs.calib, lat, dayfact, celcius=T){
    }
    
    # If we have monthly data, convert mm/day to mm/mo
-   if(ncol(PE)==12) {
-     PE <- t(apply(PE, 1, FUN=function(x){x * dpm}))
-     PE[yrs.leap,2] <- PE[yrs.leap,2]*29/28
-   }
+   # if(ncol(PE)==12) {
+   #   PE <- t(apply(PE, 1, FUN=function(x){x * dpm}))
+   #   PE[yrs.leap,2] <- PE[yrs.leap,2]*29/28
+   # }
    # ------------------------------------------
 
    # ------------------------------------------
@@ -194,12 +195,13 @@ PE.thorn <- function(Temp, yrs.calib, lat, dayfact, celcius=T){
    # 
    # Note: I *think* we could do this on a daily scale by leveraging our met data 
    # by calculating day length from SWdown>0 per day and dividing by 12
+   dayfact=NULL
    if(is.null(dayfact)){
-     dayfact <- apply(dayz, 2, FUN=function(x){approx(0:50, x, min(lat, 50))$y})
+     dayfact <- apply(dayz, 2, FUN=function(x){approx(0:50, x, min(lat, 50))$y})/30
    }
-   if(ncol(PE)==12){
-     dayfact <- dayfact/30
-   }
+   # if(ncol(PE)==12){
+   #   dayfact <- dayfact/30
+   # }
    
    # Calculating adjusted PE; will do leap year adjustment in 
    # next step to keep matrices smaller

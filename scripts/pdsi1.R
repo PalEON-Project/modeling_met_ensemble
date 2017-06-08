@@ -163,7 +163,6 @@ pdsi1 <- function(datmet, datother, metric=F, siteID, method.PE="Thornthwaite", 
   awcu <- datother$watcap$awcu
   dayz <- datother$dayz
   dayl <- datother$daylength
-  timestep <- datother$timestep
 
   # Convert Precip from mm to inches
   # Do unit conversions on moisture if necessary
@@ -192,7 +191,7 @@ pdsi1 <- function(datmet, datother, metric=F, siteID, method.PE="Thornthwaite", 
     if(ncol(Temp)==12) timestep = "monthly"
     dayfact = calc.dayfact(timestep=timestep, daylength=dayl, lat=lat, dayz=dayz)
     # dayfact = calc.dayfact(timestep="daily", daylength=dayl, lat=lat, dayz=dayz)
-    PE = PE.thorn(Temp, yrs.calib, lat, dayfact, celcius=F)
+    PE = PE.thorn(Temp, yrs.calib, lat, dayfact=NULL, celcius=F)
   }
   row.names(PE) <- row.names(Temp)
   # ------------------------------------------
