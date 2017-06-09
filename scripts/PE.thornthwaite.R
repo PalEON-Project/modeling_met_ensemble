@@ -65,7 +65,7 @@
 # 7. Format & return output
 # -----------------------
 
-PE.thorn <- function(Temp, yrs.calib, lat, dayfact, celcius=T){
+PE.thorn <- function(Temp, yrs.calib, lat, dayz, dayfact, celcius=T){
 
   # ------------------------------------------
   # 1. Check inputs, build some tables for reference
@@ -169,7 +169,7 @@ PE.thorn <- function(Temp, yrs.calib, lat, dayfact, celcius=T){
      
      # # convert mm/day to mm/mo
      S <- t(apply(S, 1, FUN=function(x){x * dpm}))
-     
+
      # # Add an extra day to leap year
      S[yrs.leap,2] <- S[yrs.leap,2]*29/28
      
@@ -207,7 +207,7 @@ PE.thorn <- function(Temp, yrs.calib, lat, dayfact, celcius=T){
    # next step to keep matrices smaller
    # Will return PE in mm/mo
    PE <- t(apply(PE, 1, FUN=function(x){x * dayfact}))
-   
+
    if(ncol(PE)==12){
      PE[yrs.leap,2] <- PE[yrs.leap,2] * 28/29
    }

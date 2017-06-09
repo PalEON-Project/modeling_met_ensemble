@@ -62,25 +62,25 @@ calc.soilmoist <- function(p, pe, awcs, awcu, ssgo, sugo) {
 	
 	# Creating place holders for variables
 	# Soil Moisture
-	ss1  <- rep(0, ntime)
-	ss2  <- rep(0, ntime)
-	su1  <- rep(0, ntime)
-	su2  <- rep(0, ntime)
+	ss1  <- rep(NaN, ntime)
+	ss2  <- rep(NaN, ntime)
+	su1  <- rep(NaN, ntime)
+	su2  <- rep(NaN, ntime)
 
 	# Recharge
-	rs   <- rep(0, ntime)
-	ru   <- rep(0, ntime)
+	rs   <- rep(NaN, ntime)
+	ru   <- rep(NaN, ntime)
 	
 	# Runoff
-	ro   <- rep(0, ntime)
+	ro   <- rep(NaN, ntime)
 
 	# Net loss to Evapotranspiration
-	es   <- rep(0, ntime)
-	eu   <- rep(0, ntime)
+	es   <- rep(NaN, ntime)
+	eu   <- rep(NaN, ntime)
 
 	# Change in soil moisture
-	dels <- rep(0, ntime)
-	delu <- rep(0, ntime)	
+	dels <- rep(NaN, ntime)
+	delu <- rep(NaN, ntime)	
 	# ------------------------------------------
 
 	# ------------------------------------------
@@ -114,10 +114,9 @@ calc.soilmoist <- function(p, pe, awcs, awcu, ssgo, sugo) {
 		sempty = awcs - ss1this # how much the sfc layer could take in
 		
 		if(dthis >= 0){ # if pe exceeds precip, we're going to lose soil moisture
-			dels[i] <- -dthis # tentatively set the soil moisture to pe-pe
+		  dels[i] <- -dthis # tentatively set the soil moisture to pe-pe
 			if(dthis > ss1this) { # if pe - p exceeds what we have in the sfc layer, get rid of what we have
 				dels[i] <- -ss1this
-
 			}
 			
 			rs[i] = 0 # No excess, so no recharge
@@ -132,7 +131,7 @@ calc.soilmoist <- function(p, pe, awcs, awcu, ssgo, sugo) {
 
 			excess = 0
 		} else { # ppt exceeds pe, so our soils will get wetter (or stay at capacity)
-			dels[i]   <- min(sempty, -dthis) # either all the precip, or as much as the soils can take in
+		  dels[i]   <- min(sempty, -dthis) # either all the precip, or as much as the soils can take in
 			rs[i]     <- dels[i] # surface recharge
 			excess <- -dthis - dels[i] #
 			es[i]     <- 0			
@@ -149,7 +148,7 @@ calc.soilmoist <- function(p, pe, awcs, awcu, ssgo, sugo) {
 		uempty <- awcu - su1this # how much the under layer could take in
 		
 		if(excess<=0){ # no moisture input from above
-			eu[i] <- (dthis - es[i]) * (su1this/awc) # "loss" from the under layer
+		  eu[i] <- (dthis - es[i]) * (su1this/awc) # "loss" from the under layer
 			eu[i] <- min(eu[i], su1this)
 			
 			if(eu[i] < 0) eu[i] = 0 # no negative values allowed
@@ -157,7 +156,7 @@ calc.soilmoist <- function(p, pe, awcs, awcu, ssgo, sugo) {
 			ro[i] = 0 # no runoff
 			delu[i] = -eu[i] # change in under soil moisture			
 		} else { # There is some moisture input from above
-			eu[i] = 0 # no loss from underlying layer
+		  eu[i] = 0 # no loss from underlying layer
 			delu[i] = min(uempty, excess) # change is how much it could take or how much there is
 			ru[i] = delu[i] # setting the recharge
 			if(excess > uempty) { # We have more than the soil can take --> runoff!
@@ -165,12 +164,13 @@ calc.soilmoist <- function(p, pe, awcs, awcu, ssgo, sugo) {
 			} else { # no runoff because we can take it all
 				ro[i] <- 0
 			}
-			
-			su1[i] <- su1this # Save our starting point
-			su2[i] <- su1this + delu[i] # save our ending point
-			su1this <- su2[i] # This ending point is the next time step's starting point
 		}
+		
+		su1[i] <- su1this # Save our starting point
+		su2[i] <- su1this + delu[i] # save our ending point
+		su1this <- su2[i] # This ending point is the next time step's starting point
 		# -------------------------
+		if(is.na(ss1[i]) | is.na(su1[i])) stop("su1 is na")
 	}
 	# ------------------------------------------
 
@@ -192,7 +192,8 @@ calc.soilmoist <- function(p, pe, awcs, awcu, ssgo, sugo) {
 	pr <- awc - s1 # Potential recharge
 	
 	# Potential losses
-	plosss <- min(pe, ss1)
+	dope <- c(pe, ss1)
+	plosss <- min(dope)
 	plossu <- (pe - plosss) * (su1/awc)
 	ploss  <- plosss + plossu
 	

@@ -191,7 +191,7 @@ pdsi1 <- function(datmet, datother, metric=F, siteID, method.PE="Thornthwaite", 
     if(ncol(Temp)==12) timestep = "monthly"
     # dayfact = calc.dayfact(timestep=timestep, daylength=dayl, lat=lat, dayz=dayz)
     # dayfact = calc.dayfact(timestep="daily", daylength=dayl, lat=lat, dayz=dayz)
-    PE = PE.thorn(Temp, yrs.calib, lat, dayfact=NULL, celcius=F)
+    PE = PE.thorn(Temp, yrs.calib, lat, dayz=dayz, dayfact=NULL, celcius=F)
   }
   row.names(PE) <- row.names(Temp)
   # ------------------------------------------
@@ -225,6 +225,7 @@ pdsi1 <- function(datmet, datother, metric=F, siteID, method.PE="Thornthwaite", 
   moist1 <- calc.soilmoist(p=Psyn, pe=PEsyn, awcs=awcs, awcu=awcu, ssgo=awcs, sugo=awcu)
   
   # 4.4 Extract initial conditions
+  # moist.mat <- matrix(moist1$su2, nrow=nsyn, byrow=T)
   ssgo <- matrix(moist1$ss1, nrow=nsyn, byrow=T)[nsyn,1]
   sugo <- matrix(moist1$su1, nrow=nsyn, byrow=T)[nsyn,1]
   
@@ -262,6 +263,9 @@ pdsi1 <- function(datmet, datother, metric=F, siteID, method.PE="Thornthwaite", 
   PRO   <- matrix(moist.norm$pro  , nrow=length(rows.calib), byrow=T)
   LOSS  <- matrix(moist.norm$loss , nrow=length(rows.calib), byrow=T)
   PLOSS <- matrix(moist.norm$ploss, nrow=length(rows.calib), byrow=T)
+  W     <- matrix(moist.norm$smean, nrow=length(rows.calib), byrow=T) # mean soil moisture
+  # SS2   <- matrix(moist.norm$ss2, nrow=length(rows.calib), byrow=T) # surface ending soil moist
+  # SU2   <- matrix(moist.norm$su2, nrow=length(rows.calib), byrow=T) # under ending soil moist
   
   # 5.2 Finding the means for the calibration period
   ETbar    <- apply(ET   , 2, mean)
@@ -337,6 +341,8 @@ pdsi1 <- function(datmet, datother, metric=F, siteID, method.PE="Thornthwaite", 
   LOSS  <- matrix(soilmoist$loss , nrow=nrow(Precip), byrow=T) # loss
   PLOSS <- matrix(soilmoist$ploss, nrow=nrow(Precip), byrow=T) # potential loss
   W     <- matrix(soilmoist$smean, nrow=nrow(Precip), byrow=T) # mean soil moisture
+  # SS2     <- matrix(soilmoist$ss2, nrow=nrow(Precip), byrow=T) # mean soil moisture
+  # SU2     <- matrix(soilmoist$su2, nrow=nrow(Precip), byrow=T) # mean soil moisture
   dimnames(W)[[1]] <- row.names(Precip)
   
   # 6.3 calculate effective preciptiation (precip - fraction of PE)
