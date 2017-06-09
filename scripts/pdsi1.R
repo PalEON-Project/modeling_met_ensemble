@@ -189,7 +189,7 @@ pdsi1 <- function(datmet, datother, metric=F, siteID, method.PE="Thornthwaite", 
   if(method.PE=="Thornthwaite"){ 
     source(file.path(pdsi.fun, "PE.thornthwaite.R"))
     if(ncol(Temp)==12) timestep = "monthly"
-    dayfact = calc.dayfact(timestep=timestep, daylength=dayl, lat=lat, dayz=dayz)
+    # dayfact = calc.dayfact(timestep=timestep, daylength=dayl, lat=lat, dayz=dayz)
     # dayfact = calc.dayfact(timestep="daily", daylength=dayl, lat=lat, dayz=dayz)
     PE = PE.thorn(Temp, yrs.calib, lat, dayfact=NULL, celcius=F)
   }

@@ -106,9 +106,9 @@ PE.thorn <- function(Temp, yrs.calib, lat, dayfact, celcius=T){
    C2F <- function(x){x*9/5 + 32}
    mm2in <- 1/25.4
 
-   if(celcius==F){ 
-     Temp = F2C(Temp)
-   }
+   # if(celcius==F){ 
+   #   Temp = F2C(Temp)
+   # }
    # ------------------------------------------
    
    # ------------------------------------------
@@ -116,7 +116,7 @@ PE.thorn <- function(Temp, yrs.calib, lat, dayfact, celcius=T){
    # ------------------------------------------
    yrs.norm <- which(yrs>=yrs.calib[1] & yrs<=yrs.calib[2])
    norms <- colMeans(Temp[yrs.norm,])
-   # norms <- F2C(norms)
+   norms <- F2C(norms)
    # ------------------------------------------
 
    
@@ -140,26 +140,26 @@ PE.thorn <- function(Temp, yrs.calib, lat, dayfact, celcius=T){
    # 4. Calculate *un-adjusted PE (30-day month, 12 hrs sun)
    #     ** NOTE: This could probably be adjusted for different time steps
    # ------------------------------------------
-   # Temp = F2C(Temp)
+   Temp2 = F2C(Temp)
    
    # Identifying cells that go out of boundary conditions
-   Lwarm <- which(Temp>=26.5)
-   Lhot  <- which(Temp> 38.0)
-   Lcold <- which(Temp<= 0.0)
+   Lwarm <- which(Temp2>=26.5)
+   Lhot  <- which(Temp2> 38.0)
+   Lcold <- which(Temp2<= 0.0)
    
    # Replace anything above 38C with 38 C
-   if(length(Lhot)>0) Temp[Lhot] <- 38.0
+   if(length(Lhot)>0) Temp2[Lhot] <- 38.0
    
    # Compute unadjusted PE; in mm/day; assumes 30 days per month
    # PE = 16 * ((10.0 * Temp / I)^a)/30
-   PE = 16 * ((10.0 * Temp / I)^a) # mm/mo
+   PE = 16 * ((10.0 * Temp2 / I)^a) # mm/mo
    
    # Replace anything with Temp <=0, as 0
    if(length(Lcold)>0) PE[Lcold] <- 0
    
    # Dealing with high temperature cases using the table "Thot" defined above
    if(length(Lwarm)>0){
-     toast <- Temp[Lwarm]
+     toast <- Temp2[Lwarm]
      S <- matrix(0, ncol=ncol(Temp), nrow=nyr)
      
      # Extract PE from Table using interpolation/approximation
