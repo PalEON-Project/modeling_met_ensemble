@@ -81,6 +81,11 @@ calc.soilmoist <- function(p, pe, awcs, awcu, ssgo, sugo) {
 	# Change in soil moisture
 	dels <- rep(NaN, ntime)
 	delu <- rep(NaN, ntime)	
+
+	# Adding additional variables to help track a bug
+	sempty <- rep(NaN, ntime)	
+	uempty <- rep(NaN, ntime)	
+	excess <- rep(NaN, ntime)	
 	# ------------------------------------------
 
 	# ------------------------------------------
@@ -89,6 +94,13 @@ calc.soilmoist <- function(p, pe, awcs, awcu, ssgo, sugo) {
 	d   <- pe - p # deficit = excess of potential evapotraspiration over precipitation
 	awc <- awcu + awcs # Combined water capacity
 	# ------------------------------------------
+	
+	# # Calculating a running deficit for diagnostics
+	# d.run <- rep(NaN, ntime)	
+	# d.run[1] <- d[1]
+	# for(i in 2:ntime){
+	#   d.run[i] <- d[i] + d.run[i-1]
+	# }
 
 	# ------------------------------------------
 	# 3. Initialize soil moisture
@@ -111,7 +123,7 @@ calc.soilmoist <- function(p, pe, awcs, awcu, ssgo, sugo) {
 		# -------------------------
 		# 4.1 Surface Layer Dynamics
 		# -------------------------
-		sempty = awcs - ss1this # how much the sfc layer could take in
+		sempty[i] = awcs - ss1this # how much the sfc layer could take in
 		
 		if(dthis >= 0){ # if pe exceeds precip, we're going to lose soil moisture
 		  dels[i] <- -dthis # tentatively set the soil moisture to pe-pe
@@ -129,11 +141,11 @@ calc.soilmoist <- function(p, pe, awcs, awcu, ssgo, sugo) {
 				es[i] <- 0
 			}
 
-			excess = 0
+			excess[i] = 0
 		} else { # ppt exceeds pe, so our soils will get wetter (or stay at capacity)
-		  dels[i]   <- min(sempty, -dthis) # either all the precip, or as much as the soils can take in
+		  dels[i]   <- min(sempty[i], -dthis) # either all the precip, or as much as the soils can take in
 			rs[i]     <- dels[i] # surface recharge
-			excess <- -dthis - dels[i] #
+			excess[i] <- -dthis - dels[i] #
 			es[i]     <- 0			
 		} # End surface balance ifelse
 		
@@ -145,9 +157,9 @@ calc.soilmoist <- function(p, pe, awcs, awcu, ssgo, sugo) {
 		# -------------------------
 		# 4.2 Underlying Layer Dynamics
 		# -------------------------
-		uempty <- awcu - su1this # how much the under layer could take in
+		uempty[i] <- awcu - su1this # how much the under layer could take in
 		
-		if(excess<=0){ # no moisture input from above
+		if(excess[i]<=0){ # no moisture input from above
 		  eu[i] <- (dthis - es[i]) * (su1this/awc) # "loss" from the under layer
 			eu[i] <- min(eu[i], su1this)
 			
@@ -157,10 +169,10 @@ calc.soilmoist <- function(p, pe, awcs, awcu, ssgo, sugo) {
 			delu[i] = -eu[i] # change in under soil moisture			
 		} else { # There is some moisture input from above
 		  eu[i] = 0 # no loss from underlying layer
-			delu[i] = min(uempty, excess) # change is how much it could take or how much there is
+			delu[i] = min(uempty[i], excess[i]) # change is how much it could take or how much there is
 			ru[i] = delu[i] # setting the recharge
-			if(excess > uempty) { # We have more than the soil can take --> runoff!
-				ro[i] <- excess - uempty
+			if(excess[i] > uempty[i]) { # We have more than the soil can take --> runoff!
+				ro[i] <- excess[i] - uempty[i]
 			} else { # no runoff because we can take it all
 				ro[i] <- 0
 			}

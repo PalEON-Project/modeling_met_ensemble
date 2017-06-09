@@ -225,7 +225,6 @@ pdsi1 <- function(datmet, datother, metric=F, siteID, method.PE="Thornthwaite", 
   moist1 <- calc.soilmoist(p=Psyn, pe=PEsyn, awcs=awcs, awcu=awcu, ssgo=awcs, sugo=awcu)
   
   # 4.4 Extract initial conditions
-  # moist.mat <- matrix(moist1$su2, nrow=nsyn, byrow=T)
   ssgo <- matrix(moist1$ss1, nrow=nsyn, byrow=T)[nsyn,1]
   sugo <- matrix(moist1$su1, nrow=nsyn, byrow=T)[nsyn,1]
   
@@ -344,7 +343,23 @@ pdsi1 <- function(datmet, datother, metric=F, siteID, method.PE="Thornthwaite", 
   # SS2     <- matrix(soilmoist$ss2, nrow=nrow(Precip), byrow=T) # mean soil moisture
   # SU2     <- matrix(soilmoist$su2, nrow=nrow(Precip), byrow=T) # mean soil moisture
   dimnames(W)[[1]] <- row.names(Precip)
+ 
+  # # Calculating a running deficit for diagnostics
+  # d <- P.temp - PE.temp
+  # d.run <- rep(NaN, length(d))
+  # d.run[1] <- d[1]
+  # for(i in 2:length(d)){
+  #   d.run[i] <- d[i] + d.run[i-1]
+  # }
+  # d.mat <- matrix(d   , nrow=nrow(Precip), byrow=T)
+  # d.run.mat <- matrix(d.run   , nrow=nrow(Precip), byrow=T)
+  # plot(rowSums(d.run.mat), type="l")
+  # 
+  # plot(rowSums(Precip), type="l")
+  # plot(rowSums(PE), type="l")
+  # plot(rowMeans(W), type="l")
   
+   
   # 6.3 calculate effective preciptiation (precip - fraction of PE)
   S1 <- array(dim=c(dim(Precip), 10))
   for(i in 1:10){
@@ -402,15 +417,16 @@ pdsi1 <- function(datmet, datother, metric=F, siteID, method.PE="Thornthwaite", 
   #  9. Format & return output
   # ------------------------------------------
   # datout: list; length = 8
-  #  1. Z  = Z index (unitless); data frame; dim=c(nyr, 13)
-  #  2. X  = PDSI value (unitless); data frame; dim=c(nyr, 13)
-  #  3. XM = modified PDSI (unitless); data frame; dim=c(nyr, 13)
-  #  4. W  = avg soil moist (unit="in"); data frame; dim=c(nyr, 13)
-  #  5. RO = monthly runoff (unit=??); dataframe; dim=c(nyr, 13)
-  #  6. S1 = effective ppt (unit="in"); array; dim=c(nyr, 13, 10)
+  #  1. Z  = Z index (unitless); data frame; dim=c(nyr, 12)
+  #  2. X  = PDSI value (unitless); data frame; dim=c(nyr, 12)
+  #  3. XM = modified PDSI (unitless); data frame; dim=c(nyr, 12)
+  #  4. W  = avg soil moist (unit="in"); data frame; dim=c(nyr, 12)
+  #     R  = recharge
+  #  5. RO = monthly runoff (unit=??); dataframe; dim=c(nyr, 12)
+  #  6. S1 = effective ppt (unit="in"); array; dim=c(nyr, 12, 10)
   #        = max(0, p - f*pe)
-  #  7. P  = precip input; data frame; dim=c(nyr, 13)
-  #  8. T  = temperature input; data frame; dim=c(nyr, 13)
+  #  7. P  = precip input; data frame; dim=c(nyr, 12)
+  #  8. T  = temperature input; data frame; dim=c(nyr, 12)
 
   datout <- list()
   datout$Z  <- Z
@@ -419,11 +435,11 @@ pdsi1 <- function(datmet, datother, metric=F, siteID, method.PE="Thornthwaite", 
   datout$XH <- matrix(pdsi$x4, nrow=nrow(Precip), byrow=T)
   datout$PE <- PE
   datout$W  <- W
+  datout$R  <- R
   datout$RO <- RO
   datout$S1 <- S1
   datout$P  <- Precip
   datout$T  <- Temp
-  
   
   return(datout)
   # ------------------------------------------
