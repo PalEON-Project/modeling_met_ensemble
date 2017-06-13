@@ -15,7 +15,7 @@
 # Note: The input data must be a netcdf file 
 
 # daily_sums input:
-# 1. Name of netcdf file
+# 1. netcdf file; open this outside of the function to avoid complicaitons of file path
 
 # daily_sums output:
 # dataframe with met variables as columns and days as rows
@@ -55,17 +55,21 @@
 # Daily
 #------------------------------------
 
-daily_sums <- function(file_name){
+daily_sums <- function(nc_data){
   
   #Load required libraries
   library(ncdf4)
+  library(stringr)
   
   #download time data 
-  nc_data <- nc_open(file_name) #create connection to datafile
+  # nc_data <- nc_open(file_name) #create connection to datafile
   nc_time <- ncvar_get(nc = nc_data, varid = "time") #Extract time data
   
   #calculate intervals for grouping hours into days
   day_seq <- seq(1, length(nc_time), by = 24) #starting indices
+  
+  if(length(day_seq)<365 | length(day_seq)>366) stop("Not working with hourly data for full year; need to adjust script")
+  
   day_seq2 <- day_seq - 1 #ending indices
   day_seq3 <- day_seq2[2:length(day_seq2)] #omit first ending index
   day_seq4 <- append(day_seq3, day_seq3[length(day_seq3)] + 24, after = length(day_seq3)) #add last hour
@@ -74,12 +78,11 @@ daily_sums <- function(file_name){
   
   #group hours into days
   day_list <- list()
-  d = 1 #set counter
-  for (day in day_num){
-    day_name <- paste0("Day", d ) #create day name
+  # d = 1 #set counter
+  for (d in day_num){
+    day_name <- paste0("Day", str_pad(d, 3, "left", pad="0") ) #create day name
     day_name <- list(assign(day_name, nc_time[day_seq[d]:day_seq4[d]])) #assign data for day to day name
     day_list <- append(day_list, day_name, after = length(day_list)) #create list of day lists
-    d = d + 1
   }
   
   sums <- data.frame(row.names = day_num) #create empty df for data
@@ -174,6 +177,7 @@ daily_sums <- function(file_name){
     }
     
     #calculate summary stats for each day
+    # input = kg/m2/s * 60*60 = kg/m2/hr
     daily_tot <- list() 
     for (day in day_list){
       hourly_tot <- sum(day) #calculate the total for the day
