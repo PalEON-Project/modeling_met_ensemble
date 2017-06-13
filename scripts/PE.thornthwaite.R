@@ -82,6 +82,8 @@ PE.thorn <- function(Temp, yrs.calib, lat, dayz, dayfact, celcius=T){
   yrs <- as.numeric(row.names(Temp))
   yrs.leap <- which(leap_year(yrs))
   
+  if(is.null(dayz) & is.null(dayfact)) stop("Need some sort of day length adjustment input")
+  
   # Build Table for unadjusted PE for t greater than 26.5 oC, or 80 oF. Table
   # values are in mm/day, and you specify T in deg C in Thornthwaite.  
   Thot = c(4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.6, 4.6, 4.6, 
@@ -195,9 +197,10 @@ PE.thorn <- function(Temp, yrs.calib, lat, dayz, dayfact, celcius=T){
    # 
    # Note: I *think* we could do this on a daily scale by leveraging our met data 
    # by calculating day length from SWdown>0 per day and dividing by 12
-   dayfact=NULL
+   # dayfact=NULL
    if(is.null(dayfact)){
-     dayfact <- apply(dayz, 2, FUN=function(x){approx(0:50, x, min(lat, 50))$y})/30
+     dayfact1 <- apply(dayz, 2, FUN=function(x){approx(0:50, x, min(lat, 50))$y})/30
+     dayfact <- matrix(dayfact1, nrow=nrow(PE), ncol=ncol(PE), byrow=T)
    }
    # if(ncol(PE)==12){
    #   dayfact <- dayfact/30
@@ -206,7 +209,7 @@ PE.thorn <- function(Temp, yrs.calib, lat, dayz, dayfact, celcius=T){
    # Calculating adjusted PE; will do leap year adjustment in 
    # next step to keep matrices smaller
    # Will return PE in mm/mo
-   PE <- t(apply(PE, 1, FUN=function(x){x * dayfact}))
+   PE <- PE*dayfact
 
    if(ncol(PE)==12){
      PE[yrs.leap,2] <- PE[yrs.leap,2] * 28/29
