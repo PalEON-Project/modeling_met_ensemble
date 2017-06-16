@@ -547,6 +547,9 @@ for(i in 1:n){
       dat.list[[v]] <- array(dat.out.full[[v]]$sims[dat.out.full[[v]]$sims$year>=year(date.start) & dat.out.full[[v]]$sims$year<=year(date.end), paste0("X", i)], dim=c(1,1,length(day.vec)))
     }
     
+    # put precip back in (kg m-2 s-1) to keep units consistent
+    dat.list$precipf <- dat.list$precipf/(60*60*24) 
+    
     # Naming convention: [SITE]_[GCM]_day_[member]_[YEAR].nc
     nc <- nc_create(file.path(new.dir, paste0(out.name, "_", str_pad(year(date.start), 4, pad=0), ".nc")), var.list)
     for(v in 1:length(var.list)) {

@@ -329,7 +329,7 @@ model.precipf <- function(dat.train, n.beta=1000, resids=F, parallel=F, n.cores=
     
     # Precip needs to be a bit different.  We're going to calculate the fraction of precip occuring in each hour
     # we're going to estimate the probability distribution of rain occuring in a given hour
-    dat.subset$rain.prop <- dat.subset$precipf/(dat.subset$precipf.day*24)
+    dat.subset$rain.prop <- dat.subset$precipf/(dat.subset$precipf.day*length(unique(hour)))
     mod.doy <- lm(rain.prop ~ as.factor(hour)*precipf.day-1 - as.factor(hour)-precipf.day, data=dat.subset)
     
     # Generate a bunch of random coefficients that we can pull from 
