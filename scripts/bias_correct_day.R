@@ -127,32 +127,74 @@ for(v in 1:length(vars.met)){
                             ind     = dat.stack$ind
                             )
     
-            
+    # For precip, we want to adjust the total annual precipitation, and then calculate day of year adjustment &
+    # anomaly as fraction of total annual precipitation
+    if(met.var=="precipf"){
+        temp.ann <- aggregate(dat.temp0$values, by=dat.temp0[,c("year", "ind")], FUN=sum) 
+    	names(temp.ann)[3] <- "Y.tot"
+    	
+    	dat.temp0 <- merge(dat.temp0, temp.ann)
+    	dat.temp0$values <- dat.temp0$values/dat.temp0$Y.tot # our "Y" is now faction of annual precip in each day
+    }
+    
     dat.temp <- aggregate(dat.temp0$values, by=dat.temp0[,c("doy", "ind")], FUN=mean) # Note: this gets rid of years
     names(dat.temp)[3] <- "Y"
     summary(dat.temp)
     
+    
+    
     # 2. Pull the raw data that needs to be bias-corrected -- this will be called "X"
-    #    -- this gets aggregated to the climatologicla mean right off the bat
-    dat.temp2 <- aggregate(met.bias[met.bias$dataset==dat.bias  & met.bias$year>=yr.min & met.bias$year<=yr.max, c(met.var, vars.met)],
+    #    -- this gets aggregated to the climatological mean right off the bat
+    if(met.var == "precipf"){
+		met.bias2 <- met.bias[met.bias$dataset==dat.bias, ]
+		bias.ann <- aggregate(met.bias2[, c(met.var)],
+							   by=list(met.bias2[, "year"]),
+							   FUN=sum)
+		names(bias.ann) <- c("year", "X.tot")
+		summary(bias.ann)
+		
+		met.bias2 <- merge(met.bias2, bias.ann, all.x=T)
+		
+		met.bias2[,met.var] <- met.bias2[,met.var]/met.bias2$X.tot # Putting precip as fraction of the year again
+		
+		dat.temp2 <- aggregate(met.bias2[met.bias2$year>=yr.min & met.bias2$year<=yr.max, c(met.var, vars.met)],
+                           by=list(met.bias2[met.bias2$year>=yr.min & met.bias2$year<=yr.max, "doy"]),
+                           FUN=mean)
+	    names(dat.temp2) <- c("doy", "X", vars.met)
+	    summary(dat.temp2)
+    } else {
+        dat.temp2 <- aggregate(met.bias[met.bias$dataset==dat.bias  & met.bias$year>=yr.min & met.bias$year<=yr.max, c(met.var, vars.met)],
                            by=list(met.bias[met.bias$dataset==dat.bias  & met.bias$year>=yr.min & met.bias$year<=yr.max, "doy"]),
                            FUN=mean)
-    names(dat.temp2) <- c("doy", "X", vars.met)
-    summary(dat.temp2)
+		names(dat.temp2) <- c("doy", "X", vars.met)
+		summary(dat.temp2)
+    }
+
+    
     
     # 3. Merge the training & raw data together the two sets of daily means 
     #    -- this ends up pairing each daily climatological mean of the raw data with each simulation from the training data
     dat.temp <- merge(dat.temp[,], dat.temp2)
     summary(dat.temp)
+    
+    if(met.var == "precipf"){
+    	dat.ann <- merge(temp.ann, bias.ann)
+    }
         
     # 4. Getting the raw ("bias") & training data for the calibration periods so we can model the anomalies and 
     # 5. Pulling all of the raw data to predict the full bias-corrected time series
     #    -- NOTE: When possible, we're pulling covariates from the ensembles we've already done.
 
     # The data to be bias-corrected
-    raw.bias  <- met.bias[met.bias$dataset==dat.bias  & met.bias$year>=yr.min       & met.bias$year<=yr.max      , c("dataset", "year", "doy", met.var)]
-    names(raw.bias) <- c("dataset", "year", "doy", "X")
-    raw.bias <- merge(raw.bias, data.frame(ind=paste0("X", 1:n)), all=T)
+    if(met.var == "precipf"){
+        raw.bias  <- met.bias2[met.bias2$year>=yr.min & met.bias2$year<=yr.max, c("dataset", "year", "doy", met.var)]
+    	names(raw.bias) <- c("dataset", "year", "doy", "X")
+    	raw.bias <- merge(raw.bias, data.frame(ind=paste0("X", 1:n)), all=T)
+    } else {
+        raw.bias  <- met.bias[met.bias$dataset==dat.bias  & met.bias$year>=yr.min       & met.bias$year<=yr.max      , c("dataset", "year", "doy", met.var)]
+	    names(raw.bias) <- c("dataset", "year", "doy", "X")
+	    raw.bias <- merge(raw.bias, data.frame(ind=paste0("X", 1:n)), all=T)
+    }
     
     # The training data
     raw.train <- data.frame(dataset=dat.train,
@@ -161,10 +203,29 @@ for(v in 1:length(vars.met)){
                             X    = dat.stack$values,
                             ind  = dat.stack$ind
                             )
+    
+    if(met.var == "precipf"){
+    	raw.ann <- aggregate(raw.train[,"X"],
+    						 by=raw.train[,c("year", "ind")],
+    						 FUN=sum)
+    	names(raw.ann)[3] <- "X.tot"
+    	
+    	raw.train <- merge(raw.train, raw.ann, all.x=T)
+    	raw.train$X <- raw.train$X/raw.train$X.tot
+    }
+    
     # The prediction data
-    dat.pred <- data.frame(met.bias[met.bias$dataset==dat.bias, c("year", "doy")],
+    if(met.var == "precipf"){
+        dat.pred <- data.frame(met.bias2[, c("year", "doy")],
+                           X    = met.bias2[, met.var]
+                           )
+        dat.pred <- merge(dat.pred, bias.ann, all.x=T)
+
+    } else {
+        dat.pred <- data.frame(met.bias[met.bias$dataset==dat.bias, c("year", "doy")],
                            X    = met.bias[met.bias$dataset==dat.bias, met.var]
                            )
+    }
     dat.pred <- merge(dat.pred, data.frame(ind=paste0("X", 1:n)), all=T)
     
 
@@ -198,7 +259,7 @@ for(v in 1:length(vars.met)){
     
     # ---------
     # Doing the climatological bias correction
-    # In all variables expect precip, this adjusts the climatological means closest to the splice point
+    # In all variables except precip, this adjusts the climatological means closest to the splice point
     # -- because precip is relatively stochastic without a clear seasonal pattern, a zero-inflated distribution,  
     #    and low correlation with other met variables, we'll instead model potential low-frequency patterns in
     #    the data that is to be bias-corrected.  In this instance we essentially consider any daily precip to be 
@@ -207,7 +268,7 @@ for(v in 1:length(vars.met)){
     # mod.bias2 <- gam(Y ~ s(doy, by=ind, k=12) + X + ind, data=dat.temp)
     mod.bias <- gam(Y ~ s(doy, by=ind, k=6) + X + ind, data=dat.temp)
     summary(mod.bias)
-
+    
     # Saving the mean predicted & residuals
     dat.temp$pred  <- predict(mod.bias)
     dat.temp$resid <- resid(mod.bias)
@@ -221,6 +282,19 @@ for(v in 1:length(vars.met)){
     # plot(resid ~ doy, data=dat.temp); abline(h=0, col="red")
     # hist(dat.temp$resid)
     dat.pred$pred <- predict(mod.bias, newdata=dat.pred)
+    
+    # For Precip we need to bias-correct the total annual preciptiation + seasonal distribution
+    if(met.var == "precipf"){
+    	mod.ann <- lm(Y.tot ~ X.tot + ind, data=dat.ann)
+    	summary(mod.ann)
+    	
+    	dat.ann$pred.ann <- predict(mod.ann)
+    	dat.ann$resid.ann <- resid(mod.ann)
+    	
+    	dat.pred$pred.ann <- predict(mod.ann, newdata=dat.pred)
+    }
+
+
     # ---------
     
     # ---------
@@ -351,7 +425,7 @@ for(v in 1:length(vars.met)){
     }
     summary(mod.anom)
     # plot(mod.anom, pages=1)
-
+ 
     resid.anom <- resid(mod.anom)
     # ---------
     
@@ -361,14 +435,25 @@ for(v in 1:length(vars.met)){
     # Get the model coefficients
     coef.gam <- coef(mod.bias)
     coef.anom <- coef(mod.anom)
+    if(met.var == "precipf") coef.ann <- coef(mod.ann)
     
     # Generate a random distribution of betas using the covariance matrix
     Rbeta <- mvrnorm(n=n, coef(mod.bias), vcov(mod.bias))
     Rbeta.anom <- mvrnorm(n=n, coef(mod.anom), vcov(mod.anom))
+    if(met.var == "precipf") Rbeta.ann <- mvrnorm(n=n, coef(mod.ann), vcov(mod.ann))
     
     # Create the prediction matrix
     Xp <- predict(mod.bias, newdata=dat.pred, type="lpmatrix")
     Xp.anom <- predict(mod.anom, newdata=dat.pred, type="lpmatrix")
+    if(met.var == "precipf"){
+      # Linear models have a bit of a difference
+      # Xp.ann <- predict(mod.ann, newdata=dat.pred, type="lpmatrix")
+      
+      dat.pred$Y.tot <- dat.pred$pred.ann
+      mod.terms <- terms(mod.ann)
+      m <- model.frame(mod.terms, dat.pred, xlev=mod.ann$xlevels)
+      Xp.ann <- model.matrix(mod.terms, m, constrasts.arg <- mod.ann$contrasts)
+    } 
     
     # -----
     # Simulate predicted met variables & add in some residual error
@@ -394,8 +479,9 @@ for(v in 1:length(vars.met)){
     #    -- I tried this and it made my brain hurt
     # -----
     # Default option: no residual error; all error from the downscaling parameters
-    sim1a <- Xp %*% t(Rbeta)  # Climate component with uncertainty
+    sim1a <- Xp %*% t(Rbeta)  # Seasonal Climate component with uncertainty
     sim1b <- Xp.anom %*% t(Rbeta.anom) # Weather component with uncertainty
+    if(met.var == "precipf") sim1c <- Xp.ann %*% t(Rbeta.ann) # Mean annual precip uncertainty
 
     # If we're dealing with the temperatures where there's basically no anomaly, 
     # we'll get the uncertainty subtract the multi-decadal trend out of the anomalies; not a perfect solution, but it will increase teh variability
@@ -421,6 +507,9 @@ for(v in 1:length(vars.met)){
     
     # Adding climate and anomaly together
     sim1 <- sim1a + sim1b # climate + weather = met driver!!
+    
+    # If we're dealing with precip, sim1 is proportion of rain
+    if(met.var == "precipf") sim1 <- sim1*sim1c
     
     # Un-transform variables where we encounter zero-truncation issues
     # NOTE: Need to do this *before* we sum the components!! 
@@ -485,18 +574,25 @@ for(v in 1:length(vars.met)){
     }
   
     # Aggregate the data to something that's easier to deal with in graphing etc.
-    dat.pred <- aggregate(dat.pred[,c("X", "pred", "anom.raw")],
+    # If we're working with precip, lets turn everything back into numbers rather than probabilities
+    if(met.var == "precipf"){
+      dat.pred$X <- dat.pred$X * dat.pred$X.tot
+      dat.pred$pred <- dat.pred$pred * dat.pred$pred.ann
+      dat.pred$anom.raw <- dat.pred$anom.raw * dat.pred$X.tot
+    }
+    
+    dat.pred2 <- aggregate(dat.pred[,c("X", "pred", "anom.raw")],
                           by=dat.pred[,c("year", "doy")],
                           FUN=mean)
       
-    dat.pred$mean <- apply(sim.final, 1, mean)
-    dat.pred$lwr  <- apply(sim.final, 1, quantile, 0.025)
-    dat.pred$upr  <- apply(sim.final, 1, quantile, 0.975)
-    dat.pred$time <- as.Date(dat.pred$doy, origin=as.Date(paste0(dat.pred$year, "-01-01")))
-    summary(dat.pred)
+    dat.pred2$mean <- apply(sim.final, 1, mean)
+    dat.pred2$lwr  <- apply(sim.final, 1, quantile, 0.025)
+    dat.pred2$upr  <- apply(sim.final, 1, quantile, 0.975)
+    dat.pred2$time <- as.Date(dat.pred2$doy, origin=as.Date(paste0(dat.pred2$year, "-01-01")))
+    summary(dat.pred2)
     
     # Formatting the output
-    dat.sims <- data.frame(dataset=dat.bias, met=met.var, dat.pred[,c("year", "doy", "time")])
+    dat.sims <- data.frame(dataset=dat.bias, met=met.var, dat.pred2[,c("year", "doy", "time")])
     dat.sims <- cbind(dat.sims, sim.final)
     # ---------
 
@@ -506,7 +602,7 @@ for(v in 1:length(vars.met)){
     # Plotting the observed and the bias-corrected 95% CI
     png(file.path(path.out, "BiasCorrect_QAQC", paste0("BiasCorr_", met.var, "_", dat.bias, "_day.png")))
     print(
-    ggplot(data=dat.pred[dat.pred$year>=(yr.max-5) & dat.pred$year<=(yr.max-3),]) +
+    ggplot(data=dat.pred2[dat.pred2$year>=(yr.max-5) & dat.pred2$year<=(yr.max-3),]) +
       geom_ribbon(aes(x=time, ymin=lwr, ymax=upr), fill="red", alpha=0.5) +
       geom_line(aes(x=time, y=mean), color="red", size=0.5) +
       geom_line(aes(x=time, y=X), color='black', size=0.5) +
@@ -516,7 +612,7 @@ for(v in 1:length(vars.met)){
     
     # Plotting a few random series to get an idea for what an individual pattern looks liek
     stack.sims <- stack(data.frame(sim.final))
-    stack.sims[,c("year", "doy", "time")] <- dat.pred[,c("year", "doy", "time")]
+    stack.sims[,c("year", "doy", "time")] <- dat.pred2[,c("year", "doy", "time")]
 
     png(file.path(path.out, "BiasCorrect_QAQC", paste0("BiasCorr_", met.var, "_", dat.bias, "_day2.png")))
     print(
@@ -527,8 +623,8 @@ for(v in 1:length(vars.met)){
     dev.off()
 
     # Looking tat the annual means over the whole time series to make sure we're getting decent interannual variability
-    dat.yr <- aggregate(dat.pred[,c("X", "mean", "lwr", "upr")],
-                        by=list(dat.pred$year),
+    dat.yr <- aggregate(dat.pred2[,c("X", "mean", "lwr", "upr")],
+                        by=list(dat.pred2$year),
                         FUN=mean)
     names(dat.yr)[1] <- "year"
     
@@ -547,7 +643,7 @@ for(v in 1:length(vars.met)){
     # Storing the output
     # --------
     cols.bind <- c("year", "doy", "X", "anom.raw", "mean", "lwr", "upr", "time")
-    dat.out[[met.var]]$ci   <- rbind(dat.out[[met.var]]$ci, data.frame(dataset=dat.bias, met=met.var, dat.pred[,c("year", "doy", "X", "anom.raw", "mean", "lwr", "upr", "time")]))
+    dat.out[[met.var]]$ci   <- rbind(dat.out[[met.var]]$ci, data.frame(dataset=dat.bias, met=met.var, dat.pred2[,c("year", "doy", "X", "anom.raw", "mean", "lwr", "upr", "time")]))
     dat.out[[met.var]]$sims <- rbind(dat.out[[met.var]]$sims, data.frame(dat.sims))
     # --------
     # --------------------
@@ -555,4 +651,4 @@ for(v in 1:length(vars.met)){
 } # end variable loop
 dat.out$met.bias <- met.bias
 return(dat.out)
-}
+} # end function
