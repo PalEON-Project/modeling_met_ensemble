@@ -158,11 +158,11 @@ pdsi1 <- function(datmet, datother, metric=F, siteID, method.PE="Thornthwaite", 
   nyrs <- length(yrs)
   yrs.calib <- datother$yrs.calib
   rows.calib <- which(yrs>=yrs.calib[1] & yrs<=yrs.calib[2])
-  lat <- datother$lat
-  awcs <- datother$watcap$awcs
-  awcu <- datother$watcap$awcu
-  dayz <- datother$dayz
-  dayl <- datother$daylength
+  lat     <- datother$lat
+  awcs    <- datother$watcap$awcs
+  awcu    <- datother$watcap$awcu
+  dayz    <- datother$dayz
+  dayfact <- datother$dayfact
 
   # Convert Precip from mm to inches
   # Do unit conversions on moisture if necessary
@@ -191,7 +191,7 @@ pdsi1 <- function(datmet, datother, metric=F, siteID, method.PE="Thornthwaite", 
     if(ncol(Temp)==12) timestep = "monthly"
     # dayfact = calc.dayfact(timestep=timestep, daylength=dayl, lat=lat, dayz=dayz)
     # dayfact = calc.dayfact(timestep="daily", daylength=dayl, lat=lat, dayz=dayz)
-    PE = PE.thorn(Temp, yrs.calib, lat, dayz=dayz, dayfact=NULL, celcius=F)
+    PE = PE.thorn(Temp, yrs.calib, lat, dayz=dayz, dayfact=dayfact, celcius=F)
   }
   row.names(PE) <- row.names(Temp)
   # ------------------------------------------
@@ -388,6 +388,7 @@ pdsi1 <- function(datmet, datother, metric=F, siteID, method.PE="Thornthwaite", 
   # ------------------------------------------
   # Get the mean absolute departures for each timestep of the calibration period
   Dbar <- apply(abs(d[rows.calib,]), 2, mean)
+  Dbar[Dbar==0] <- 1e-6 # replace 0 with a tiny, tiny number
   
   # 7.1 Compute K' for each time step (eqn 26)
   Kprime <- 1.5*log10((((PEbar+Rbar+RObar)/(Pbar+LOSSbar)) + 2.80) / Dbar) + 0.50

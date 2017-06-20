@@ -12,6 +12,11 @@
 # Script to take hourly ensemble members and aggregate them to monthly time step
 # for PDSI calculation.  This script can/should be adapted to save daily time step
 # at a later point in time if any models or data users want daily data.
+# 
+# Return & Save 
+# 1. Temperature in Kelvin
+# 2. Precip in mm/mo
+# 3. Daylength in hours
 # -----------------------------------
 
 
@@ -34,7 +39,7 @@ if(!dir.exists(path.out)) dir.create(path.out)
 
 # Getting a list of what GCMs we have ensembles for
 gcms <- dir(path.met)
-gcms <- gcms[!gcms %in% c("subday_models", "monthly_all")]
+gcms <- gcms[!gcms %in% c("subday_models", "monthly_all", "monthly test")]
 # -----------------------------------
 
 # -----------------------------------
@@ -47,7 +52,7 @@ source("met_summaries.R")
 
 # getting an estimate of how many files assuming we have even effort across GCMs
 ens.gcm <- dir(file.path(path.met, gcms[1], "1hr"))
-ens.gcm <- ens.gcm[!ens.gcm %in% c("subdaily_qaqc")] # Make sure to omit this folder
+ens.gcm <- ens.gcm[!ens.gcm %in% c("subdaily_qaqc.")] # Make sure to omit this folder
 files.ens <- dir(file.path(path.met, gcms[1], "1hr", ens.gcm[1]))
 
 pb <- txtProgressBar(min = 0, max = length(gcms)*length(ens.gcm)*length(files.ens), style = 3)
@@ -56,7 +61,7 @@ for(GCM in gcms){
   ens.gcm <- dir(file.path(path.met, GCM, "1hr"))
   ens.gcm <- ens.gcm[!ens.gcm %in% c("subdaily_qaqc")] # Make sure to omit this folder
   for(ENS in ens.gcm){
-    files.ens <- dir(file.path(path.met, GCM, "1hr", ENS))
+    files.ens <- dir(file.path(path.met, GCM, "1hr", ENS), ".nc")
     
 
     for(fnow in unique(files.ens)){
@@ -95,7 +100,7 @@ for(GCM in gcms){
     } else {
       tair  [,ENS] <- dat.ens$tair_mean
       precip[,ENS] <- dat.ens$precip_tot
-      daylen[,ENS] <- dat.ens$daylen
+      daylen[,ENS] <- dat.ens$hrs_sun
     }
       
     
