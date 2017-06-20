@@ -178,7 +178,14 @@ for(v in 1:length(vars.met)){
     summary(dat.temp)
     
     if(met.var == "precipf"){
-    	dat.ann <- merge(temp.ann, bias.ann)
+      # If we don't have overlapping time periods for the annual model, need to just pari things together
+      if(max(bias.ann$year)<=min(temp.ann$year)){
+        bias.ann2 <- bias.ann[bias.ann$year >= yr.min & bias.ann$year <= yr.max,]
+        dat.ann <- temp.ann
+        dat.ann$X.tot <- bias.ann2$X.tot
+      } else {
+        dat.ann <- merge(temp.ann, bias.ann, all=T)
+      }
     }
         
     # 4. Getting the raw ("bias") & training data for the calibration periods so we can model the anomalies and 
