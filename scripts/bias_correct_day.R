@@ -346,6 +346,8 @@ for(v in 1:length(vars.met)){
       raw.train[,paste0(j, ".anom")] <- resid(anom.train2)
       raw.bias[,paste0(j, ".anom")] <- resid(anom.bias2)
       dat.pred[,paste0(j, ".anom")] <- dat.pred$Q - predict(anom.bias2, newdata=dat.pred)
+      
+      rm(anom.train2, anom.bias2)
     }
 
     # CRUNCEP has a few variables that assume a constant pattern from 1901-1950; 
@@ -588,18 +590,18 @@ for(v in 1:length(vars.met)){
       dat.pred$anom.raw <- dat.pred$anom.raw * dat.pred$X.tot
     }
     
-    dat.pred2 <- aggregate(dat.pred[,c("X", "pred", "anom.raw")],
+    dat.pred <- aggregate(dat.pred[,c("X", "pred", "anom.raw")],
                           by=dat.pred[,c("year", "doy")],
                           FUN=mean)
       
-    dat.pred2$mean <- apply(sim.final, 1, mean)
-    dat.pred2$lwr  <- apply(sim.final, 1, quantile, 0.025)
-    dat.pred2$upr  <- apply(sim.final, 1, quantile, 0.975)
-    dat.pred2$time <- as.Date(dat.pred2$doy, origin=as.Date(paste0(dat.pred2$year, "-01-01")))
-    summary(dat.pred2)
+    dat.pred$mean <- apply(sim.final, 1, mean)
+    dat.pred$lwr  <- apply(sim.final, 1, quantile, 0.025)
+    dat.pred$upr  <- apply(sim.final, 1, quantile, 0.975)
+    dat.pred$time <- as.Date(dat.pred$doy, origin=as.Date(paste0(dat.pred$year, "-01-01")))
+    summary(dat.pred)
     
     # Formatting the output
-    dat.sims <- data.frame(dataset=dat.bias, met=met.var, dat.pred2[,c("year", "doy", "time")])
+    dat.sims <- data.frame(dataset=dat.bias, met=met.var, dat.pred[,c("year", "doy", "time")])
     dat.sims <- cbind(dat.sims, sim.final)
     # ---------
 
@@ -609,7 +611,7 @@ for(v in 1:length(vars.met)){
     # Plotting the observed and the bias-corrected 95% CI
     png(file.path(path.out, "BiasCorrect_QAQC", paste0("BiasCorr_", met.var, "_", dat.bias, "_day.png")))
     print(
-    ggplot(data=dat.pred2[dat.pred2$year>=(yr.max-5) & dat.pred2$year<=(yr.max-3),]) +
+    ggplot(data=dat.pred[dat.pred$year>=(yr.max-5) & dat.pred$year<=(yr.max-3),]) +
       geom_ribbon(aes(x=time, ymin=lwr, ymax=upr), fill="red", alpha=0.5) +
       geom_line(aes(x=time, y=mean), color="red", size=0.5) +
       geom_line(aes(x=time, y=X), color='black', size=0.5) +
@@ -619,7 +621,7 @@ for(v in 1:length(vars.met)){
     
     # Plotting a few random series to get an idea for what an individual pattern looks liek
     stack.sims <- stack(data.frame(sim.final))
-    stack.sims[,c("year", "doy", "time")] <- dat.pred2[,c("year", "doy", "time")]
+    stack.sims[,c("year", "doy", "time")] <- dat.pred[,c("year", "doy", "time")]
 
     png(file.path(path.out, "BiasCorrect_QAQC", paste0("BiasCorr_", met.var, "_", dat.bias, "_day2.png")))
     print(
@@ -630,8 +632,8 @@ for(v in 1:length(vars.met)){
     dev.off()
 
     # Looking tat the annual means over the whole time series to make sure we're getting decent interannual variability
-    dat.yr <- aggregate(dat.pred2[,c("X", "mean", "lwr", "upr")],
-                        by=list(dat.pred2$year),
+    dat.yr <- aggregate(dat.pred[,c("X", "mean", "lwr", "upr")],
+                        by=list(dat.pred$year),
                         FUN=mean)
     names(dat.yr)[1] <- "year"
     
@@ -646,11 +648,13 @@ for(v in 1:length(vars.met)){
     dev.off()
     # --------
     
+    rm(mod.bias, anom.train, anom.bias, mod.anom)
+    
     # --------
     # Storing the output
     # --------
     cols.bind <- c("year", "doy", "X", "anom.raw", "mean", "lwr", "upr", "time")
-    dat.out[[met.var]]$ci   <- rbind(dat.out[[met.var]]$ci, data.frame(dataset=dat.bias, met=met.var, dat.pred2[,c("year", "doy", "X", "anom.raw", "mean", "lwr", "upr", "time")]))
+    dat.out[[met.var]]$ci   <- rbind(dat.out[[met.var]]$ci, data.frame(dataset=dat.bias, met=met.var, dat.pred[,c("year", "doy", "X", "anom.raw", "mean", "lwr", "upr", "time")]))
     dat.out[[met.var]]$sims <- rbind(dat.out[[met.var]]$sims, data.frame(dat.sims))
     # --------
     # --------------------
