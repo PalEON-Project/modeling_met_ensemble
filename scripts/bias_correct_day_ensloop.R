@@ -186,6 +186,7 @@ for(v in 1:length(vars.met)){
       } else {
         dat.ann <- merge(temp.ann, bias.ann, all=T)
       }
+      dat.ann <- dat.ann[complete.cases(dat.ann),]
     }
         
     # 4. Getting the raw ("bias") & training data for the calibration periods so we can model the anomalies and 
