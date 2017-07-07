@@ -505,7 +505,7 @@ for(v in 1:length(vars.met)){
 		# we'll get the uncertainty subtract the multi-decadal trend out of the anomalies; not a perfect solution, but it will increase teh variability
 		if(!(dat.bias %in% empirical) & (met.var %in% c("tmax", "tmin"))){
 		  sim1b.norm <- apply(sim1b, 1, mean) 
-		  sim1b <- sim1b - sim1b.norm + as.vector(dat.pred[dat.pred$ind,"anom.raw"]) # Get the range around that medium-frequency trend 
+		  sim1b <- sim1b - sim1b.norm + as.vector(dat.pred[dat.pred$ind==ind,"anom.raw"]) # Get the range around that medium-frequency trend 
 		}
 	
 	
