@@ -341,7 +341,7 @@ for(v in 1:length(vars.met)){
       dat.pred$Q <- dat.pred[,j]
       
       anom.train2  <- gam(Q ~ s(doy, k=6, by=ind) + ind, data=raw.train) # Need to account for the climatic differences in the simulations 
-      anom.bias2  <- gam(Q ~ s(doy, k=6, by=ind) + ind, data=raw.bias) # Note: the "bias" dataset has not corrected yet, so there should only be 1 value
+      anom.bias2  <- gam(Q ~ s(doy, k=6, by=ind) + ind, data=raw.bias) # Note: the "bias" dataset has not been corrected yet, so there should only be 1 value
       
       raw.train[,paste0(j, ".anom")] <- resid(anom.train2)
       raw.bias[,paste0(j, ".anom")] <- resid(anom.bias2)
@@ -428,7 +428,7 @@ for(v in 1:length(vars.met)){
       } else {
         # If we haven't already done another met product, our best shot is to just model the existing variance 
         # and preserve as much of the low-frequency cylce as possible
-        # THis should be tair, tmax, tmin, qair, press, wind
+        # THis should be qair, press, wind
         mod.anom <- gam(anom.raw ~ s(doy, k=6, by=ind) + s(year, k=k, by=ind) +ind*(tmax.anom*tmin.anom)-1, data=dat.pred)
       }
     }
@@ -648,7 +648,7 @@ for(v in 1:length(vars.met)){
     dev.off()
     # --------
     
-    rm(mod.bias, anom.train, anom.bias, mod.anom)
+    rm(mod.bias, anom.train, anom.bias, mod.anom, Xp, Xp.anom, sim1, sim1a, sim1b)
     
     # --------
     # Storing the output
