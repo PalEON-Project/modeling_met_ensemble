@@ -50,7 +50,7 @@ wd.base <- "~/Dropbox/PalEON_CR/met_ensemble/"
 setwd(wd.base)
 
 # mod.out <- "/projectnb/dietzelab/paleon/met_ensemble/data/met_ensembles/HARVARD/subday_models"
-mod.out <- "~/Desktop/met_ensembles/HARVARD/subday_models"
+path.out <- "~/Desktop/met_ensembles/HARVARD/subday_models"
 # path.out <- "~/Desktop/Research/met_ensembles/data/met_ensembles/VCM/subday_models2"
 
 fig.dir <- file.path(mod.out, "model_qaqc")
@@ -68,7 +68,7 @@ if(!dir.exists(fig.dir)) dir.create(fig.dir, recursive = T)
 # ----------
 {
   # Load the data
-  dat.train <- read.csv("../data/paleon_sites/HARVARD/NLDAS_1980-2015.csv")
+  dat.train <- read.csv("data/paleon_sites/HARVARD/NLDAS_1980-2015.csv")
   # dat.train <- read.csv("data/paleon_sites/VCM/Ameriflux_2007-2014.csv")
   
   # Trying to get Andy 30-minute data
