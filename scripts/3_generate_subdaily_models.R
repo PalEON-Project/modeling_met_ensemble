@@ -53,9 +53,9 @@ setwd(wd.base)
 path.out <- "~/Desktop/met_ensembles/HARVARD/subday_models"
 # path.out <- "~/Desktop/Research/met_ensembles/data/met_ensembles/VCM/subday_models2"
 
-fig.dir <- file.path(mod.out, "model_qaqc")
+fig.dir <- file.path(path.out, "model_qaqc")
 
-if(!dir.exists(mod.out)) dir.create(mod.out, recursive = T)
+if(!dir.exists(mod.out)) dir.create(path.out, recursive = T)
 if(!dir.exists(fig.dir)) dir.create(fig.dir, recursive = T)
 # ------------------------------------------
 
