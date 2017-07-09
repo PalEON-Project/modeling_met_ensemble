@@ -52,8 +52,8 @@ library(parallel)
 # library(tictoc)
 rm(list=ls())
 
-wd.base <- "/projectnb/dietzelab/paleon/met_ensemble/"
-# wd.base <- "~/Desktop/Research/PalEON_CR/met_ensemble/"
+# wd.base <- "/projectnb/dietzelab/paleon/met_ensemble/"
+wd.base <- "~/Dropbox/PalEON_CR/met_ensemble/"
 setwd(wd.base)
 
 # Load the scripts that do all the heavy lifting
@@ -61,10 +61,10 @@ source("scripts/temporal_downscale.R")
 source("scripts/temporal_downscale_functions.R")
 
 
-dat.base <- "/projectnb/dietzelab/paleon/met_ensemble/data/met_ensembles/HARVARD/"
+# dat.base <- "/projectnb/dietzelab/paleon/met_ensemble/data/met_ensembles/HARVARD/"
 # dat.base <- "~/Desktop/met_ensembles/HARVARD/"
 # dat.base <- "~/Desktop/met_bias_day/data/met_ensembles/HARVARD/"
-
+dat.base <- "~/Desktop/Research/met_ensembles/data/met_ensembles/HARVARD/"
 dat.train <- read.csv(file.path(wd.base, "data/paleon_sites/HARVARD/NLDAS_1980-2015.csv"))
 
 # Hard-coding numbers for Harvard

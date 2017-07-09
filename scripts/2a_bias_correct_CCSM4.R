@@ -70,7 +70,7 @@ site.lon=-72.18
 # GCM.list=c("MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1", "CCSM4")
 GCM.list=c("CCSM4")
 LDAS="NLDAS"
-ens=1:10
+ens=11:20
 n=length(ens)
 # n=10 # Number of ensemble members
 

@@ -309,8 +309,6 @@ for(v in 1:length(vars.met)){
 		
 			dat.pred[dat.pred$ind==ind,"pred.ann"] <- predict(mod.ann, newdata=dat.pred[dat.pred$ind==ind,])
 		}
-
-
 		# ---------
 	
 		# ---------
