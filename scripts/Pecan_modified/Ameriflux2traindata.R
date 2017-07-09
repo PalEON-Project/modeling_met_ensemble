@@ -164,18 +164,16 @@ Ameriflux2traindata <- function(filepath, Ameriflux, site.name, outfile, start_d
   # creating the columns required for downscaling functions
   if(CF.names==TRUE){
     # Just reorder the columns
-    dat.train <- dat.train[,c("date", "year", "doy","hour", "air_temperature", "precipitation_flux", "air_temperature_max", "air_temperature_min",
+    dat.train <- dat.train[,c("dataset", "date", "year", "doy","hour", "air_temperature", "precipitation_flux",
                               "surface_downwelling_shortwave_flux_in_air", "surface_downwelling_longwave_flux_in_air","air_pressure",
                               "specific_humidity", "eastward_wind", "northward_wind", "wind_speed")]
   } else {
     # Re-order the column, plus use the codes Christy uses
-    dat.train <- dat.train[,c("date", "year", "doy","hour", "air_temperature", "precipitation_flux", "air_temperature_max", "air_temperature_min",
+    dat.train <- dat.train[,c("dataset", "date", "year", "doy","hour", "air_temperature", "precipitation_flux",
                               "surface_downwelling_shortwave_flux_in_air", "surface_downwelling_longwave_flux_in_air","air_pressure",
                               "specific_humidity", "eastward_wind", "northward_wind", "wind_speed")]
     names(dat.train) <- recode(names(dat.train), "'air_temperature'='tair';
                                                   'precipitation_flux'='precipf';
-                                                  'air_temperature_max'='tmax';
-                                                  'air_temperature_min'='tmin';
                                                   'surface_downwelling_shortwave_flux_in_air'='swdown';
                                                   'surface_downwelling_longwave_flux_in_air'='lwdown';
                                                   'air_pressure'='press';

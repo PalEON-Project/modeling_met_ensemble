@@ -41,13 +41,18 @@
 library(ncdf4)
 library(mgcv)
 library(MASS)
-# library(lubridate)
+library(lubridate)
 library(ggplot2)
 # library(tictoc)
 rm(list=ls())
 
-#mod.out <- "/projectnb/dietzelab/paleon/met_ensemble/data/met_ensembles/HARVARD/subday_models"
-mod.out <- "~/Desktop/Research/met_ensembles/data/met_ensembles/HARVARD/subday_models"
+wd.base <- "~/Dropbox/PalEON_CR/met_ensemble/"
+setwd(wd.base)
+
+# mod.out <- "/projectnb/dietzelab/paleon/met_ensemble/data/met_ensembles/HARVARD/subday_models"
+mod.out <- "~/Desktop/met_ensembles/HARVARD/subday_models"
+# path.out <- "~/Desktop/Research/met_ensembles/data/met_ensembles/VCM/subday_models2"
+
 fig.dir <- file.path(mod.out, "model_qaqc")
 
 if(!dir.exists(mod.out)) dir.create(mod.out, recursive = T)
@@ -64,30 +69,49 @@ if(!dir.exists(fig.dir)) dir.create(fig.dir, recursive = T)
 {
   # Load the data
   dat.train <- read.csv("../data/paleon_sites/HARVARD/NLDAS_1980-2015.csv")
+  # dat.train <- read.csv("data/paleon_sites/VCM/Ameriflux_2007-2014.csv")
+  
+  # Trying to get Andy 30-minute data
+  # dat.train$minute <- minute(dat.train$date)
+  # dat.train$hour <- dat.train$hour + minute(dat.train$date)/60
+  # dat.train[1:50, c("date", "year", "doy", "hour", "minute", "hour2")]
   # dat.train$doy <- as.ordered(dat.train$doy)
+  
+  # aggregate to hour
+  dat.train <- aggregate(dat.train[,c("tair", "precipf", "swdown", "lwdown", "press", "qair", "uas", "vas", "wind")],
+                         by=dat.train[,c("year", "doy", "hour")],
+                         FUN=mean)
+  
+  summary(dat.train)
   
   # order the data just o make life easier
   dat.train <- dat.train[order(dat.train$year, dat.train$doy, dat.train$hour, decreasing=T),]
-  dat.train[1:25,]
+  # dat.train[1:25,]
+  # dat.train[1:50, c("date", "year", "doy", "hour", "minute", "hour2")]
   head(dat.train)
+  dat.train$date <- as.POSIXct(paste(dat.train$year, dat.train$doy, dat.train$hour, sep="-"), "%Y-%j-%H", tz="GMT")
   summary(dat.train)
   
   # Add various types of time stamps to make life easier
-  dat.train$date <- strptime(paste(dat.train$year, dat.train$doy+1, dat.train$hour, sep="-"), "%Y-%j-%H", tz="GMT")
-  dat.train$time.hr <- as.numeric(difftime(dat.train$date, "2016-01-01", tz="GMT", units="hour"))
-  dat.train$time.day <- as.numeric(difftime(dat.train$date, "2016-01-01", tz="GMT", units="day"))+1/24
-  dat.train$time.day2 <- as.integer(dat.train$time.day)-1
+  # dat.train$date <- strptime(paste(dat.train$year, dat.train$doy+1, dat.train$hour, sep="-"), "%Y-%j-%H", tz="GMT")
+  dat.train$time.hr <- as.numeric(difftime(dat.train$date, "2015-01-01", tz="GMT", units="hour"))
+  dat.train$time.day <- as.numeric(difftime(dat.train$date, "2015-01-01", tz="GMT", units="day"))
+  dat.train$time.day2 <- as.integer(dat.train$time.day+1/(24*2))-1 # Offset by half a time step to get time stamps to line up
   dat.train <- dat.train[order(dat.train$time.hr, decreasing=T),]
-  # dat.train[1:25,]
-  # head(dat.train)
+  
+  # summary(dat.train[is.na(dat.train$time.hr),])
+  summary(dat.train)
+  dat.train[1:50,c("date", "year", "doy", "hour", "time.hr", "time.day", "time.day2")]
+  dat.train[1:100,c("date", "year", "doy", "hour", "time.hr", "time.day", "time.day2")]
+  head(dat.train)
   
   # For some reason certain days are getting an extra hour, so make sure it lines up right
-  for(i in max(dat.train$time.day2):min(dat.train$time.day2)){
-    rows.now <- which(dat.train$time.day2==i)
-    if(length(rows.now)<=24) next
-    
-    dat.train[rows.now[25],"time.day2"] <- i-1
-  }
+  # for(i in max(dat.train$time.day2):min(dat.train$time.day2)){
+  #   rows.now <- which(dat.train$time.day2==i)
+  #   if(length(rows.now)<=48) next
+  #   
+  #   dat.train[rows.now[25],"time.day2"] <- i-1
+  # }
 }
 # ----------
 
@@ -181,7 +205,7 @@ if(!dir.exists(fig.dir)) dir.create(fig.dir, recursive = T)
 # ------------------------------------------
 # 2 Train the models for each variable and save them to be read in as needed
 # ------------------------------------------
-source("temporal_downscale_functions.R")
+source("scripts/temporal_downscale_functions.R")
 
 # ---------
 # 2.1 Generating all the daily models, save the output as .Rdata files, then clear memory
@@ -194,47 +218,19 @@ resids=F
 parallel=F
 n.cores=4
 
-mod.tair.doy    <- model.tair   (dat.train=dat.train[,], resids=resids, parallel=parallel, n.cores=n.cores, n.beta=n.beta)
-graph.resids(var="tair", dat.train=dat.train, model.var=mod.tair.doy, fig.dir=fig.dir)
-save.betas(model.out=mod.tair.doy, betas="betas", outfile=file.path(mod.out, "betas_tair.nc"))
-save.model(model.out=mod.tair.doy, model="model", outfile=file.path(mod.out, "model_tair.Rdata"))
-rm(mod.tair.doy)
+model.tair   (dat.train=dat.train[,], path.out=file.path(path.out, "tair"   ), resids=resids, parallel=parallel, n.cores=n.cores, n.beta=n.beta, day.window=5)
 
-mod.precipf.doy <- model.precipf(dat.train=dat.train[,], resids=resids, parallel=parallel, n.cores=n.cores, n.beta=n.beta)
-graph.resids(var="precipf", dat.train=dat.train, model.var=mod.precipf.doy, fig.dir=fig.dir)
-save.betas(model.out=mod.precipf.doy, betas="betas", outfile=file.path(mod.out, "betas_precipf.nc"))
-save.model(model.out=mod.precipf.doy, model="model", outfile=file.path(mod.out, "model_precipf.Rdata"))
-rm(mod.precipf.doy)
+model.precipf(dat.train=dat.train[,], path.out=file.path(path.out, "precipf"), resids=resids, parallel=parallel, n.cores=n.cores, n.beta=n.beta, day.window=5)
 
-mod.swdown.doy  <- model.swdown (dat.train=dat.train[,], resids=resids, parallel=parallel, n.cores=n.cores, n.beta=n.beta)
-graph.resids(var="swdown", dat.train=dat.train, model.var=mod.swdown.doy, fig.dir=fig.dir)
-save.betas(model.out=mod.swdown.doy, betas="betas", outfile=file.path(mod.out, "betas_swdown.nc"))
-save.model(model.out=mod.swdown.doy, model="model", outfile=file.path(mod.out, "model_swdown.Rdata"))
-rm(mod.swdown.doy)
+model.swdown (dat.train=dat.train[,], path.out=file.path(path.out, "swdown" ), resids=resids, parallel=parallel, n.cores=n.cores, n.beta=n.beta, day.window=5)
 
-mod.lwdown.doy  <- model.lwdown (dat.train=dat.train[,], resids=resids, parallel=parallel, n.cores=n.cores, n.beta=n.beta)
-graph.resids(var="lwdown", dat.train=dat.train, model.var=mod.lwdown.doy, fig.dir=fig.dir)
-save.betas(model.out=mod.lwdown.doy, betas="betas", outfile=file.path(mod.out, "betas_lwdown.nc"))
-save.model(model.out=mod.lwdown.doy, model="model", outfile=file.path(mod.out, "model_lwdown.Rdata"))
-rm(mod.lwdown.doy)
+model.lwdown (dat.train=dat.train[,], path.out=file.path(path.out, "lwdown" ), resids=resids, parallel=parallel, n.cores=n.cores, n.beta=n.beta, day.window=5)
 
-mod.press.doy   <- model.press  (dat.train=dat.train[,], resids=resids, parallel=parallel, n.cores=n.cores, n.beta=n.beta)
-graph.resids(var="press", dat.train=dat.train, model.var=mod.press.doy, fig.dir=fig.dir)
-save.betas(model.out=mod.press.doy, betas="betas", outfile=file.path(mod.out, "betas_press.nc"))
-save.model(model.out=mod.press.doy, model="model", outfile=file.path(mod.out, "model_press.Rdata"))
-rm(mod.press.doy)
+model.press  (dat.train=dat.train[,], path.out=file.path(path.out, "press"  ), resids=resids, parallel=parallel, n.cores=n.cores, n.beta=n.beta, day.window=5)
 
-mod.qair.doy    <- model.qair   (dat.train=dat.train[,], resids=resids, parallel=parallel, n.cores=n.cores, n.beta=n.beta)
-graph.resids(var="qair", dat.train=dat.train, model.var=mod.qair.doy, fig.dir=fig.dir)
-save.betas(model.out=mod.qair.doy, betas="betas", outfile=file.path(mod.out, "betas_qair.nc"))
-save.model(model.out=mod.qair.doy, model="model", outfile=file.path(mod.out, "model_qair.Rdata"))
-rm(mod.qair.doy)
+model.qair   (dat.train=dat.train[,], path.out=file.path(path.out, "qair"   ), resids=resids, parallel=parallel, n.cores=n.cores, n.beta=n.beta, day.window=5)
 
-mod.wind.doy    <- model.wind   (dat.train=dat.train[,], resids=resids, parallel=parallel, n.cores=n.cores, n.beta=n.beta)
-graph.resids(var="wind", dat.train=dat.train, model.var=mod.wind.doy, fig.dir=fig.dir)
-save.betas(model.out=mod.wind.doy, betas="betas", outfile=file.path(mod.out, "betas_wind.nc"))
-save.model(model.out=mod.wind.doy, model="model", outfile=file.path(mod.out, "model_wind.Rdata"))
-rm(mod.wind.doy)
+model.wind   (dat.train=dat.train[,], path.out=file.path(path.out, "wind"   ), resids=resids, parallel=parallel, n.cores=n.cores, n.beta=n.beta, day.window=5)
 # ---------
 
 # ------------------------------------------
