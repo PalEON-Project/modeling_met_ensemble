@@ -60,7 +60,7 @@ library(lubridate)
 # wd.base <- "~/Desktop/Research/PalEON_CR/met_ensemble"
 # out.base <- "~/Desktop/met_bias_day/"
 wd.base <- "~/Dropbox/PalEON_CR/met_ensemble/"
-out.base <- "~/Desktop/met_ensembles/"
+out.base <- "~/Desktop/Research/met_ensembles/"
 # wd.base <- "/projectnb/dietzelab/paleon/met_ensemble"
 # out.base <- "/projectnb/dietzelab/paleon/met_ensemble"
 setwd(wd.base)

@@ -52,7 +52,7 @@ library(parallel)
 # library(tictoc)
 rm(list=ls())
 
-wd.base <- "~/Dropbox/PalEON_CR/met_ensemble/"
+wd.base <- "~/met_ensemble/"
 # wd.base <- "~/Desktop/Research/PalEON_CR/met_ensemble/"
 setwd(wd.base)
 
@@ -63,7 +63,7 @@ source("scripts/temporal_downscale_functions.R")
 
 # dat.base <- "/projectnb/dietzelab/paleon/met_ensemble/data/met_ensembles/HARVARD/"
 # dat.base <- "~/Desktop/Research/met_ensembles/data/met_ensembles/VCM/"
-dat.base <- "~/Desktop/met_bias_day/data/met_ensembles/HARVARD/"
+dat.base <- "~/met_ensemble/data/met_ensembles/HARVARD/"
 
 dat.train <- read.csv(file.path(wd.base, "data/paleon_sites/HARVARD/NLDAS_1980-2015.csv"))
 # dat.train <- read.csv(file.path(wd.base, "data/paleon_sites/VCM/Ameriflux_2007-2014.csv"))
@@ -142,7 +142,7 @@ for(GCM in GCM.list){
   # load(file.path(path.gcm, dat.day)) # Loads dat.out.full
 
   # Set & create the output directory
-  path.out <- file.path(dat.base, paste0(timestep, "hr"))
+  path.out <- file.path(dat.base, GCM, paste0(timestep, "hr"))
   if(!dir.exists(path.out)) dir.create(path.out, recursive=T)
   
   # -----------------------------------
