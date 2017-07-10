@@ -50,12 +50,13 @@ wd.base <- "~/Dropbox/PalEON_CR/met_ensemble/"
 setwd(wd.base)
 
 # mod.out <- "/projectnb/dietzelab/paleon/met_ensemble/data/met_ensembles/HARVARD/subday_models"
-path.out <- "~/Desktop/met_ensembles/HARVARD/subday_models"
+# path.out <- "~/Desktop/met_ensembles/HARVARD/subday_models"
+path.out <- "~/Desktop/Research/met_ensembles/data/met_ensembles/HARVARD/"
 # path.out <- "~/Desktop/Research/met_ensembles/data/met_ensembles/VCM/subday_models2"
 
 fig.dir <- file.path(path.out, "model_qaqc")
 
-if(!dir.exists(mod.out)) dir.create(path.out, recursive = T)
+if(!dir.exists(path.out)) dir.create(path.out, recursive = T)
 if(!dir.exists(fig.dir)) dir.create(fig.dir, recursive = T)
 # ------------------------------------------
 
@@ -213,7 +214,7 @@ source("scripts/temporal_downscale_functions.R")
 # Note: To avoid propogating too much wonkiness in hourly data, any co-variates are at the daily level
 # ---------
 # Settings for the calculations
-n.beta=1000
+n.beta=5000
 resids=F
 parallel=F
 n.cores=4
