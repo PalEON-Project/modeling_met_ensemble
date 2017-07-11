@@ -269,7 +269,7 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.list=NULL, lags.in
     # Load the meta info for the betas
     betas.lwdown <- nc_open(file.path(path.model,"lwdown", "betas_lwdown_1.nc"))
     n.beta <- nrow(ncvar_get(betas.lwdown, "1"))
-    nc_close(n.beta)
+    nc_close(betas.lwdown)
     
     dat.sim[["lwdown"]] <- data.frame(array(dim=c(nrow(dat.mod), n.ens)))
 
@@ -366,7 +366,7 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.list=NULL, lags.in
       dat.temp <- merge(dat.temp, sim.lag, all.x=T)
       
       # Load the saved model
-      load(file.path(path.model, "press", paste0("model_press", day.now, ".Rdata")))
+      load(file.path(path.model, "press", paste0("model_press_", day.now, ".Rdata")))
       mod.press.doy <- mod.save
       rm(mod.save)
       
