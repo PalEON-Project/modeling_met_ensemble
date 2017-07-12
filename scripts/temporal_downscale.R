@@ -298,12 +298,12 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.list=NULL, lags.in
       # Load the saved model
       load(file.path(path.model, "lwdown", paste0("model_lwdown_", day.now, ".Rdata")))
       mod.lwdown.doy <- mod.save
-      rm(mod.list)
+      rm(mod.save)
       
       
       # Pull the coefficients (betas) from our saved matrix
       rows.beta <- sample(1:n.beta, n.ens, replace=T)
-      betas.lwdown <- nc_open(file.path(path.model,"lwdown", "betas_lwdown_1.nc"))
+      betas.lwdown <- nc_open(file.path(path.model, "lwdown", paste0("betas_lwdown_", day.now, ".nc")))
       Rbeta <- as.matrix(ncvar_get(betas.lwdown, paste(day.now))[rows.beta,], nrow=length(rows.beta), ncol=ncol(betas))
       nc_close(betas.lwdown)
 
