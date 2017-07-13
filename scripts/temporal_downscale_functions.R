@@ -82,7 +82,14 @@ model.tair <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, n
       nc_close(nc)
       
       # Save the model as a .Rdata
-      mod.save <- mod.out[[i]][["model"]]
+      # mod.save <- mod.out[[i]][["model"]]
+      mod.save <- list()
+      mod.save$call  <- mod.out[[i]]$model$call
+      mod.save$formula <- parse(text=mod.out[[i]]$model$call[[2]][c(1,3)])
+      mod.save$factors  <- rownames(attr(mod.out[[i]]$model$terms, "factors"))
+      mod.save$factors[mod.save$factors=="as.ordered(hour)"] <- "hour"
+      mod.save$xlev  <- mod.out[[i]]$model$xlevels
+      mod.save$contr <- mod.out[[i]]$model$contrasts
       save(mod.save, file=file.path(path.out, paste0("model_tair_", i, ".Rdata")))
     }
   } else {
@@ -99,9 +106,17 @@ model.tair <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, n
       nc_close(nc)
       
       # Save the model as a .Rdata
-      mod.save <- mod.out$mode
+      # mod.save <- mod.out$model
+      # save(mod.save, file=file.path(path.out, paste0("model_tair_", i, ".Rdata")))
+      mod.save <- list()
+      mod.save$call  <- mod.out$model$call
+      mod.save$formula <- parse(text=mod.out$model$call[[2]][c(1,3)])
+      mod.save$factors  <- rownames(attr(mod.out$model$terms, "factors"))
+      mod.save$factors[mod.save$factors=="as.ordered(hour)"] <- "hour"
+      mod.save$xlev  <- mod.out$model$xlevels
+      mod.save$contr <- mod.out$model$contrasts
       save(mod.save, file=file.path(path.out, paste0("model_tair_", i, ".Rdata")))
-    }
+   }
   }
   # return(mod.out)
 }
@@ -192,7 +207,13 @@ model.swdown <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F,
       nc_close(nc)
       
       # Save the model as a .Rdata
-      mod.save <- mod.out[[i]][["model"]]
+      mod.save <- list()
+      mod.save$call  <- mod.out[[i]]$model$call
+      mod.save$formula <- parse(text=mod.out[[i]]$model$call[[2]][c(1,3)])
+      mod.save$factors  <- rownames(attr(mod.out[[i]]$model$terms, "factors"))
+      mod.save$factors[mod.save$factors=="as.ordered(hour)"] <- "hour"
+      mod.save$xlev  <- mod.out[[i]]$model$xlevels
+      mod.save$contr <- mod.out[[i]]$model$contrasts
       save(mod.save, file=file.path(path.out, paste0("model_swdown_", i, ".Rdata")))
     }
     
@@ -210,7 +231,13 @@ model.swdown <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F,
       nc_close(nc)
       
       # Save the model as a .Rdata
-      mod.save <- mod.out$mode
+      mod.save <- list()
+      mod.save$call  <- mod.out$model$call
+      mod.save$formula <- parse(text=mod.out$model$call[[2]][c(1,3)])
+      mod.save$factors  <- rownames(attr(mod.out$model$terms, "factors"))
+      mod.save$factors[mod.save$factors=="as.ordered(hour)"] <- "hour"
+      mod.save$xlev  <- mod.out$model$xlevels
+      mod.save$contr <- mod.out$model$contrasts
       save(mod.save, file=file.path(path.out, paste0("model_swdown_", i, ".Rdata")))
     }
   }
@@ -296,7 +323,13 @@ model.lwdown <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F,
       nc_close(nc)
       
       # Save the model as a .Rdata
-      mod.save <- mod.out[[i]][["model"]]
+      mod.save <- list()
+      mod.save$call  <- mod.out[[i]]$model$call
+      mod.save$formula <- parse(text=mod.out[[i]]$model$call[[2]][c(1,3)])
+      mod.save$factors  <- rownames(attr(mod.out[[i]]$model$terms, "factors"))
+      mod.save$factors[mod.save$factors=="as.ordered(hour)"] <- "hour"
+      mod.save$xlev  <- mod.out[[i]]$model$xlevels
+      mod.save$contr <- mod.out[[i]]$model$contrasts
       save(mod.save, file=file.path(path.out, paste0("model_lwdown_", i, ".Rdata")))
     }
   } else {
@@ -313,7 +346,13 @@ model.lwdown <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F,
       nc_close(nc)
       
       # Save the model as a .Rdata
-      mod.save <- mod.out$mode
+      mod.save <- list()
+      mod.save$call  <- mod.out$model$call
+      mod.save$formula <- parse(text=mod.out$model$call[[2]][c(1,3)])
+      mod.save$factors  <- rownames(attr(mod.out$model$terms, "factors"))
+      mod.save$factors[mod.save$factors=="as.ordered(hour)"] <- "hour"
+      mod.save$xlev  <- mod.out$model$xlevels
+      mod.save$contr <- mod.out$model$contrasts
       save(mod.save, file=file.path(path.out, paste0("model_lwdown_", i, ".Rdata")))
       
     }
@@ -404,7 +443,13 @@ model.press <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, 
       nc_close(nc)
       
       # Save the model as a .Rdata
-      mod.save <- mod.out[[i]][["model"]]
+      mod.save <- list()
+      mod.save$call  <- mod.out[[i]]$model$call
+      mod.save$formula <- parse(text=mod.out[[i]]$model$call[[2]][c(1,3)])
+      mod.save$factors  <- rownames(attr(mod.out[[i]]$model$terms, "factors"))
+      mod.save$factors[mod.save$factors=="as.ordered(hour)"] <- "hour"
+      mod.save$xlev  <- mod.out[[i]]$model$xlevels
+      mod.save$contr <- mod.out[[i]]$model$contrasts
       save(mod.save, file=file.path(path.out, paste0("model_press_", i, ".Rdata")))
     }
     
@@ -422,7 +467,13 @@ model.press <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, 
       nc_close(nc)
       
       # Save the model as a .Rdata
-      mod.save <- mod.out$mode
+      mod.save <- list()
+      mod.save$call  <- mod.out$model$call
+      mod.save$formula <- parse(text=mod.out$model$call[[2]][c(1,3)])
+      mod.save$factors  <- rownames(attr(mod.out$model$terms, "factors"))
+      mod.save$factors[mod.save$factors=="as.ordered(hour)"] <- "hour"
+      mod.save$xlev  <- mod.out$model$xlevels
+      mod.save$contr <- mod.out$model$contrasts
       save(mod.save, file=file.path(path.out, paste0("model_press_", i, ".Rdata")))
       
     }
@@ -510,7 +561,13 @@ model.wind <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, n
       nc_close(nc)
       
       # Save the model as a .Rdata
-      mod.save <- mod.out[[i]][["model"]]
+      mod.save <- list()
+      mod.save$call  <- mod.out[[i]]$model$call
+      mod.save$formula <- parse(text=mod.out[[i]]$model$call[[2]][c(1,3)])
+      mod.save$factors  <- rownames(attr(mod.out[[i]]$model$terms, "factors"))
+      mod.save$factors[mod.save$factors=="as.ordered(hour)"] <- "hour"
+      mod.save$xlev  <- mod.out[[i]]$model$xlevels
+      mod.save$contr <- mod.out[[i]]$model$contrasts
       save(mod.save, file=file.path(path.out, paste0("model_wind_", i, ".Rdata")))
     }
     
@@ -528,7 +585,13 @@ model.wind <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, n
       nc_close(nc)
       
       # Save the model as a .Rdata
-      mod.save <- mod.out$mode
+      mod.save <- list()
+      mod.save$call  <- mod.out$model$call
+      mod.save$formula <- parse(text=mod.out$model$call[[2]][c(1,3)])
+      mod.save$factors  <- rownames(attr(mod.out$model$terms, "factors"))
+      mod.save$factors[mod.save$factors=="as.ordered(hour)"] <- "hour"
+      mod.save$xlev  <- mod.out$model$xlevels
+      mod.save$contr <- mod.out$model$contrasts
       save(mod.save, file=file.path(path.out, paste0("model_wind_", i, ".Rdata")))
       
     }
@@ -621,7 +684,13 @@ model.precipf <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F
       nc_close(nc)
       
       # Save the model as a .Rdata
-      mod.save <- mod.out[[i]][["model"]]
+      mod.save <- list()
+      mod.save$call  <- mod.out[[i]]$model$call
+      mod.save$formula <- parse(text=mod.out[[i]]$model$call[[2]][c(1,3)])
+      mod.save$factors  <- rownames(attr(mod.out[[i]]$model$terms, "factors"))
+      mod.save$factors[mod.save$factors=="as.ordered(hour)"] <- "hour"
+      mod.save$xlev  <- mod.out[[i]]$model$xlevels
+      mod.save$contr <- mod.out[[i]]$model$contrasts
       save(mod.save, file=file.path(path.out, paste0("model_precipf_", i, ".Rdata")))
     }
     
@@ -639,7 +708,13 @@ model.precipf <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F
       nc_close(nc)
       
       # Save the model as a .Rdata
-      mod.save <- mod.out$mode
+      mod.save <- list()
+      mod.save$call  <- mod.out$model$call
+      mod.save$formula <- parse(text=mod.out$model$call[[2]][c(1,3)])
+      mod.save$factors  <- rownames(attr(mod.out$model$terms, "factors"))
+      mod.save$factors[mod.save$factors=="as.ordered(hour)"] <- "hour"
+      mod.save$xlev  <- mod.out$model$xlevels
+      mod.save$contr <- mod.out$model$contrasts
       save(mod.save, file=file.path(path.out, paste0("model_precipf_", i, ".Rdata")))
       
     }
@@ -731,7 +806,13 @@ model.qair <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, n
       nc_close(nc)
       
       # Save the model as a .Rdata
-      mod.save <- mod.out[[i]][["model"]]
+      mod.save <- list()
+      mod.save$call  <- mod.out[[i]]$model$call
+      mod.save$formula <- parse(text=mod.out[[i]]$model$call[[2]][c(1,3)])
+      mod.save$factors  <- rownames(attr(mod.out[[i]]$model$terms, "factors"))
+      mod.save$factors[mod.save$factors=="as.ordered(hour)"] <- "hour"
+      mod.save$xlev  <- mod.out[[i]]$model$xlevels
+      mod.save$contr <- mod.out[[i]]$model$contrasts
       save(mod.save, file=file.path(path.out, paste0("model_qair_", i, ".Rdata")))
     }
     
@@ -749,7 +830,13 @@ model.qair <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, n
       nc_close(nc)
       
       # Save the model as a .Rdata
-      mod.save <- mod.out$mode
+      mod.save <- list()
+      mod.save$call  <- mod.out$model$call
+      mod.save$formula <- parse(text=mod.out$model$call[[2]][c(1,3)])
+      mod.save$factors  <- rownames(attr(mod.out$model$terms, "factors"))
+      mod.save$factors[mod.save$factors=="as.ordered(hour)"] <- "hour"
+      mod.save$xlev  <- mod.out$model$xlevels
+      mod.save$contr <- mod.out$model$contrasts
       save(mod.save, file=file.path(path.out, paste0("model_qair_", i, ".Rdata")))
       
     }
@@ -762,14 +849,16 @@ predict.met <- function(newdata, model.predict, Rbeta, resid.err=F, model.resid=
   # set.seed(9321)
   err.resid = 0 # dummy residual error term; if we want to add residual error, we're modeling it by hour
 
-  mod.terms <- terms(model.predict)
-  mod.coef <- coef(model.predict)
-  mod.cov  <- vcov(model.predict)
-  mod.resid <- resid(model.predict)
-  piv <- as.numeric(which(!is.na(mod.coef)))
+  # mod.terms <- terms(model.predict)
+  # mod.coef <- coef(model.predict)
+  # mod.cov  <- vcov(model.predict)
+  # mod.resid <- resid(model.predict)
+  piv <- as.numeric(which(!is.na(model.predict$coef)))
   
-  m <- model.frame(mod.terms, newdata, xlev = model.predict$xlevels)
-  Xp <- model.matrix(mod.terms, m, contrasts.arg = model.predict$contrasts)
+  # m <- model.frame(mod.terms, newdata, xlev = model.predict$xlevels)
+  # Xp <- model.matrix(mod.terms, m, contrasts.arg = model.predict$contrasts)
+  m  <- newdata[complete.cases(newdata[,model.predict$factors]),model.predict$factors]
+  Xp <-  model.matrix(eval(model.predict$formula), m, contrasts.arg=model.predict$contr)
   
   if(resid.err==T){
     newdata$resid <- 99999
