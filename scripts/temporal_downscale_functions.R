@@ -85,6 +85,7 @@ model.tair <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, n
       # mod.save <- mod.out[[i]][["model"]]
       mod.save <- list()
       mod.save$call  <- mod.out[[i]]$model$call
+      mod.save$coef  <- coef(mod.out[[i]]$model)
       mod.save$formula <- parse(text=mod.out[[i]]$model$call[[2]][c(1,3)])
       mod.save$factors  <- rownames(attr(mod.out[[i]]$model$terms, "factors"))
       mod.save$factors[mod.save$factors=="as.ordered(hour)"] <- "hour"
@@ -110,6 +111,7 @@ model.tair <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, n
       # save(mod.save, file=file.path(path.out, paste0("model_tair_", i, ".Rdata")))
       mod.save <- list()
       mod.save$call  <- mod.out$model$call
+      mod.save$coef  <- coef(mod.out$model)
       mod.save$formula <- parse(text=mod.out$model$call[[2]][c(1,3)])
       mod.save$factors  <- rownames(attr(mod.out$model$terms, "factors"))
       mod.save$factors[mod.save$factors=="as.ordered(hour)"] <- "hour"
@@ -209,6 +211,7 @@ model.swdown <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F,
       # Save the model as a .Rdata
       mod.save <- list()
       mod.save$call  <- mod.out[[i]]$model$call
+      mod.save$coef  <- coef(mod.out[[i]]$model)
       mod.save$formula <- parse(text=mod.out[[i]]$model$call[[2]][c(1,3)])
       mod.save$factors  <- rownames(attr(mod.out[[i]]$model$terms, "factors"))
       mod.save$factors[mod.save$factors=="as.ordered(hour)"] <- "hour"
@@ -233,6 +236,7 @@ model.swdown <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F,
       # Save the model as a .Rdata
       mod.save <- list()
       mod.save$call  <- mod.out$model$call
+      mod.save$coef  <- coef(mod.out$model)
       mod.save$formula <- parse(text=mod.out$model$call[[2]][c(1,3)])
       mod.save$factors  <- rownames(attr(mod.out$model$terms, "factors"))
       mod.save$factors[mod.save$factors=="as.ordered(hour)"] <- "hour"
@@ -325,6 +329,7 @@ model.lwdown <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F,
       # Save the model as a .Rdata
       mod.save <- list()
       mod.save$call  <- mod.out[[i]]$model$call
+      mod.save$coef  <- coef(mod.out[[i]]$model)
       mod.save$formula <- parse(text=mod.out[[i]]$model$call[[2]][c(1,3)])
       mod.save$factors  <- rownames(attr(mod.out[[i]]$model$terms, "factors"))
       mod.save$factors[mod.save$factors=="as.ordered(hour)"] <- "hour"
@@ -348,6 +353,7 @@ model.lwdown <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F,
       # Save the model as a .Rdata
       mod.save <- list()
       mod.save$call  <- mod.out$model$call
+      mod.save$coef  <- coef(mod.out$model)
       mod.save$formula <- parse(text=mod.out$model$call[[2]][c(1,3)])
       mod.save$factors  <- rownames(attr(mod.out$model$terms, "factors"))
       mod.save$factors[mod.save$factors=="as.ordered(hour)"] <- "hour"
@@ -445,6 +451,7 @@ model.press <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, 
       # Save the model as a .Rdata
       mod.save <- list()
       mod.save$call  <- mod.out[[i]]$model$call
+      mod.save$coef  <- coef(mod.out[[i]]$model)
       mod.save$formula <- parse(text=mod.out[[i]]$model$call[[2]][c(1,3)])
       mod.save$factors  <- rownames(attr(mod.out[[i]]$model$terms, "factors"))
       mod.save$factors[mod.save$factors=="as.ordered(hour)"] <- "hour"
@@ -469,6 +476,7 @@ model.press <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, 
       # Save the model as a .Rdata
       mod.save <- list()
       mod.save$call  <- mod.out$model$call
+      mod.save$coef  <- coef(mod.out$model)
       mod.save$formula <- parse(text=mod.out$model$call[[2]][c(1,3)])
       mod.save$factors  <- rownames(attr(mod.out$model$terms, "factors"))
       mod.save$factors[mod.save$factors=="as.ordered(hour)"] <- "hour"
@@ -563,6 +571,7 @@ model.wind <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, n
       # Save the model as a .Rdata
       mod.save <- list()
       mod.save$call  <- mod.out[[i]]$model$call
+      mod.save$coef  <- coef(mod.out[[i]]$model)
       mod.save$formula <- parse(text=mod.out[[i]]$model$call[[2]][c(1,3)])
       mod.save$factors  <- rownames(attr(mod.out[[i]]$model$terms, "factors"))
       mod.save$factors[mod.save$factors=="as.ordered(hour)"] <- "hour"
@@ -587,6 +596,7 @@ model.wind <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, n
       # Save the model as a .Rdata
       mod.save <- list()
       mod.save$call  <- mod.out$model$call
+      mod.save$coef  <- coef(mod.out$model)
       mod.save$formula <- parse(text=mod.out$model$call[[2]][c(1,3)])
       mod.save$factors  <- rownames(attr(mod.out$model$terms, "factors"))
       mod.save$factors[mod.save$factors=="as.ordered(hour)"] <- "hour"
@@ -686,6 +696,7 @@ model.precipf <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F
       # Save the model as a .Rdata
       mod.save <- list()
       mod.save$call  <- mod.out[[i]]$model$call
+      mod.save$coef  <- coef(mod.out[[i]]$model)
       mod.save$formula <- parse(text=mod.out[[i]]$model$call[[2]][c(1,3)])
       mod.save$factors  <- rownames(attr(mod.out[[i]]$model$terms, "factors"))
       mod.save$factors[mod.save$factors=="as.ordered(hour)"] <- "hour"
@@ -710,6 +721,7 @@ model.precipf <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F
       # Save the model as a .Rdata
       mod.save <- list()
       mod.save$call  <- mod.out$model$call
+      mod.save$coef  <- coef(mod.out$model)
       mod.save$formula <- parse(text=mod.out$model$call[[2]][c(1,3)])
       mod.save$factors  <- rownames(attr(mod.out$model$terms, "factors"))
       mod.save$factors[mod.save$factors=="as.ordered(hour)"] <- "hour"
@@ -808,6 +820,7 @@ model.qair <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, n
       # Save the model as a .Rdata
       mod.save <- list()
       mod.save$call  <- mod.out[[i]]$model$call
+      mod.save$coef  <- coef(mod.out[[i]]$model)
       mod.save$formula <- parse(text=mod.out[[i]]$model$call[[2]][c(1,3)])
       mod.save$factors  <- rownames(attr(mod.out[[i]]$model$terms, "factors"))
       mod.save$factors[mod.save$factors=="as.ordered(hour)"] <- "hour"
@@ -832,6 +845,7 @@ model.qair <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, n
       # Save the model as a .Rdata
       mod.save <- list()
       mod.save$call  <- mod.out$model$call
+      mod.save$coef  <- coef(mod.out$model)
       mod.save$formula <- parse(text=mod.out$model$call[[2]][c(1,3)])
       mod.save$factors  <- rownames(attr(mod.out$model$terms, "factors"))
       mod.save$factors[mod.save$factors=="as.ordered(hour)"] <- "hour"
