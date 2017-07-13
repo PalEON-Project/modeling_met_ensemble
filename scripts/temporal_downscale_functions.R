@@ -33,7 +33,7 @@ model.tair <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, n
       # Model residuals as a function of hour so we can increase our uncertainty
       if(resids==T){
         dat.subset[!is.na(dat.subset$lag.tair) & !is.na(dat.subset$next.tmax),"resid"] <- resid(mod.doy)
-        resid.model <- lm(resid ~ as.factor(hour)*(tmax.day*tmin.day)-1, data=dat.subset[!is.na(dat.subset$lag.tair),])
+        resid.model <- lm(resid ~ as.ordered(hour)*(tmax.day*tmin.day)-1, data=dat.subset[!is.na(dat.subset$lag.tair),])
         res.coef <- coef(resid.model)
         res.cov  <- vcov(resid.model)
         res.piv <- as.numeric(which(!is.na(res.coef)))
@@ -88,7 +88,6 @@ model.tair <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, n
       mod.save$coef  <- coef(mod.out[[i]]$model)
       mod.save$formula <- parse(text=mod.out[[i]]$model$call[[2]][c(1,3)])
       mod.save$factors  <- rownames(attr(mod.out[[i]]$model$terms, "factors"))
-      mod.save$factors[mod.save$factors=="as.ordered(hour)"] <- "hour"
       mod.save$xlev  <- mod.out[[i]]$model$xlevels
       mod.save$contr <- mod.out[[i]]$model$contrasts
       save(mod.save, file=file.path(path.out, paste0("model_tair_", i, ".Rdata")))
@@ -114,7 +113,7 @@ model.tair <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, n
       mod.save$coef  <- coef(mod.out$model)
       mod.save$formula <- parse(text=mod.out$model$call[[2]][c(1,3)])
       mod.save$factors  <- rownames(attr(mod.out$model$terms, "factors"))
-      mod.save$factors[mod.save$factors=="as.ordered(hour)"] <- "hour"
+      # mod.save$factors[mod.save$factors=="as.ordered(hour)"] <- "hour"
       mod.save$xlev  <- mod.out$model$xlevels
       mod.save$contr <- mod.out$model$contrasts
       save(mod.save, file=file.path(path.out, paste0("model_tair_", i, ".Rdata")))
@@ -135,15 +134,15 @@ model.swdown <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F,
     
     # Note: played around with a log-transformation of swdown to prevent negative values, but that resulted in bias at upper range
     # Solution was to just say anything <0 = 0
-    # mod.doy <- lm(swdown ~ as.factor(hour)*swdown.day, data=dat.subset[dat.subset$hour %in% hrs.day,]) ###
-    mod.doy <- lm(swdown ~ as.factor(hour)*swdown.day-1 - swdown.day - as.factor(hour), data=dat.subset[dat.subset$hour %in% hrs.day,]) ###
+    # mod.doy <- lm(swdown ~ as.ordered(hour)*swdown.day, data=dat.subset[dat.subset$hour %in% hrs.day,]) ###
+    mod.doy <- lm(swdown ~ as.ordered(hour)*swdown.day-1 - swdown.day - as.ordered(hour), data=dat.subset[dat.subset$hour %in% hrs.day,]) ###
 
     # If we can't estimate the covariance matrix, double our data and try again
     # NOTE: THIS IS NOT A GOOD PERMANENT FIX!!
     if(is.na(summary(mod.doy)$adj.r.squared)){
       warning(paste0("Can not estimate covariance matrix for day of year: ", unique(dat.subset$doy)))
       dat.subset <- rbind(dat.subset, dat.subset)
-      mod.doy <- lm(swdown ~ as.factor(hour)*swdown.day-1 - swdown.day - as.factor(hour), data=dat.subset[dat.subset$hour %in% hrs.day,]) ###
+      mod.doy <- lm(swdown ~ as.ordered(hour)*swdown.day-1 - swdown.day - as.ordered(hour), data=dat.subset[dat.subset$hour %in% hrs.day,]) ###
     }
     
     # Generate a bunch of random coefficients that we can pull from 
@@ -158,7 +157,7 @@ model.swdown <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F,
     # Model residuals as a function of hour so we can increase our uncertainty
     if(resids==T){
       dat.subset[dat.subset$hour %in% hrs.day,"resid"] <- resid(mod.doy)
-      resid.model <- lm(resid ~ as.factor(hour)*swdown.day-1, data=dat.subset[dat.subset$hour %in% hrs.day,])
+      resid.model <- lm(resid ~ as.ordered(hour)*swdown.day-1, data=dat.subset[dat.subset$hour %in% hrs.day,])
       res.coef <- coef(resid.model)
       res.cov  <- vcov(resid.model)
       res.piv <- as.numeric(which(!is.na(res.coef)))
@@ -214,7 +213,6 @@ model.swdown <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F,
       mod.save$coef  <- coef(mod.out[[i]]$model)
       mod.save$formula <- parse(text=mod.out[[i]]$model$call[[2]][c(1,3)])
       mod.save$factors  <- rownames(attr(mod.out[[i]]$model$terms, "factors"))
-      mod.save$factors[mod.save$factors=="as.ordered(hour)"] <- "hour"
       mod.save$xlev  <- mod.out[[i]]$model$xlevels
       mod.save$contr <- mod.out[[i]]$model$contrasts
       save(mod.save, file=file.path(path.out, paste0("model_swdown_", i, ".Rdata")))
@@ -239,7 +237,6 @@ model.swdown <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F,
       mod.save$coef  <- coef(mod.out$model)
       mod.save$formula <- parse(text=mod.out$model$call[[2]][c(1,3)])
       mod.save$factors  <- rownames(attr(mod.out$model$terms, "factors"))
-      mod.save$factors[mod.save$factors=="as.ordered(hour)"] <- "hour"
       mod.save$xlev  <- mod.out$model$xlevels
       mod.save$contr <- mod.out$model$contrasts
       save(mod.save, file=file.path(path.out, paste0("model_swdown_", i, ".Rdata")))
@@ -257,8 +254,8 @@ model.lwdown <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F,
   # The model we're going to use
   model.train <- function(dat.subset, n.beta, resids=resids){ 
     
-    # mod.doy <- lm(lwdown ~ as.factor(hour)*lwdown.day*(lag.lwdown + next.lwdown + swdown.day + tmax.day + tmin.day) - as.factor(hour) - tmax.day - tmin.day - swdown.day - 1, data=dat.subset) ###
-    mod.doy <- lm(sqrt(lwdown) ~ as.factor(hour)*lwdown.day*(lag.lwdown + next.lwdown) - as.factor(hour) - 1 - lag.lwdown - next.lwdown - lwdown.day - lwdown.day*lag.lwdown - lwdown.day*next.lwdown, data=dat.subset) ###
+    # mod.doy <- lm(lwdown ~ as.ordered(hour)*lwdown.day*(lag.lwdown + next.lwdown + swdown.day + tmax.day + tmin.day) - as.ordered(hour) - tmax.day - tmin.day - swdown.day - 1, data=dat.subset) ###
+    mod.doy <- lm(sqrt(lwdown) ~ as.ordered(hour)*lwdown.day*(lag.lwdown + next.lwdown) - as.ordered(hour) - 1 - lag.lwdown - next.lwdown - lwdown.day - lwdown.day*lag.lwdown - lwdown.day*next.lwdown, data=dat.subset) ###
     
     # If we can't estimate the covariance matrix, stop & increase the moving window
     if(is.na(summary(mod.doy)$adj.r.squared)){
@@ -277,7 +274,7 @@ model.lwdown <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F,
     # Model residuals as a function of hour so we can increase our uncertainty
     if(resids==T){
       dat.subset[!is.na(dat.subset$lag.lwdown) & !is.na(dat.subset$next.lwdown),"resid"] <- resid(mod.doy)
-      resid.model <- lm(resid ~ as.factor(hour)*lwdown.day-1, data=dat.subset[,])
+      resid.model <- lm(resid ~ as.ordered(hour)*lwdown.day-1, data=dat.subset[,])
       res.coef <- coef(resid.model)
       res.cov  <- vcov(resid.model)
       res.piv <- as.numeric(which(!is.na(res.coef)))
@@ -332,7 +329,6 @@ model.lwdown <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F,
       mod.save$coef  <- coef(mod.out[[i]]$model)
       mod.save$formula <- parse(text=mod.out[[i]]$model$call[[2]][c(1,3)])
       mod.save$factors  <- rownames(attr(mod.out[[i]]$model$terms, "factors"))
-      mod.save$factors[mod.save$factors=="as.ordered(hour)"] <- "hour"
       mod.save$xlev  <- mod.out[[i]]$model$xlevels
       mod.save$contr <- mod.out[[i]]$model$contrasts
       save(mod.save, file=file.path(path.out, paste0("model_lwdown_", i, ".Rdata")))
@@ -356,7 +352,7 @@ model.lwdown <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F,
       mod.save$coef  <- coef(mod.out$model)
       mod.save$formula <- parse(text=mod.out$model$call[[2]][c(1,3)])
       mod.save$factors  <- rownames(attr(mod.out$model$terms, "factors"))
-      mod.save$factors[mod.save$factors=="as.ordered(hour)"] <- "hour"
+      # mod.save$factors[mod.save$factors=="as.ordered(hour)"] <- "hour"
       mod.save$xlev  <- mod.out$model$xlevels
       mod.save$contr <- mod.out$model$contrasts
       save(mod.save, file=file.path(path.out, paste0("model_lwdown_", i, ".Rdata")))
@@ -375,15 +371,15 @@ model.press <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, 
   # The model we're going to use
   model.train <- function(dat.subset, n.beta, resids=resids){ 
     
-    # mod.doy <- lm(press ~ as.factor(hour)*(press.day + lag.press + next.press)-as.factor(hour)-1, data=dat.subset) ###
-    mod.doy <- lm(press ~ as.factor(hour)*(press.day + lag.press + next.press)-as.factor(hour)-1-press.day - lag.press - next.press, data=dat.subset) ###
+    # mod.doy <- lm(press ~ as.ordered(hour)*(press.day + lag.press + next.press)-as.ordered(hour)-1, data=dat.subset) ###
+    mod.doy <- lm(press ~ as.ordered(hour)*(press.day + lag.press + next.press)-as.ordered(hour)-1-press.day - lag.press - next.press, data=dat.subset) ###
 
     # If we can't estimate the covariance matrix, double our data and try again
     # NOTE: THIS IS NOT A GOOD PERMANENT FIX!!
     if(is.na(summary(mod.doy)$adj.r.squared)){
       stop(paste0("Can not estimate covariance matrix for day of year: ", unique(dat.subset$doy), ";  Increase day.window and try again"))
       # dat.subset <- rbind(dat.subset, dat.subset)
-      # mod.doy <- lm(press ~ as.factor(hour)*(press.day + lag.press + next.press)-as.factor(hour)-1-press.day - lag.press - next.press, data=dat.subset) ###
+      # mod.doy <- lm(press ~ as.ordered(hour)*(press.day + lag.press + next.press)-as.ordered(hour)-1-press.day - lag.press - next.press, data=dat.subset) ###
     }
     
     # Generate a bunch of random coefficients that we can pull from 
@@ -398,7 +394,7 @@ model.press <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, 
     # Model residuals as a function of hour so we can increase our uncertainty
     if(resids==T){
       dat.subset[!is.na(dat.subset$lag.press) & !is.na(dat.subset$next.press),"resid"] <- resid(mod.doy)
-      resid.model <- lm(resid ~ as.factor(hour)*press.day-1, data=dat.subset[,])
+      resid.model <- lm(resid ~ as.ordered(hour)*press.day-1, data=dat.subset[,])
       res.coef <- coef(resid.model)
       res.cov  <- vcov(resid.model)
       res.piv <- as.numeric(which(!is.na(res.coef)))
@@ -454,7 +450,6 @@ model.press <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, 
       mod.save$coef  <- coef(mod.out[[i]]$model)
       mod.save$formula <- parse(text=mod.out[[i]]$model$call[[2]][c(1,3)])
       mod.save$factors  <- rownames(attr(mod.out[[i]]$model$terms, "factors"))
-      mod.save$factors[mod.save$factors=="as.ordered(hour)"] <- "hour"
       mod.save$xlev  <- mod.out[[i]]$model$xlevels
       mod.save$contr <- mod.out[[i]]$model$contrasts
       save(mod.save, file=file.path(path.out, paste0("model_press_", i, ".Rdata")))
@@ -479,7 +474,6 @@ model.press <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, 
       mod.save$coef  <- coef(mod.out$model)
       mod.save$formula <- parse(text=mod.out$model$call[[2]][c(1,3)])
       mod.save$factors  <- rownames(attr(mod.out$model$terms, "factors"))
-      mod.save$factors[mod.save$factors=="as.ordered(hour)"] <- "hour"
       mod.save$xlev  <- mod.out$model$xlevels
       mod.save$contr <- mod.out$model$contrasts
       save(mod.save, file=file.path(path.out, paste0("model_press_", i, ".Rdata")))
@@ -498,9 +492,9 @@ model.wind <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, n
   # The model we're going to use
   model.train <- function(dat.subset, n.beta, resids=resids){ 
     
-    # mod.doy <- lm(log(wind) ~ as.factor(hour)*log(wind.day)*(log(lag.wind) + log(next.wind) + press.day + tmin.day + tmax.day)-as.factor(hour)-1 - press.day - tmin.day - tmax.day - log(wind.day)*press.day - log(wind.day)*tmin.day- log(wind.day)*tmax.day - as.factor(hour)*tmin.day - as.factor(hour)*tmax.day - as.factor(hour)*press.day, data=dat.subset) ###
-    # mod.doy <- lm(log(wind) ~ as.factor(hour)*wind.day*(lag.wind + next.wind)-as.factor(hour)-1 - wind.day - lag.wind - next.wind - wind.day*lag.wind - wind.day*next.wind, data=dat.subset) ###
-    mod.doy <- lm(sqrt(wind) ~ as.factor(hour)*wind.day*(lag.wind + next.wind)-as.factor(hour)-1 - wind.day - lag.wind - next.wind - wind.day*lag.wind - wind.day*next.wind, data=dat.subset) ###
+    # mod.doy <- lm(log(wind) ~ as.ordered(hour)*log(wind.day)*(log(lag.wind) + log(next.wind) + press.day + tmin.day + tmax.day)-as.ordered(hour)-1 - press.day - tmin.day - tmax.day - log(wind.day)*press.day - log(wind.day)*tmin.day- log(wind.day)*tmax.day - as.ordered(hour)*tmin.day - as.ordered(hour)*tmax.day - as.ordered(hour)*press.day, data=dat.subset) ###
+    # mod.doy <- lm(log(wind) ~ as.ordered(hour)*wind.day*(lag.wind + next.wind)-as.ordered(hour)-1 - wind.day - lag.wind - next.wind - wind.day*lag.wind - wind.day*next.wind, data=dat.subset) ###
+    mod.doy <- lm(sqrt(wind) ~ as.ordered(hour)*wind.day*(lag.wind + next.wind)-as.ordered(hour)-1 - wind.day - lag.wind - next.wind - wind.day*lag.wind - wind.day*next.wind, data=dat.subset) ###
     
     # If we can't estimate the covariance matrix, stop & increase the moving window
     if(is.na(summary(mod.doy)$adj.r.squared)){
@@ -519,7 +513,7 @@ model.wind <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, n
     # Model residuals as a function of hour so we can increase our uncertainty
     if(resids==T){
       dat.subset[!is.na(dat.subset$lag.wind) & !is.na(dat.subset$next.wind),"resid"] <- resid(mod.doy)
-      resid.model <- lm(resid ~ as.factor(hour)*wind.day-1, data=dat.subset[,])
+      resid.model <- lm(resid ~ as.ordered(hour)*wind.day-1, data=dat.subset[,])
       res.coef <- coef(resid.model)
       res.cov  <- vcov(resid.model)
       res.piv <- as.numeric(which(!is.na(res.coef)))
@@ -574,7 +568,6 @@ model.wind <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, n
       mod.save$coef  <- coef(mod.out[[i]]$model)
       mod.save$formula <- parse(text=mod.out[[i]]$model$call[[2]][c(1,3)])
       mod.save$factors  <- rownames(attr(mod.out[[i]]$model$terms, "factors"))
-      mod.save$factors[mod.save$factors=="as.ordered(hour)"] <- "hour"
       mod.save$xlev  <- mod.out[[i]]$model$xlevels
       mod.save$contr <- mod.out[[i]]$model$contrasts
       save(mod.save, file=file.path(path.out, paste0("model_wind_", i, ".Rdata")))
@@ -599,7 +592,6 @@ model.wind <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, n
       mod.save$coef  <- coef(mod.out$model)
       mod.save$formula <- parse(text=mod.out$model$call[[2]][c(1,3)])
       mod.save$factors  <- rownames(attr(mod.out$model$terms, "factors"))
-      mod.save$factors[mod.save$factors=="as.ordered(hour)"] <- "hour"
       mod.save$xlev  <- mod.out$model$xlevels
       mod.save$contr <- mod.out$model$contrasts
       save(mod.save, file=file.path(path.out, paste0("model_wind_", i, ".Rdata")))
@@ -622,13 +614,13 @@ model.precipf <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F
     # Precip needs to be a bit different.  We're going to calculate the fraction of precip occuring in each hour
     # we're going to estimate the probability distribution of rain occuring in a given hour
     dat.subset$rain.prop <- dat.subset$precipf/(dat.subset$precipf.day*length(unique(dat.subset$hour)))
-    mod.doy <- lm(rain.prop ~ as.factor(hour)*precipf.day-1 - as.factor(hour)-precipf.day, data=dat.subset)
+    mod.doy <- lm(rain.prop ~ as.ordered(hour)*precipf.day-1 - as.ordered(hour)-precipf.day, data=dat.subset)
     
     # If we can't estimate the covariance matrix, increase the moving window
     if(is.na(summary(mod.doy)$adj.r.squared)){
       stop(paste0("Can not estimate covariance matrix for day of year: ", unique(dat.subset$doy), ";  Increase day.window and try again"))
       # dat.subset <- rbind(dat.subset, dat.subset)
-      # mod.doy <- lm(rain.prop ~ as.factor(hour)*precipf.day-1 - as.factor(hour)-precipf.day, data=dat.subset)
+      # mod.doy <- lm(rain.prop ~ as.ordered(hour)*precipf.day-1 - as.ordered(hour)-precipf.day, data=dat.subset)
     }
     
     # Generate a bunch of random coefficients that we can pull from 
@@ -644,7 +636,7 @@ model.precipf <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F
     if(resids==T){
       # dat.subset[!is.na(dat.subset$lag.precipf) & !is.na(dat.subset$next.precipf),"resid"] <- resid(mod.doy)
       dat.subset[,"resid"] <- resid(mod.doy)
-      resid.model <- lm(resid ~ as.factor(hour)*precipf.day-1, data=dat.subset[,])
+      resid.model <- lm(resid ~ as.ordered(hour)*precipf.day-1, data=dat.subset[,])
       res.coef <- coef(resid.model)
       res.cov  <- vcov(resid.model)
       res.piv <- as.numeric(which(!is.na(res.coef)))
@@ -699,7 +691,6 @@ model.precipf <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F
       mod.save$coef  <- coef(mod.out[[i]]$model)
       mod.save$formula <- parse(text=mod.out[[i]]$model$call[[2]][c(1,3)])
       mod.save$factors  <- rownames(attr(mod.out[[i]]$model$terms, "factors"))
-      mod.save$factors[mod.save$factors=="as.ordered(hour)"] <- "hour"
       mod.save$xlev  <- mod.out[[i]]$model$xlevels
       mod.save$contr <- mod.out[[i]]$model$contrasts
       save(mod.save, file=file.path(path.out, paste0("model_precipf_", i, ".Rdata")))
@@ -724,7 +715,6 @@ model.precipf <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F
       mod.save$coef  <- coef(mod.out$model)
       mod.save$formula <- parse(text=mod.out$model$call[[2]][c(1,3)])
       mod.save$factors  <- rownames(attr(mod.out$model$terms, "factors"))
-      mod.save$factors[mod.save$factors=="as.ordered(hour)"] <- "hour"
       mod.save$xlev  <- mod.out$model$xlevels
       mod.save$contr <- mod.out$model$contrasts
       save(mod.save, file=file.path(path.out, paste0("model_precipf_", i, ".Rdata")))
@@ -743,16 +733,16 @@ model.qair <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, n
   # The model we're going to use
   model.train <- function(dat.subset, n.beta, resids=resids){ 
     
-    # mod.doy <- lm(log(qair) ~ as.factor(hour)*log(qair.day)*(log(lag.qair) + log(next.qair) + precipf.day + tmin.day + tmax.day)-as.factor(hour)-1 - precipf.day - tmin.day - tmax.day - log(qair.day)*precipf.day - log(qair.day)*tmin.day- log(qair.day)*tmax.day - as.factor(hour)*tmin.day - as.factor(hour)*tmax.day - as.factor(hour)*precipf.day, data=dat.subset) ###
-    # mod.doy <- lm(log(qair) ~ as.factor(hour)*qair.day*(lag.qair + next.qair)-as.factor(hour)-1 - qair.day - lag.qair - next.qair - qair.day*lag.qair - qair.day*next.qair, data=dat.subset) ###
-    mod.doy <- lm(log(qair) ~ as.factor(hour)*qair.day*(lag.qair + next.qair + tmax.day)-as.factor(hour)-1 - tmax.day, data=dat.subset) ###
-    # mod.doy <- glm(qair ~ as.factor(hour)*qair.day*(lag.qair + next.qair)-as.factor(hour)-1 - qair.day - lag.qair - next.qair - qair.day*lag.qair - qair.day*next.qair, data=dat.subset, family="quasibinomial") ###
+    # mod.doy <- lm(log(qair) ~ as.ordered(hour)*log(qair.day)*(log(lag.qair) + log(next.qair) + precipf.day + tmin.day + tmax.day)-as.ordered(hour)-1 - precipf.day - tmin.day - tmax.day - log(qair.day)*precipf.day - log(qair.day)*tmin.day- log(qair.day)*tmax.day - as.ordered(hour)*tmin.day - as.ordered(hour)*tmax.day - as.ordered(hour)*precipf.day, data=dat.subset) ###
+    # mod.doy <- lm(log(qair) ~ as.ordered(hour)*qair.day*(lag.qair + next.qair)-as.ordered(hour)-1 - qair.day - lag.qair - next.qair - qair.day*lag.qair - qair.day*next.qair, data=dat.subset) ###
+    mod.doy <- lm(log(qair) ~ as.ordered(hour)*qair.day*(lag.qair + next.qair + tmax.day)-as.ordered(hour)-1 - tmax.day, data=dat.subset) ###
+    # mod.doy <- glm(qair ~ as.ordered(hour)*qair.day*(lag.qair + next.qair)-as.ordered(hour)-1 - qair.day - lag.qair - next.qair - qair.day*lag.qair - qair.day*next.qair, data=dat.subset, family="quasibinomial") ###
     
     # If we can't estimate the covariance matrix, stop & increasing the moving window
     if(is.na(summary(mod.doy)$adj.r.squared)){
       stop(paste0("Can not estimate covariance matrix for day of year: ", unique(dat.subset$doy), ";  Increase day.window and try again"))
       # dat.subset <- rbind(dat.subset, dat.subset)
-      # mod.doy <- lm(log(qair) ~ as.factor(hour)*qair.day*(lag.qair + next.qair + tmax.day)-as.factor(hour)-1 - tmax.day, data=dat.subset) ###
+      # mod.doy <- lm(log(qair) ~ as.ordered(hour)*qair.day*(lag.qair + next.qair + tmax.day)-as.ordered(hour)-1 - tmax.day, data=dat.subset) ###
     }
     
     
@@ -768,7 +758,7 @@ model.qair <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, n
     # Model residuals as a function of hour so we can increase our uncertainty
     if(resids==T){
       dat.subset[!is.na(dat.subset$lag.qair) & !is.na(dat.subset$next.qair),"resid"] <- resid(mod.doy)
-      resid.model <- lm(resid ~ as.factor(hour)*qair.day-1, data=dat.subset[,])
+      resid.model <- lm(resid ~ as.ordered(hour)*qair.day-1, data=dat.subset[,])
       res.coef <- coef(resid.model)
       res.cov  <- vcov(resid.model)
       res.piv <- as.numeric(which(!is.na(res.coef)))
@@ -823,7 +813,6 @@ model.qair <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, n
       mod.save$coef  <- coef(mod.out[[i]]$model)
       mod.save$formula <- parse(text=mod.out[[i]]$model$call[[2]][c(1,3)])
       mod.save$factors  <- rownames(attr(mod.out[[i]]$model$terms, "factors"))
-      mod.save$factors[mod.save$factors=="as.ordered(hour)"] <- "hour"
       mod.save$xlev  <- mod.out[[i]]$model$xlevels
       mod.save$contr <- mod.out[[i]]$model$contrasts
       save(mod.save, file=file.path(path.out, paste0("model_qair_", i, ".Rdata")))
@@ -848,7 +837,6 @@ model.qair <- function(dat.train, n.beta=1000, path.out, resids=F, parallel=F, n
       mod.save$coef  <- coef(mod.out$model)
       mod.save$formula <- parse(text=mod.out$model$call[[2]][c(1,3)])
       mod.save$factors  <- rownames(attr(mod.out$model$terms, "factors"))
-      mod.save$factors[mod.save$factors=="as.ordered(hour)"] <- "hour"
       mod.save$xlev  <- mod.out$model$xlevels
       mod.save$contr <- mod.out$model$contrasts
       save(mod.save, file=file.path(path.out, paste0("model_qair_", i, ".Rdata")))
@@ -871,7 +859,9 @@ predict.met <- function(newdata, model.predict, Rbeta, resid.err=F, model.resid=
   
   # m <- model.frame(mod.terms, newdata, xlev = model.predict$xlevels)
   # Xp <- model.matrix(mod.terms, m, contrasts.arg = model.predict$contrasts)
+  model.predict$factors[model.predict$factors=="as.ordered(hour)"] <- "hour"
   m  <- newdata[complete.cases(newdata[,model.predict$factors]),model.predict$factors]
+  m[,"as.ordered(hour)"] <- m$hour
   Xp <-  model.matrix(eval(model.predict$formula), m, contrasts.arg=model.predict$contr)
   
   if(resid.err==T){
