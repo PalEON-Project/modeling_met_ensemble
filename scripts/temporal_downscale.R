@@ -275,7 +275,7 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.list=NULL, lags.in
         names(sim.lag) <- c("lag.lwdown", "ens")
       }
       dat.temp <- merge(dat.temp, sim.lag, all.x=T)
-      
+      dat.temp[,c("sqrt(lwdown)")] <- sqrt(dat.temp$lwdown)
       # dat.temp$swdown <- stack(dat.sim$swdown[rows.now,])[,1]
       
       
@@ -401,6 +401,7 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.list=NULL, lags.in
         names(sim.lag) <- c("lag.qair", "ens")
       }
       dat.temp <- merge(dat.temp, sim.lag, all.x=T)
+      dat.temp[,"log(qair)"] <- log(dat.temp$qair)
       
       # Load the saved model
       load(file.path(path.model, "qair", paste0("model_qair_", day.now, ".Rdata")))
@@ -464,6 +465,7 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.list=NULL, lags.in
         names(sim.lag) <- c("lag.wind", "ens")
       }
       dat.temp <- merge(dat.temp, sim.lag, all.x=T)
+      dat.temp[,"sqrt(wind)"] <- sqrt(dat.temp$wind)
       
       # Load the saved model
       load(file.path(path.model, "wind", paste0("model_wind_", day.now, ".Rdata")))
