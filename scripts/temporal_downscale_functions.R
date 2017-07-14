@@ -859,9 +859,14 @@ predict.met <- function(newdata, model.predict, Rbeta, resid.err=F, model.resid=
   
   # m <- model.frame(mod.terms, newdata, xlev = model.predict$xlevels)
   # Xp <- model.matrix(mod.terms, m, contrasts.arg = model.predict$contrasts)
+  df.hr <- data.frame(hour = model.predict$xlev[[1]])
+  df.hr[,"as.ordered(hour)"] <- df.hr$hour
+  
   model.predict$factors[model.predict$factors=="as.ordered(hour)"] <- "hour"
   m  <- newdata[complete.cases(newdata[,model.predict$factors]),model.predict$factors]
   m[,"as.ordered(hour)"] <- m$hour
+  if(length(df.hr$hour)!= length(m$hour)) m <- merge(m, df.hr, all=T)
+  
   Xp <-  model.matrix(eval(model.predict$formula), m, contrasts.arg=model.predict$contr)
   
   if(resid.err==T){
