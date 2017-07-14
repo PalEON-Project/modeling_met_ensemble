@@ -45,7 +45,7 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.list=NULL, lags.in
 
     for(i in max(dat.mod$time.day):min(dat.mod$time.day)){
       # For SWDOWN, we only want to model daylight hours -- make sure this matches what's in the swdown function
-      day.now = unique(dat.mod[dat.mod$time.day==i, "doy"])
+      day.now = unique(dat.mod[dat.mod$time.day==i, "doy"])-1
       
       # Use the training data to figure out night/day
       hrs.day = unique(dat.train[dat.train$doy==day.now & dat.train$swdown>quantile(dat.train[dat.train$swdown>0,"swdown"], 0.05), "hour"])
@@ -108,7 +108,7 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.list=NULL, lags.in
                                      "tmax.day", "tmin.day", "precipf.day", "swdown.day", "lwdown.day", "press.day", "qair.day", "wind.day",
                                      "next.tmax", "next.tmin", "next.precipf", "next.swdown", "next.lwdown", "next.press", "next.qair", "next.wind")]
       dat.temp$tair = 99999 # Dummy value so there's a column
-      day.now = unique(dat.temp$doy)
+      day.now = unique(dat.temp$doy)-1
       
       # Set up the lags
       if(i==max(dat.mod$time.day)){
@@ -187,7 +187,7 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.list=NULL, lags.in
                                      "next.tmax", "next.tmin", "next.precipf", "next.swdown", "next.lwdown", "next.press", "next.qair", "next.wind")]
       dat.temp$precipf = 99999 # Dummy value so there's a column
       dat.temp$rain.prop = 99999 # Dummy value so there's a column
-      day.now = unique(dat.temp$doy)
+      day.now = unique(dat.temp$doy)-1
       
       # Set up the lags
       if(i==max(dat.mod$time.day)){
@@ -264,7 +264,7 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.list=NULL, lags.in
                                      "tmax.day", "tmin.day", "precipf.day", "swdown.day", "lwdown.day", "press.day", "qair.day", "wind.day",
                                      "next.tmax", "next.tmin", "next.precipf", "next.swdown", "next.lwdown", "next.press", "next.qair", "next.wind")]
       dat.temp$lwdown = 99999 # Dummy value so there's a column
-      day.now = unique(dat.temp$doy)
+      day.now = unique(dat.temp$doy)-1
       
       # Set up the lags
       if(i==max(dat.mod$time.day)){
@@ -334,7 +334,7 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.list=NULL, lags.in
                                      "tmax.day", "tmin.day", "precipf.day", "swdown.day", "lwdown.day", "press.day", "qair.day", "wind.day",
                                      "next.tmax", "next.tmin", "next.precipf", "next.swdown", "next.lwdown", "next.press", "next.qair", "next.wind")]
       dat.temp$press = 99999 # Dummy value so there's a column
-      day.now = unique(dat.temp$doy)
+      day.now = unique(dat.temp$doy)-1
       
       # Set up the lags
       if(i==max(dat.mod$time.day)){
@@ -391,7 +391,7 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.list=NULL, lags.in
                                      "tmax.day", "tmin.day", "precipf.day", "swdown.day", "lwdown.day", "press.day", "qair.day", "wind.day",
                                      "next.tmax", "next.tmin", "next.precipf", "next.swdown", "next.lwdown", "next.press", "next.qair", "next.wind")]
       dat.temp$qair = 99999 # Dummy value so there's a column
-      day.now = unique(dat.temp$doy)
+      day.now = unique(dat.temp$doy)-1
       
       # Set up the lags
       if(i==max(dat.mod$time.day)){
@@ -455,7 +455,7 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.list=NULL, lags.in
                                      "tmax.day", "tmin.day", "precipf.day", "swdown.day", "lwdown.day", "press.day", "qair.day", "wind.day",
                                      "next.tmax", "next.tmin", "next.precipf", "next.swdown", "next.lwdown", "next.press", "next.qair", "next.wind")]
       dat.temp$wind = 99999 # Dummy value so there's a column
-      day.now = unique(dat.temp$doy)
+      day.now = unique(dat.temp$doy)-1
       
       # Set up the lags
       if(i==max(dat.mod$time.day)){

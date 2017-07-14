@@ -863,7 +863,7 @@ predict.met <- function(newdata, model.predict, Rbeta, resid.err=F, model.resid=
   df.hr[,"as.ordered(hour)"] <- df.hr$hour
   
   model.predict$factors[model.predict$factors=="as.ordered(hour)"] <- "hour"
-  m  <- newdata[complete.cases(newdata[,model.predict$factors]),model.predict$factors]
+  m  <- newdata[,model.predict$factors]
   m[,"as.ordered(hour)"] <- m$hour
   if(length(df.hr$hour)!= length(m$hour)) m <- merge(m, df.hr, all=T)
   
