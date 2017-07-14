@@ -138,6 +138,7 @@ predict.subdaily <- function(dat.mod, n.ens, path.model, lags.list=NULL, lags.in
       col.beta <- betas.tair$var[[1]]$dim[[2]]$len # number of coefficients
       rows.beta <- sample(1:(n.beta-n.ens), 1, replace=T)
       Rbeta <- as.matrix(ncvar_get(betas.tair, paste(day.now), c(rows.beta,1), c(n.ens,col.beta)), nrow=length(rows.beta), ncol=col.beta)
+      nc_close(betas.tair)
      
       dat.pred <- predict.met(newdata=dat.temp, 
                               model.predict=mod.tair.doy, 
