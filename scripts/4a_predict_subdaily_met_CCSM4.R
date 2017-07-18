@@ -293,7 +293,7 @@ for(GCM in GCM.list){
       dat.ens[[paste0("X", e)]] <- dat.ens[[paste0("X", e)]][order(dat.ens[[paste0("X", e)]]$time.hr, decreasing=F),]
       
       # Do the modeling here rather than in parallel
-      ens.sims[[paste0("X", e)]] <- predict.subdaily(dat.ens[[paste0("X", e)]], n.ens=ens.hr, path.model=file.path(dat.base, "subday_models"), lags.list=lags.init, lags.init=NULL, dat.train=dat.train)
+      ens.sims[[paste0("X", e)]] <- predict.subdaily(dat.mod=dat.ens[[paste0("X", e)]], n.ens=ens.hr, path.model=file.path(dat.base, "subday_models"), lags.list=lags.init, lags.init=NULL, dat.train=dat.train)
       
       pb.index <- pb.index + 1 # Advance our progress bar  # Doing it here rather than at end of writing files because that should be fast
     } # End ensembles setup
