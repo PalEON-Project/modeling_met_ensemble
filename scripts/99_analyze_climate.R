@@ -35,95 +35,138 @@ rm(list=ls())
 # 0. Set up file structure, load packages, etc
 # -----------------------------------
 # Load libraries
-library(zoo); library(ggplot2)
+library(zoo); library(ggplot2); library(stringr); library(ncdf4)
 
 # Set the working directory
 # wd.base <- "~/Desktop/Research/PalEON_CR/met_ensemble"
-wd.base <- "~/Dropbox/PalEON_CR/met_ensemble"
+wd.base <- "~/met_ensemble"
 # wd.base <- "/projectnb/dietzelab/paleon/met_ensemble"
 setwd(wd.base)
-dir.dat <- "~/Desktop/phase3_met_ensembe/bias_correct_day"
+dir.dat <- "~/met_ensemble/data/met_ensembles"
 # Defining a site name -- this can go into a function later
 site.name="HARVARD"
 site.lat=42.54
 site.lon=-72.18
 GCM.list=c("MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1", "CCSM4")
-n=25 # Number of ensemble members
+ens.type <- "1hr" # set for day or sub-day to check on
+# n=25 # Number of ensemble members
 # -----------------------------------
 
 # -----------------------------------
-# Load & Smooth the data
+# Extract the data
 # -----------------------------------
-dat.out <- NULL
+vars <- c("tair", "precipf", "swdown", "lwdown", "press", "qair", "wind")
+dat.out <- list()
+for(v in vars){
+  dat.out[[v]] <- data.frame(Year = 850:2015)
+}
+
+
 for(GCM in GCM.list){
-  # load the data
-  load(file.path(dir.dat, site.name, GCM, "day", paste0(GCM, "_day_alldata.Rdata")))
-  
-  # Extract the sims for each variable
-  for(v in names(dat.out.full)[!names(dat.out.full)=="met.bias"]){
-    # Aggregate the data to annual
-    dat.ann <- aggregate(dat.out.full[[v]]$sims[,paste0("X",1:n)],
-                         by=dat.out.full[[v]]$sims[,c("dataset", "met", "year")],
-                         FUN=mean)
-    
-    # Order the data
-    dat.ann <- dat.ann[order(dat.ann$year),]
-    
-    # Calculate 10- and 100-year running averages
-    smooth.10  <- rollapply(dat.ann[,paste0("X",1:n)], width=10 , fill=NA, FUN=mean)
-    smooth.100 <- rollapply(dat.ann[,paste0("X",1:n)], width=100, fill=NA, FUN=mean)
+  print(GCM)
+  # Get list of ensemble members
+  ens.list <- dir(file.path(dir.dat, site.name, GCM, ens.type), paste0(site.name, "_", GCM, "_", ens.type))
 
-    # Calculate the mean & CI *from the smoothed ensemble*
-    dat.smooth <- data.frame(GCM=GCM,
-                             met=rep(dat.ann$met, 3),
-                             year=rep(dat.ann$year, 3),
-                             res=c(rep("annual", nrow(dat.ann)),
-                                   rep("decadal", nrow(smooth.10)),
-                                   rep("centennial", nrow(smooth.100))),
-                             mean=c(apply(dat.ann[,paste0("X",1:n)],1,mean, na.rm=T),
-                                    apply(smooth.10[,paste0("X",1:n)],1,mean, na.rm=T),
-                                    apply(smooth.100[,paste0("X",1:n)],1,mean, na.rm=T)),
-                             lwr =c(apply(dat.ann[,paste0("X",1:n)],1,quantile, 0.025, na.rm=T),
-                                    apply(smooth.10[,paste0("X",1:n)],1,quantile, 0.025, na.rm=T),
-                                    apply(smooth.100[,paste0("X",1:n)],1,quantile, 0.025, na.rm=T)),
-                             upr =c(apply(dat.ann[,paste0("X",1:n)],1,quantile, 0.975, na.rm=T),
-                                    apply(smooth.10[,paste0("X",1:n)],1,quantile, 0.975, na.rm=T),
-                                    apply(smooth.100[,paste0("X",1:n)],1,quantile, 0.975, na.rm=T))
-                             )
+  pb.index=1
+  pb <- txtProgressBar(min=1, max=length(850:2015)*length(ens.list), style=3)
+  # loop through ensemble members and calculate annual means
+  for(ens in ens.list){
+    files.ens <- dir(file.path(dir.dat, site.name, GCM, ens.type, ens))
     
-    
-    # Append variables and GCMs into one document for graphing
-    if(is.null(dat.smooth)){
-      dat.out <- dat.smooth
-    } else {
-      dat.out <- rbind(dat.out, dat.smooth)
+    # loop through individual files
+    for(fnow in files.ens){
+      yr.now <- as.numeric(str_split(str_split(fnow, "_")[[1]][[5]], "[.]")[[1]][1])
+      
+      # Open the nc file
+      ncT <- nc_open(file.path(file.path(dir.dat, site.name, GCM, ens.type, ens, fnow)))
+      
+      for(v in vars){
+        dat.out[[v]][dat.out[[v]]$Year == yr.now, ens] <- mean(ncvar_get(ncT, v))
+      }
+      
+      nc_close(ncT)
+      
+      # Update our Progress Bar
+      setTxtProgressBar(pb, pb.index) 
+      pb.index = pb.index+1
     }
   }
-  
+  print("")
 } # End GCM loop
 
 summary(dat.out)
 # -----------------------------------
 
 # -----------------------------------
+# Smooth & summarize the data
+# -----------------------------------
+dat.out.10 <- dat.out.100 <- list()
+for(v in names(dat.out)){
+  dat.out.10[[v]]  <- data.frame(Year = 850:2015)
+  dat.out.100[[v]] <- data.frame(Year = 850:2015)
+}
+
+# Getting the running means
+for(v in names(dat.out)){
+  dat.out.10[[v]][,2:ncol(dat.out[[v]])]  <- rollapply(dat.out[[v]][,2:ncol(dat.out[[v]])], width=10 , fill=NA, FUN=mean, by.column=T, align="center")
+  dat.out.100[[v]][,2:ncol(dat.out[[v]])] <- rollapply(dat.out[[v]][,2:ncol(dat.out[[v]])], width=100, fill=NA, FUN=mean, by.column=T, align="center")
+}
+
+# Creating an index for GCMs
+gcm.names <- vector(length=ncol(dat.out[[1]]))
+for(i in 2:ncol(dat.out[[1]])){
+  gcm.names[i] <- str_split(names(dat.out[[1]])[i], "_")[[1]][[2]]
+}
+
+# Packaging the data for graphing
+years <- 850:2015
+dat.smooth <- NULL
+for(GCM in GCM.list){
+  cols.gcm <- which(gcm.names == GCM)
+  for(v in names(dat.out)){
+    dat.gcm <- data.frame(GCM=GCM,
+                          met.var = v,
+                          res=rep(c("annual", "decadal", "centennial"), each=length(years)),
+                          mean = c(apply(dat.out    [[v]][,cols.gcm], 1, mean , na.rm=T),
+                                   apply(dat.out.10 [[v]][,cols.gcm], 1, mean , na.rm=T),
+                                   apply(dat.out.100[[v]][,cols.gcm], 1, mean , na.rm=T)),
+                          lwr  = c(apply(dat.out    [[v]][,cols.gcm], 1, quantile, 0.025, na.rm=T),
+                                   apply(dat.out.10 [[v]][,cols.gcm], 1, quantile, 0.025, na.rm=T),
+                                   apply(dat.out.100[[v]][,cols.gcm], 1, quantile, 0.025, na.rm=T)),
+                          upr  = c(apply(dat.out    [[v]][,cols.gcm], 1, quantile, 0.975, na.rm=T),
+                                   apply(dat.out.10 [[v]][,cols.gcm], 1, quantile, 0.975, na.rm=T),
+                                   apply(dat.out.100[[v]][,cols.gcm], 1, quantile, 0.975, na.rm=T))
+                          )
+    if(is.null(dat.smooth)){
+      dat.smooth <- dat.gcm
+    } else {
+      dat.smooth <- rbind(dat.smooth, dat.gcm)
+    }
+  } # end met var loop
+} # end GCM loop
+
+# -----------------------------------
+
+
+
+# -----------------------------------
 # Graph the output
 # -----------------------------------
 dat.out$res <- factor(dat.out$res, levels=c("annual", "decadal", "centennial"))
 
-pdf(file.path(wd.base, "data/met_ensembles", site.name, "LowFrequencyTrends_BiasCorrected.pdf"), height=8, width=11)
+pdf(file.path(dir.dat, site.name, paste0("LowFrequencyTrends_", ens.type, "_Ensemble.pdf")), height=8, width=11)
 for(v in unique(dat.out$met)){
   print(
   ggplot(data=dat.out[dat.out$met==v,]) +
-    facet_grid(res~met, scale="free_y") +
-    geom_ribbon(data=dat.out[dat.out$met==v & dat.out$res=="annual",], aes(x=year, ymin=lwr, ymax=upr, fill=GCM), alpha=0.2) +
-    geom_line(data=dat.out[dat.out$met==v & dat.out$res=="annual",], aes(x=year, y=mean, color=GCM), size=0.5, alpha=0.5) +
-    geom_ribbon(data=dat.out[dat.out$met==v & dat.out$res=="decadal",], aes(x=year, ymin=lwr, ymax=upr, fill=GCM), alpha=0.3) +
-    geom_line(data=dat.out[dat.out$met==v & dat.out$res=="decadal",], aes(x=year, y=mean, color=GCM), size=1) +
-    geom_ribbon(data=dat.out[dat.out$met==v & dat.out$res=="centennial",], aes(x=year, ymin=lwr, ymax=upr, fill=GCM), alpha=0.3) +
-    geom_line(data=dat.out[dat.out$met==v & dat.out$res=="centennial",], aes(x=year, y=mean, color=GCM), size=1.5) +
+    facet_grid(res~met, scales="free_y") +
+    geom_ribbon(aes(x=year, ymin=lwr, ymax=upr, fill=GCM, alpha=res)) +
+    geom_line(aes(x=year, y=mean, color=GCM, size=res)) +
     geom_vline(xintercept=c(1850, 1901, 1980), linetype="dashed") +
+    scale_alpha_discrete(values=c(0.2, 0.3, 0.3)) +
+    scale_size_discrete(values=c(0.3, 1, 1.5)) +
     scale_x_continuous(expand=c(0,0)) +
     scale_y_continuous(name=v) +
+    guides(size=F, alpha=F) +
     theme_bw() +
     theme(legend.position="top")    
   )
