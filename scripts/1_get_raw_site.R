@@ -37,41 +37,54 @@
 #  -- Function will check to see if each type of data has been done yet before processing
 #  -- See get_point_raw.R for internal workflow & more details
 # -----------------------------------
-wd.base = "~/Dropbox/PalEON_CR/met_ensemble/"
+wd.base <- "~/Dropbox/PalEON_CR/met_ensemble"
 setwd(wd.base)
 
-source("scripts/get_point_raw.R")
+site.name = "HARVARD"
+site.lat  = 42.5
+site.lon  = -72.18
+path.out = "~/Desktop/Research/met_ensembles/data/paleon_sites"
 
 
-# Downloading Harvard
-# get.raw(wd.base="/projectnb/dietzelab/paleon/met_ensemble/", 
-#         site.name="HARVARD", 
-#         lat=42.54, lon=-72.18, 
-#         ldas.type="NLDAS", 
-#         GCM.list=c("MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1", "IPSL-CM5A-LR", "CCSM4"))
+# Download NLDAS (note: this is not a pecan script & requires fill LDAS stored somewhere locally)
+source("scripts/extract_local_NLDAS.R")
+ldas.type = "NLDAS"
+path.nldas = "/Volumes/Celtis/Meteorology/LDAS/NLDAS_FORA0125_H.002/netcdf/"
+extract.local.NLDAS(outfolder=file.path(path.out, site.name, "NLDAS"), in.path=path.nldas, 
+                    start_date="1980-01-01", end_date="2015-12-31", 
+                    site_id=site.name, lat.in=site.lat, lon.in=site.lon)
 
-path.pecan="scripts/Pecan_modified"
+# Note: This keeps breaking every 5-10 years; so I'm having to go real slow at it
+path.pecan <- "~/Desktop/Research/pecan/modules/data.atmosphere/R/"
+source(file.path(path.pecan, "download.CRUNCEP_Global.R"))
+download.CRUNCEP(outfolder=file.path(path.out, site.name, "CRUNCEP"), 
+                 start_date="2007-01-01", end_date=paste0("2010-12-31"), 
+                 site_id=site.name, lat.in=site.lat, lon.in=site.lon)
 
-get.raw(wd.base="~/Dropbox/PalEON_CR/met_ensemble/",
-        site.name="VCM",
-        lat=35.89, lon=-106.53,
-        Ameriflux=NULL,
-        ldas.type=NULL,
-        CRUNCEP=TRUE,
-        GCM.list=NULL,
-        path.pecan=path.pecan)
+# Extract from the GCMs:
+source("scripts/extract_local_CMIP5.R")
+path.cmip5 = "/Volumes/Celtis/Meteorology/CMIP5/"
+GCM.list  = c("MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1", "CCSM4")
+# GCM.list="CCSM4"
+GCM.scenarios = c("p1000", "historical")
+for(GCM in GCM.list){
+  for(scenario in GCM.scenarios){
+    if(scenario=="p1000"){
+      cmip5.start = "0850-01-01"
+      cmip5.end   = "1849-12-31"
+    } else if (scenario == "historical"){
+      cmip5.start = "1850-01-01"
+      cmip5.end   = "2005-12-31"
+    } else {
+      stop("Scenario not implemented yet")
+    }
+    
+    print(paste(GCM, scenario, sep=" - "))
+    # huss_day_MIROC-ESM_past1000_r1i1p1_08500101-10091231.nc
+    extract.local.CMIP5(outfolder = file.path(path.out, site.name, GCM, scenario), in.path = file.path(path.cmip5, GCM, scenario), 
+                        start_date = cmip5.start, end_date = cmip5.end, 
+                        site_id = site.name, lat.in = site.lat, lon.in = site.lon, 
+                        model = GCM, scenario = scenario, ensemble_member = "r1i1p1")   
+  } # end GCM.scenarios
+} # End GM lop
 
-
-# wd.base="/projectnb/dietzelab/paleon/met_ensemble/"
-# site.name="HARVARD" 
-# lat=42.54; lon=-72.18 
-# ldas.type="NLDAS"
-# GCM.list=c("MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1", "IPSL-CM5A-LR", "CCSM4")
-
-# # Downloading UNDERC
-# get.raw(wd.base="~/Desktop/Research/PalEON_CR/met_ensemble", 
-#         site.name="UNDERC", 
-#         lat=46.22, lon=-89.53, 
-#         ldas.type="NLDAS", 
-#         GCM="MIROC-ESM")
-# 
