@@ -89,6 +89,7 @@ extract.local.CMIP5 <- function(outfolder, in.path, start_date, end_date, site_i
   var$DAP.name <- as.character(var$DAP.name)
   
   files.var <- list()
+  n.file=0
   for(v in var$DAP.name){
   	files.var[[v]] <- list()
     if(v %in% vars.gcm.day){
@@ -101,20 +102,110 @@ extract.local.CMIP5 <- function(outfolder, in.path, start_date, end_date, site_i
 	# Set up an index to help us find out which file we'll need
     files.var[[v]][["years"]] <- data.frame(first.year=NA, last.year=NA)
     for(i in 1:length(files.var[[v]][["files"]])){
-    		yr.str <- str_split(str_split(files.var[[v]][["files"]][[i]], "_")[[1]][6], "-")[[1]]
-  		files.var[[v]][["years"]][i, "first.year"] <- as.numeric(substr(yr.str[1], 1, 4))
+    	yr.str <- str_split(str_split(files.var[[v]][["files"]][[i]], "_")[[1]][6], "-")[[1]]
+  		
+    	# Don't bother storing this file if we don't want those years
+    	if(as.numeric(substr(yr.str[1], 1, 4)) > end_year | as.numeric(substr(yr.str[2], 1, 4))< start_year) next
+    	files.var[[v]][["years"]][i, "first.year"] <- as.numeric(substr(yr.str[1], 1, 4))
   		files.var[[v]][["years"]][i, "last.year" ] <- as.numeric(substr(yr.str[2], 1, 4))
+
+  		n.file=n.file+1
   	 } # End file loop
   } # end variable loop
   
   
-  # Now start looping through years to put all vars for 1 year in 1 file
-  pb <- txtProgressBar(min=1, max=rows, style=3)
+  # Querying large netcdf files 1,000 times is slow.  So lets open the connection once and 
+  # pull the full time series
+  # Loop through using the files using the first variable; shoudl be tair & should be highest res avail
+  # This will require quite a bit of memory, but it's doable
+  dat.all <- list()
+  dat.time <- seq(start_date, end_date, by="day")  # Everything shoudl end up being a day
+  
+  print("- Extracting files: ")
+  pb <- txtProgressBar(min=1, max=n.file, style=3)
+  pb.ind=1
+  # Loop through each variable so that we don't have to open files more than once
+  for(v in 1:nrow(var)){
+    
+    var.now <- var[v,"DAP.name"]
+    # print(var.now)
+    
+    dat.all[[v]] <- vector() # initialize the layer
+    # Figure out the temporal resolution of the variable
+    v.res <- ifelse(var.now %in% vars.gcm.day, "day", "month")
 
+    # Figure out what file we need
+    # file.ind <- which(files.var[[var.now]][i])
+    for(i in 1:length(files.var[[var.now]]$files)){
+      setTxtProgressBar(pb, pb.ind)
+      pb.ind=pb.ind+1
+      f.now <- files.var[[var.now]]$files[i]
+      # print(f.now)
+      
+      # Open up the file
+      ncT <- nc_open(file.path(in.path, v.res, var.now, f.now))
+      
+      # Extract our dimensions
+      lat_bnd <- ncvar_get(ncT, "lat_bnds")
+      lon_bnd <- ncvar_get(ncT, "lon_bnds")
+      nc.time <- ncvar_get(ncT, "time")
+      
+      # splt.ind <- ifelse(GCM %in% c("MPI-ESM-P"), 4, 3)
+      # date.origin <- as.Date(str_split(ncT$dim$time$units, " ")[[1]][splt.ind])
+ 
+      # Find the closest grid cell for our site (using harvard as a protoype)
+      ind.lat <- which(lat_bnd[1,]<=lat.in & lat_bnd[2,]>=lat.in)
+      if(max(lon.in)>=180){
+        ind.lon <- which(lon_bnd[1,]>=lon.in & lon_bnd[2,]<=lon.in)
+      } else {
+        ind.lon <- which(lon_bnd[1,]<=180+lon.in & lon_bnd[2,]>=180+lon.in)
+      }
+      
+      # Extract all of the available data
+      if(var.now %in% c("hus", "ua", "va")){ # These have multiple strata; we only want 1
+        plev <- ncvar_get(ncT, "plev")
+        puse <- which(plev==max(plev)) # Get humidity at the place of highest pressure (closest to surface)
+        dat.temp <- ncvar_get(ncT, var.now, c(ind.lon, ind.lat, puse, 1), c(1,1,1,length(nc.time)))
+        # If dat.list has missing values, try the next layer
+        puse.orig <- puse
+        while(is.na(mean(dat.temp))){
+          if(puse.orig==1) { puse = puse + 1 } else { puse = puse -1 }
+          dat.temp <- ncvar_get(ncT, var.now, c(ind.lon, ind.lat, puse, 1), c(1,1,1,length(nc.time)))
+        }
+      } else {
+        dat.temp <- ncvar_get(ncT, var.now, c(ind.lon, ind.lat, 1), c(1,1,length(nc.time)))
+      }
+      
+      # If we have daily data and we're dealing with a model that skips leap year, add it in
+      if(GCM %in% no.leap & v.res == "day" & leap_year(y.now) & length(dat.temp[[v]]) < nday){
+        dat.temp <- append(dat.temp, dat.temp[sum(dpm[1:2])], sum(dpm[1:2]))
+      }
+      
+      # If we have monthly data, lets trick it into being daily
+      if(v.res == "month"){
+        mo.ind <- rep(1:12, length.out=length(dat.temp))
+        dat.trick <- vector()
+        for(j in 1:length(dat.temp)){
+          dat.trick <- c(dat.trick, rep(dat.temp[j], dpm[mo.ind[j]]))
+        }
+        dat.temp <- dat.trick
+      } # End leap day trick
+      
+      dat.all[[v]] <- append(dat.all[[v]], dat.temp, length(dat.all[[v]]))
+      nc_close(ncT)    	
+    } # End file loop
+  } # End variable loop
+    
+
+  print("")
+  print("- Writing to NetCDF: ")
+  pb <- txtProgressBar(min=1, max=rows, style=3)
   for (i in 1:rows){
     setTxtProgressBar(pb, i)
     
     y.now = ylist[i]    
+    yr.ind <- which(year(dat.time)==y.now)
+    
     
     dpm <- days_in_month(1:12)
     if(leap_year(y.now)) dpm[2] <- dpm[2] + 1 # make sure Feb has 29 days if we're dealing with a leap year
@@ -172,85 +263,7 @@ extract.local.CMIP5 <- function(outfolder, in.path, start_date, end_date, site_i
     
     # Loop through each variable in the order of everything else
     for(v in 1:nrow(var)){
-	    	var.now <- var[v,"DAP.name"]
-    		
-	    	# Figure out the temporal resolution of the variable
-    		v.res <- ifelse(var.now %in% vars.gcm.day, "day", "month")
-    		npull <- ifelse(v.res=="day", nday, 12)
-    		
-    		# Figure out what file we need
-    		file.ind <- which(files.var[[var.now]]$years$first.year<=y.now & files.var[[var.now]]$years$last.year>=y.now)
-    		f.now <- files.var[[var.now]]$files[file.ind]
-    		
-    		# Open up the file
-    		ncT <- nc_open(file.path(in.path, v.res, var.now, f.now))
-    		
-    		# Extract our dimensions
-    		lat_bnd <- ncvar_get(ncT, "lat_bnds")
-    		lon_bnd <- ncvar_get(ncT, "lon_bnds")
-    		nc.time <- ncvar_get(ncT, "time")
-    		
-    		# Find the closest grid cell for our site (using harvard as a protoype)
-    		ind.lat <- which(lat_bnd[1,]<=lat.in & lat_bnd[2,]>=lat.in)
-    		if(max(lon.in)>=180){
-    			ind.lon <- which(lon_bnd[1,]>=lon.in & lon_bnd[2,]<=lon.in)
-    		} else {
-    			ind.lon <- which(lon_bnd[1,]<=180+lon.in & lon_bnd[2,]>=180+lon.in)
-    		}
-    		
-    		# Finding which time slices we want
-    		# splt.ind <- ifelse(GCM %in% c("MPI-ESM-P"), 4, 3)
-    		# date.origin <- as.Date(str_split(ncT$dim$time$units, " ")[[1]][splt.ind])
-    		
-    		ind.origin <- str_split(str_split(f.now, "_")[[1]][6], "-")[[1]][1]
-    		
-    		# Time units are (usually) days since 0850-01-01; with leap year this is a bit tricky
-  		  if(v.res=="day"){
-    		  ind.origin <- as.Date(ind.origin, format="%Y%m%d")
-  		    time.ind <- length(year(ind.origin):y.now)*365 -364   
-  		    
-  		    if(!(GCM %in% no.leap)){
-  		      n.leap <- length(which(leap_year(year(ind.origin):y.now)))
-  		      time.ind <- time.ind+6
-  		    }
-  		  } 
-  		  if(v.res=="month") {
-  		    ind.origin <- as.Date(paste0(ind.origin, "01"), format="%Y%m%d")
-  		    time.ind <- length(year(ind.origin):y.now)*12 - 11   
-  		  }
-
-    		
-    		
-    		if(var.now %in% c("hus", "ua", "va")){
-    			plev <- ncvar_get(ncT, "plev")
-    			puse <- which(plev==max(plev)) # Get humidity at the place of highest pressure (closest to surface)
-    			dat.list[[v]] <- ncvar_get(ncT, var.now, c(ind.lon, ind.lat, puse, time.ind), c(1,1,1,npull))
-    			
-    			# If dat.list has missing values, try the next layer
-    			puse.orig <- puse
-    			while(is.na(mean(dat.list[[v]]))){
-    				if(puse.orig==1) { puse = puse + 1 } else { puse = puse -1 }
-    				dat.list[[v]] <- ncvar_get(ncT, var.now, c(ind.lon, ind.lat, puse, time.ind), c(1,1,1,npull))
-    			}
-    		} else {
-    			dat.list[[v]] <- ncvar_get(ncT, var.now, c(ind.lon, ind.lat, time.ind), c(1,1,npull))
-    		}
-    		
-    		# If we have daily data and we're dealing with a model that skips leap year, add it in
-    		if(GCM %in% no.leap & v.res == "day" & leap_year(y.now) & length(dat.list[[v]]) < nday){
-    			dat.list[[v]] <- append(dat.list[[v]], dat.list[[v]][sum(dpm[1:2])], sum(dpm[1:2]))
-    		}
-    		
-    		# If we have monthly data, lets trick it into being daily
-    		if(v.res == "month"){
-    			dat.trick <- vector()
-    			for(j in 1:length(dpm)){
-    				dat.trick <- c(dat.trick, rep(dat.list[[v]][j], dpm[j]))
-    			}
-    			dat.list[[v]] <- dat.trick
-    		} # End leap day trick
-    		
-    		nc_close(ncT)    	
+	    	dat.list[[v]] <- dat.all[[v]][yr.ind]	
     } # End variable loop
         
     ## put data in new file
