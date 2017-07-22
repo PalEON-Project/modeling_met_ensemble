@@ -244,11 +244,11 @@ extract.local.CMIP5 <- function(outfolder, in.path, start_date, end_date, site_i
     		# If we have monthly data, lets trick it into being daily
     		if(v.res == "month"){
     			dat.trick <- vector()
-    			for(i in 1:length(dpm)){
-    				dat.trick <- c(dat.trick, rep(dat.list[[v]][i], dpm[i]))
+    			for(j in 1:length(dpm)){
+    				dat.trick <- c(dat.trick, rep(dat.list[[v]][j], dpm[j]))
     			}
     			dat.list[[v]] <- dat.trick
-    		}
+    		} # End leap day trick
     		
     		nc_close(ncT)    	
     } # End variable loop

@@ -64,9 +64,9 @@ download.CRUNCEP(outfolder=file.path(path.out, site.name, "CRUNCEP"),
 # Extract from the GCMs:
 source("scripts/extract_local_CMIP5.R")
 path.cmip5 = "/Volumes/Celtis/Meteorology/CMIP5/"
+GCM.scenarios = c("p1000", "historical")
 GCM.list  = c("MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1", "CCSM4")
 # GCM.list="CCSM4"
-GCM.scenarios = c("p1000", "historical")
 for(GCM in GCM.list){
   for(scenario in GCM.scenarios){
     if(scenario=="p1000"){
