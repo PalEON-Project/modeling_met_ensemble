@@ -56,36 +56,11 @@ wd.base <- "~/met_ensemble/"
 # wd.base <- "~/Desktop/Research/PalEON_CR/met_ensemble/"
 setwd(wd.base)
 
-# Load the scripts that do all the heavy lifting
-source("scripts/temporal_downscale.R")
-source("scripts/temporal_downscale_functions.R")
-
-
-# dat.base <- "/projectnb/dietzelab/paleon/met_ensemble/data/met_ensembles/HARVARD/"
-# dat.base <- "~/Desktop/Research/met_ensembles/data/met_ensembles/VCM/"
 dat.base <- "~/met_ensemble/data/met_ensembles/HARVARD/"
 
 dat.train <- read.csv(file.path(wd.base, "data/paleon_sites/HARVARD/NLDAS_1980-2015.csv"))
-# dat.train <- read.csv(file.path(wd.base, "data/paleon_sites/VCM/Ameriflux_2007-2014.csv"))
-# dat.train$hour <- dat.train$hour + minute(dat.train$date)/60
-
-# aggregate to hour
-dat.train <- aggregate(dat.train[,c("tair", "precipf", "swdown", "lwdown", "press", "qair", "uas", "vas", "wind")],
-                       by=dat.train[,c("year", "doy", "hour")],
-                       FUN=mean)
-dat.train$date <- as.POSIXct(paste(dat.train$year, dat.train$doy, dat.train$hour, sep="-"), "%Y-%j-%H", tz="GMT")
-summary(dat.train)
-
-
-# Calculate the timestep in hours to make things easier
-timestep <- unique(minute(dat.train$date)/60)+1 # add 1 so hourly data = 1 hr
-timestep <- timestep[!is.na(timestep)]
-if(length(timestep)>1) timestep <- mean(diff(timestep)) # if we have more than one minute mark, do the difference
-
-
-df.hour <- data.frame(hour=unique(dat.train$hour)) # match this to whatever your "hourly" timestep is
-
-
+path.pecan <- "~/Desktop/Research/pecan/modules/data.atmosphere/R/"
+path.lm <- file.path(dat.base, "HARVARD")
 
 # Hard-coding numbers for Harvard
 site.name="HARVARD"
@@ -104,30 +79,30 @@ cores.max = 2
 # Set up the appropriate seed
 set.seed(0017)
 seed.vec <- sample.int(1e6, size=500, replace=F)
+# -----------------------------------
 
-# Defining variable names, longname & units
-vars.info <- data.frame(name    =c("tair", "precipf", "swdown", "lwdown", "press", "qair", "wind"),
-                        name.cf = c("air_temperature", 
-                                    "precipitation_flux",
-                                    "surface_downwelling_shortwave_flux_in_air",
-                                    "surface_downwelling_longwave_flux_in_air",
-                                    "air_pressure",
-                                    "specific_humidity",
-                                    "wind"
-                                    ),
-                        longname=c("2 meter mean air temperature", 
-                                   "cumulative precipitation (water equivalent)",
-                                   "incident (downwelling) showtwave radiation",
-                                   "incident (downwelling) longwave radiation",
-                                   'Pressure at the surface',
-                                   'Specific humidity measured at the lowest level of the atmosphere',
-                                   'Wind speed' 
-                                   ),
-                        units= c("K", "kg m-2 s-1", "W m-2", "W m-2", "Pa", "kg kg-1", "m s-1")
-                        )
-# Make a few dimensions we can use
-dimY <- ncdim_def( "lon", units="degrees", longname="latitude", vals=site.lat )
-dimX <- ncdim_def( "lat", units="degrees", longname="longitude", vals=site.lon )
+# -----------------------------------
+# 2. Apply the model
+# -----------------------------------
+source(file.path(path.pecan, "tdm_predict_subdaily_met.R"))
+
+for(GCM in GCM.list){
+  # GCM="Ameriflux"
+  # tic()
+  # Set the directory where the output is & load the file
+  path.gcm <- file.path(dat.base, GCM, "day")
+  # dat.day <- dir(path.gcm, ".Rdata")
+  # load(file.path(path.gcm, dat.day)) # Loads dat.out.full
+  
+  # Set & create the output directory
+  path.out <- file.path(dat.base, GCM, paste0(timestep, "hr"))
+  if(!dir.exists(path.out)) dir.create(path.out, recursive=T)
+  
+  predict_subdaily_met(outfolder=path.out, in.path=path.gcm, in.prefix="HARVARD", lm.models.base=path.lm, 
+                       dat.train_file, start_date, end_date, cores.max = 12, 
+                       n.ens = 3, resids = FALSE, parallel = FALSE, n.cores = NULL, 
+                       overwrite = FALSE, verbose = FALSE)
+}
 # -----------------------------------
 
 # NOTE: all precip needs to be converted precip back to kg/m2/s from kg/m2/day

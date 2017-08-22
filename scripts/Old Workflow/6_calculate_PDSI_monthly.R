@@ -33,8 +33,8 @@
 # -----------------------------------
 library(ncdf4)
 
-path.met <- "~/Desktop/Research/met_ensembles/data/met_ensembles/HARVARD.v1/monthly_all"
-path.soil <- "~/Dropbox/PalEON_CR/env_regional/phase2_env_drivers_v2/soil/"
+path.met <- "~/met_ensemble/data/met_ensembles/HARVARD/monthly_all"
+path.soil <- "~/ED_PalEON/MIP2_Region/phase2_env_drivers_v2/soil/"
 
 site.lat <- 42.54
 site.lon <- -72.18

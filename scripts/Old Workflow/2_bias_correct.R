@@ -51,19 +51,18 @@ rm(list=ls())
 # 0. Set up file structure, load packages, etc
 # -----------------------------------
 # Load libraries
+library(ncdf4)
 library(mgcv); library(ggplot2)
 library(stringr)
-library(bigmemory)
 library(lubridate)
 
 # Set the working directory
-# wd.base <- "~/Desktop/Research/PalEON_CR/met_ensemble"
-# out.base <- "~/Desktop/met_bias_day/"
 wd.base <- "~/Dropbox/PalEON_CR/met_ensemble/"
 out.base <- "~/Desktop/met_ensembles/"
-# wd.base <- "/projectnb/dietzelab/paleon/met_ensemble"
-# out.base <- "/projectnb/dietzelab/paleon/met_ensemble"
 setwd(wd.base)
+
+# Setting some important file paths
+path.pecan <- "~/Desktop/Research/pecan"
 
 # Defining a site name -- this can go into a function later
 site.name="HARVARD"
@@ -89,6 +88,153 @@ seed.vec <- sample.int(1e6, size=500, replace=F)
 seed <- seed.vec[min(ens)] # This makes sure that if we add ensemble members, it gets a new, but reproducible seed
 
 # -----------------------------------
+
+
+# -----------------------------------
+# 1. generate a daily training dataset to get us started
+# 
+# this will end up being a 1-member "ensemble" of the NLDAS dataset
+# -----------------------------------
+
+df.var <- data.frame(CF.name = c("air_temperature", "air_temperature_maximum", "air_temperature_minimum", 
+                                 "surface_downwelling_longwave_flux_in_air",
+                                 "air_pressure", "surface_downwelling_shortwave_flux_in_air", 
+                                 "eastward_wind", "northward_wind", "wind_speed", "specific_humidity", "precipitation_flux"), 
+                     units = c("Kelvin", "Kelvin", "Kelvin", "W/m2", "Pascal", "W/m2", "m/s", "m/s", "m/s", "g/g", "kg/m2/s"))
+
+nc.info <- data.frame(CF.name = c("air_temperature_minimum", "air_temperature_maximum", "precipitation_flux", 
+        "surface_downwelling_shortwave_flux_in_air", "surface_downwelling_longwave_flux_in_air", 
+        "air_pressure", "specific_humidity", "wind_speed"), 
+        longname = c("2 meter minimum air temperature", "2 meter maximum air temperature", 
+        "cumulative precipitation (water equivalent)", "incident (downwelling) showtwave radiation", 
+        "incident (downwelling) longwave radiation", "air_pressureure at the surface", 
+        "Specific humidity measured at the lowest level of the atmosphere", 
+        "Wind speed"), 
+        units = c("K", "K", "kg m-2 s-1", "W m-2", "W m-2", "Pa", 
+        "kg kg-1", "m s-1"))
+
+path.ldas <- "~/Desktop/Research/met_ensembles/data/paleon_sites/HARVARD/NLDAS/"
+files.train <- dir(path.ldas)
+
+outfolder <- "~/Desktop/Research/met_ensembles/data/paleon_sites/HARVARD/NLDAS_day/"
+dir.create(outfolder, recursive=T)
+for(i in 1:length(files.train)){
+	
+	# Figure out what year we're working with
+	yr.now <- as.numeric(strsplit(files.train[i], "[.]")[[1]][2])
+	nday <- ifelse(leap_year(yr.now), 366, 365)
+
+	dat.day <- list()
+	
+	# Open the file so we can query from it
+	ncT <- nc_open(file.path(path.ldas, files.train[i]))
+	
+	# Extract som plot dimensions
+	lat.nc <- ncvar_get(ncT, "latitude")
+	lon.nc <- ncvar_get(ncT, "longitude")
+	
+	time.nc <- ncvar_get(ncT, "time") 
+	time.day <- apply(matrix(time.nc, ncol=nday), 2, mean) # get the daily time stamps
+	
+	# Extract plot info & aggregate to daily resolution
+	for(v in names(ncT$var)){
+		dat.hr <- matrix(ncvar_get(ncT, v), ncol=nday)
+		if(v == "air_temperature"){
+			dat.day[["air_temperature_minimum"]] <- apply(dat.hr, 2, min)
+			dat.day[["air_temperature_maximum"]] <- apply(dat.hr, 2, max)
+		} else if(v %in% c("eastward_wind", "northward_wind")) {
+			wind.e <- matrix(ncvar_get(ncT, "eastward_wind"), ncol=nday)
+			wind.n <- matrix(ncvar_get(ncT, "northward_wind"), ncol=nday)
+			wind <- sqrt(wind.e^2 + wind.n^2)
+			dat.day[["wind_speed"]] <- apply(wind, 2, mean)
+		} else {
+			dat.day[[v]] <- apply(dat.hr, 2, mean)
+		}
+	}
+	
+	# Create a daily .nc file for each year
+	dim.lat <- ncdim_def(name='latitude', units='degree_north', vals=lat.nc, create_dimvar=TRUE)
+    dim.lon <- ncdim_def(name='longitude', units='degree_east', vals=lon.nc, create_dimvar=TRUE)
+    dim.time <- ncdim_def(name='time', units="sec", vals=time.day, create_dimvar=TRUE, unlim=TRUE)
+    nc.dim=list(dim.lat,dim.lon,dim.time)
+
+    var.list = list()
+    for(v in names(dat.day)){
+      var.list[[v]] = ncvar_def(name=v, units=as.character(nc.info[nc.info$CF.name==v, "units"]), dim=nc.dim, missval=-999, verbose=verbose)
+    }
+
+	loc.file <- file.path(outfolder, paste("NLDAS_day", str_pad(yr.now, width=4, side="left",  pad="0"), "nc", sep = "."))
+    loc <- nc_create(filename = loc.file, vars = var.list, verbose = verbose)
+
+    for (v in names(dat.day)) {
+    	ncvar_put(nc = loc, varid = as.character(v), vals = dat.day[[v]])
+    }
+    nc_close(loc)	
+}
+
+# -----------------------------------
+
+# -----------------------------------
+# Working through the datasets to be bias-corrected
+# General Workflow
+# 1. Align Data:
+#    1.1. Common temporal resolution 
+#         - match training dataset (daily)
+#    1.2. Pair Ensemble members
+#         A. n train = n out --> pair by member ID
+#         B. n train < n out -->
+#            --> if n out is multiple of n train --> save multiple out for each in
+#            --> if n out not multiple of n train --> randomly pick which members to save multiples for
+#         C. n train > n out --> randomly subset members
+# 2. Debias Met 
+#    2.1. Climatology Debias: Annual means + seasonal cycle
+#    2.2. Anomaly Debias: adjust anomaly variance/distribution to try to maintain variance
+# 3. Save Met
+#    - write years of debiased (or training) met to keep with new ensemble & member ID
+# -----------------------------------
+GCM.list
+n.ens = 10
+ens.ID = "TEST"
+
+# 1. Align CRU 6-hourly with LDAS daily
+source(file.path(path.pecan, "modules/data.atmosphere/R", "align_met.R"))
+train.path <- "~/Desktop/Research/met_ensembles/data/paleon_sites/HARVARD/NLDAS_day"
+source.path <- "~/Desktop/Research/met_ensembles/data/paleon_sites/HARVARD/CRUNCEP"
+
+# For first round, we only want a single in & out
+met.out <- align.met(train.path, source.path, n.ens=1, seed=201708, pair.mems = FALSE)
+
+# Calculate wind speed if it's not already there
+if(!"wind_speed" %in% names(met.out$dat.source)){
+	met.out$dat.source$wind_speed <- sqrt(met.out$dat.source$eastward_wind^2 + met.out$dat.source$northward_wind^2)
+}
+
+# 2. Pass the training & source met data into the bias-correction functions; this will get written to the ensemble
+source(file.path(path.pecan, "modules/data.atmosphere/R", "debias_met_regression.R"))
+debias.met.regression(train.data=met.out$dat.train, source.data=met.out$dat.source, n.ens=10, vars.debias=NULL, CRUNCEP=TRUE,
+                      pair.anoms = TRUE, pair.ens = FALSE, uncert.prop="mean", resids = FALSE, seed=Sys.Date(),
+                      outfolder="~/Desktop/Research/met_ensembles/data/met_ensembles/TEST", 
+                      yrs.save=1901:1979, ens.name="TEST2", ens.mems=NULL, lat.in=site.lat, lon.in=site.lon,
+                      save.diagnostics=TRUE, path.diagnostics="~/Desktop/Research/met_ensembles/data/met_ensembles/TEST/bias_correct_qaqc",
+                      parallel = FALSE, n.cores = NULL, overwrite = TRUE, verbose = FALSE) 
+
+
+
+# -----------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # source("scripts/debias.gcm.R")
 # debias.gcm(GCM=GCM.list[1], LDAS=LDAS, wd.base=wd.base, out.base=out.base, site.name=site.name, site.lat=site.lat, site.lon=site.lon, n=n)

@@ -48,14 +48,19 @@ site.name="HARVARD"
 site.lat=42.54
 site.lon=-72.18
 GCM.list=c("MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1", "CCSM4")
-ens.type <- "1hr" # set for day or sub-day to check on
+ens.type <- "day" # set for day or sub-day to check on
 # n=25 # Number of ensemble members
 # -----------------------------------
 
 # -----------------------------------
 # Extract the data
 # -----------------------------------
-vars <- c("tair", "precipf", "swdown", "lwdown", "press", "qair", "wind")
+if(ens.type=="day"){
+  vars <- c("tmax", "tmin", "precipf", "swdown", "lwdown", "press", "qair", "wind")
+} else {
+  vars <- c("tair", "precipf", "swdown", "lwdown", "press", "qair", "wind")
+}
+
 dat.out <- list()
 for(v in vars){
   dat.out[[v]] <- data.frame(Year = 850:2015)
@@ -80,7 +85,7 @@ for(GCM in GCM.list){
       # Open the nc file
       ncT <- nc_open(file.path(file.path(dir.dat, site.name, GCM, ens.type, ens, fnow)))
       
-      for(v in vars){
+      for(v in names(ncT$var)){
         dat.out[[v]][dat.out[[v]]$Year == yr.now, ens] <- mean(ncvar_get(ncT, v))
       }
       
@@ -123,10 +128,12 @@ years <- 850:2015
 dat.smooth <- NULL
 for(GCM in GCM.list){
   cols.gcm <- which(gcm.names == GCM)
-  for(v in names(dat.out)){
-    dat.gcm <- data.frame(GCM=GCM,
+  # for(v in names(dat.out)){
+  for(v in vars){
+      dat.gcm <- data.frame(GCM=GCM,
                           met.var = v,
                           res=rep(c("annual", "decadal", "centennial"), each=length(years)),
+                          year = years,
                           mean = c(apply(dat.out    [[v]][,cols.gcm], 1, mean , na.rm=T),
                                    apply(dat.out.10 [[v]][,cols.gcm], 1, mean , na.rm=T),
                                    apply(dat.out.100[[v]][,cols.gcm], 1, mean , na.rm=T)),
@@ -152,18 +159,18 @@ for(GCM in GCM.list){
 # -----------------------------------
 # Graph the output
 # -----------------------------------
-dat.out$res <- factor(dat.out$res, levels=c("annual", "decadal", "centennial"))
+dat.smooth$res <- factor(dat.smooth$res, levels=c("annual", "decadal", "centennial"))
 
 pdf(file.path(dir.dat, site.name, paste0("LowFrequencyTrends_", ens.type, "_Ensemble.pdf")), height=8, width=11)
-for(v in unique(dat.out$met)){
+for(v in unique(dat.smooth$met.var)){
   print(
-  ggplot(data=dat.out[dat.out$met==v,]) +
-    facet_grid(res~met, scales="free_y") +
+  ggplot(data=dat.smooth[dat.smooth$met.var==v,]) +
+    facet_grid(res~met.var, scales="free_y") +
     geom_ribbon(aes(x=year, ymin=lwr, ymax=upr, fill=GCM, alpha=res)) +
     geom_line(aes(x=year, y=mean, color=GCM, size=res)) +
     geom_vline(xintercept=c(1850, 1901, 1980), linetype="dashed") +
-    scale_alpha_discrete(values=c(0.2, 0.3, 0.3)) +
-    scale_size_discrete(values=c(0.3, 1, 1.5)) +
+    scale_alpha_manual(values=c(0.25, 0.3, 0.3)) +
+    scale_size_manual(values=c(0.5, 1, 1.75)) +
     scale_x_continuous(expand=c(0,0)) +
     scale_y_continuous(name=v) +
     guides(size=F, alpha=F) +

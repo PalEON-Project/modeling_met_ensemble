@@ -303,7 +303,8 @@ if(!"CRUNCEP" %in% substr(met.done, 1, 7)) {
   summary(cruncep.df)
   
   write.csv(cruncep.df, file.path(path.out, paste0("CRUNCEP_", min(as.numeric(paste(cruncep.df$year))), "-", max(as.numeric(paste(cruncep.df$year))), ".csv")), row.names = F)
-}}
+}
+}
 # -----------------------------------
 
 
