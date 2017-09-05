@@ -1,0 +1,192 @@
+# -----------------------------------
+# Script Information
+# -----------------------------------
+# Purpose: Perform a visual check on the met that has been bias-corrected
+# Creator: Christy Rollinson, 5 September 2017
+# Contact: crollinson@gmail.com
+# -----------------------------------
+# Description
+# -----------------------------------
+# Post-bias correct QAQC to make sure means & variances look more or less okay 
+# -----------------------------------
+# General Workflow Components
+# -----------------------------------
+# 0. Set up file structure, load packages, etc
+# 1. Read in & format met data
+#    1.1. Raw 
+#    1.2. Bias-corrected (summarize)
+# 2. QAQC graphing
+# -----------------------------------
+
+# -----------------------------------
+# 0. Set up file structure, load packages, etc
+# -----------------------------------
+library(ncdf4)
+library(ggplot2)
+
+# Ensemble directories
+path.raw.base <- "~/Desktop/Research/met_ensembles/data/paleon_sites/HARVARD/"
+path.day.base <- "~/Desktop/Research/met_ensembles/data/met_ensembles/HARVARD/day/ensembles/"
+
+path.pecan <- "~/Desktop/Research/pecan/"
+
+GCM.list <- c("bcc-csm1-1", "CCSM4", "MIROC-ESM", "MPI-ESM-P")
+# -----------------------------------
+
+
+# -----------------------------------
+# 1. Read in met data
+#    1.1. Raw 
+#    1.2. Bias-corrected (summarize)
+# -----------------------------------
+# Use the align.met funciton to get everything harmonized
+source(file.path(path.pecan, "modules/data.atmosphere/R/align_met.R"))
+
+# ---------
+# 1.1. Raw Data
+# ---------
+# Do this once with NLDAS and CRUNCEP
+met.base <- align.met(train.path=file.path(path.raw.base, "NLDAS_day"), source.path = file.path(path.raw.base, "CRUNCEP"), n.ens=1, seed=20170905)
+
+met.raw <- data.frame(met.base$dat.train$time)
+met.raw$dataset <- "NLDAS"
+met.raw$tair.min <- met.base$dat.train$air_temperature_minimum[,1]
+met.raw$tair.max <- met.base$dat.train$air_temperature_maximum[,1]
+met.raw$precip   <- met.base$dat.train$precipitation_flux[,1]
+met.raw$swdown   <- met.base$dat.train$surface_downwelling_shortwave_flux_in_air[,1]
+met.raw$lwdown   <- met.base$dat.train$surface_downwelling_longwave_flux_in_air[,1]
+met.raw$press    <- met.base$dat.train$air_pressure[,1]
+met.raw$qair     <- met.base$dat.train$specific_humidity[,1]
+met.raw$wind     <- met.base$dat.train$wind_speed[,1]
+
+
+met.tmp <- data.frame(met.base$dat.source$time)
+met.tmp$dataset <- "CRUNCEP"
+met.tmp$tair.min <- met.base$dat.source$air_temperature_minimum[,1]
+met.tmp$tair.max <- met.base$dat.source$air_temperature_maximum[,1]
+met.tmp$precip   <- met.base$dat.source$precipitation_flux[,1]
+met.tmp$swdown   <- met.base$dat.source$surface_downwelling_shortwave_flux_in_air[,1]
+met.tmp$lwdown   <- met.base$dat.source$surface_downwelling_longwave_flux_in_air[,1]
+met.tmp$press    <- met.base$dat.source$air_pressure[,1]
+met.tmp$qair     <- met.base$dat.source$specific_humidity[,1]
+met.tmp$wind     <- sqrt(met.base$dat.source$eastward_wind[,1]^2 + met.base$dat.source$northward_wind[,1]^2)
+
+met.raw <- rbind(met.raw, met.tmp)
+
+# Loop through the GCMs to extract
+for(GCM in GCM.list){
+  for(experiment in c("historical", "p1000")){
+    met.base <- align.met(train.path=file.path(path.raw.base, "NLDAS_day"), source.path = file.path(path.day.base, GCM), n.ens=10, seed=20170905, pair.mems = FALSE)
+    
+    met.tmp <- data.frame(met.base$dat.source$time)
+    met.tmp$dataset <- paste(GCM, experiment, sep=".")
+    met.tmp$tair.min <- met.base$dat.source$air_temperature_minimum[,1]
+    met.tmp$tair.max <- met.base$dat.source$air_temperature_maximum[,1]
+    met.tmp$precip   <- met.base$dat.source$precipitation_flux[,1]
+    met.tmp$swdown   <- met.base$dat.source$surface_downwelling_shortwave_flux_in_air[,1]
+    met.tmp$lwdown   <- met.base$dat.source$surface_downwelling_longwave_flux_in_air[,1]
+    met.tmp$press    <- met.base$dat.source$air_pressure[,1]
+    met.tmp$qair     <- met.base$dat.source$specific_humidity[,1]
+    if("wind_speed" %in% names(met.base$dat.source)){
+      met.tmp$wind     <- met.base$dat.source$wind_speed[,1]
+    } else {
+      met.tmp$wind     <- sqrt(met.base$dat.source$eastward_wind[,1]^2 + met.base$dat.source$northward_wind[,1]^2)
+    }
+    
+    met.raw <- rbind(met.raw, met.tmp)
+  } # End experiment loop
+} # end GCM loop
+# ---------
+
+
+# ---------
+# 1.2. Bias-Corrected data
+# ---------
+vars.CF <- c("air_temperature_minimum", "air_temperature_maximum", "precipitation_flux", "surface_downwelling_shortwave_flux_in_air", "surface_downwelling_longwave_flux_in_air", "air_pressure", "specific_humidity", "wind_speed")
+vars.short <- c("tair.min", "tair.max", "precip", "swdown", "lwdown", "press", "qair", "wind")
+
+met.bias <- list()
+for(GCM in GCM.list){
+  print(GCM)
+  met.base <- align.met(train.path=file.path(path.raw.base, "NLDAS_day"), source.path = file.path(path.day.base, GCM), n.ens=10, pair.mems=FALSE, seed=201709)
+  
+  met.tmp <- list()
+  met.tmp$mean <- data.frame(met.base$dat.source$time)
+  met.tmp$mean$dataset <- GCM
+  met.tmp$mean$tair.min <- apply(met.base$dat.source$air_temperature_minimum, 1, mean, na.rm=T)
+  met.tmp$mean$tair.max <- apply(met.base$dat.source$air_temperature_maximum, 1, mean, na.rm=T)
+  met.tmp$mean$precip   <- apply(met.base$dat.source$precipitation_flux     , 1, mean, na.rm=T)
+  met.tmp$mean$swdown   <- apply(met.base$dat.source$surface_downwelling_shortwave_flux_in_air, 1, mean, na.rm=T)
+  met.tmp$mean$lwdown   <- apply(met.base$dat.source$surface_downwelling_longwave_flux_in_air , 1, mean, na.rm=T)
+  met.tmp$mean$press    <- apply(met.base$dat.source$air_pressure           , 1, mean, na.rm=T)
+  met.tmp$mean$qair     <- apply(met.base$dat.source$specific_humidity      , 1, mean, na.rm=T)
+  met.tmp$mean$wind     <- apply(met.base$dat.source$wind_speed             , 1, mean, na.rm=T)
+
+  met.tmp$lwr <- data.frame(met.base$dat.source$time)
+  met.tmp$lwr$dataset <- GCM
+  met.tmp$lwr$tair.min <- apply(met.base$dat.source$air_temperature_minimum, 1, quantile, 0.025, na.rm=T)
+  met.tmp$lwr$tair.max <- apply(met.base$dat.source$air_temperature_maximum, 1, quantile, 0.025, na.rm=T)
+  met.tmp$lwr$precip   <- apply(met.base$dat.source$precipitation_flux     , 1, quantile, 0.025, na.rm=T)
+  met.tmp$lwr$swdown   <- apply(met.base$dat.source$surface_downwelling_shortwave_flux_in_air, 1, quantile, 0.025, na.rm=T)
+  met.tmp$lwr$lwdown   <- apply(met.base$dat.source$surface_downwelling_longwave_flux_in_air , 1, quantile, 0.025, na.rm=T)
+  met.tmp$lwr$press    <- apply(met.base$dat.source$air_pressure           , 1, quantile, 0.025, na.rm=T)
+  met.tmp$lwr$qair     <- apply(met.base$dat.source$specific_humidity      , 1, quantile, 0.025, na.rm=T)
+  met.tmp$lwr$wind     <- apply(met.base$dat.source$wind_speed             , 1, quantile, 0.025, na.rm=T)
+  
+
+  met.tmp$upr <- data.frame(met.base$dat.source$time)
+  met.tmp$upr$dataset <- GCM
+  met.tmp$upr$tair.min <- apply(met.base$dat.source$air_temperature_minimum, 1, quantile, 0.975, na.rm=T)
+  met.tmp$upr$tair.max <- apply(met.base$dat.source$air_temperature_maximum, 1, quantile, 0.975, na.rm=T)
+  met.tmp$upr$precip   <- apply(met.base$dat.source$precipitation_flux     , 1, quantile, 0.975, na.rm=T)
+  met.tmp$upr$swdown   <- apply(met.base$dat.source$surface_downwelling_shortwave_flux_in_air, 1, quantile, 0.975, na.rm=T)
+  met.tmp$upr$lwdown   <- apply(met.base$dat.source$surface_downwelling_longwave_flux_in_air, 1, quantile, 0.975, na.rm=T)
+  met.tmp$upr$press    <- apply(met.base$dat.source$air_pressure           , 1, quantile, 0.975, na.rm=T)
+  met.tmp$upr$qair     <- apply(met.base$dat.source$specific_humidity      , 1, quantile, 0.975, na.rm=T)
+  met.tmp$upr$wind     <- apply(met.base$dat.source$wind_speed             , 1, quantile, 0.975, na.rm=T)
+  
+  if(length(met.bias)==0){
+    met.bias <- met.tmp
+  } else {
+    met.bias$mean <- rbind(met.bias$mean, met.tmp$mean)
+    met.bias$lwr  <- rbind(met.bias$lwr , met.tmp$lwr )
+    met.bias$upr  <- rbind(met.bias$upr , met.tmp$upr )
+  }
+}
+
+# ---------
+
+
+# -----------------------------------
+
+# -----------------------------------
+# 2. QAQC graphing
+# -----------------------------------
+met.bias.yr.mean <- aggregate(met.bias$mean[,vars.short], by=met.bias$mean[,c("Year", "dataset")], FUN=mean)
+met.bias.yr.lwr  <- aggregate(met.bias$lwr [,vars.short], by=met.bias$lwr [,c("Year", "dataset")], FUN=mean)
+met.bias.yr.upr  <- aggregate(met.bias$upr [,vars.short], by=met.bias$upr [,c("Year", "dataset")], FUN=mean)
+summary(met.bias.yr.mean)
+
+# met
+met.raw.yr <- aggregate(met.raw[,vars.short], by=met.raw[,c("Year", "dataset")], FUN=mean)
+met.raw.yr$dataset2 <- as.factor(met.raw.yr$dataset)
+for(i in 1:nrow(met.raw.yr)){
+  met.raw.yr[i,"dataset"] <- stringr::str_split(met.raw.yr[i,"dataset2"], "[.]")[[1]][1]
+}
+met.raw.yr$dataset <- as.factor(met.raw.yr$dataset)
+summary(met.raw.yr)
+
+library(ggplot2)
+ggplot(data=met.raw.yr) + 
+  geom_path(aes(x=Year, y=tair.min, color=dataset, group=dataset2)) +
+  geom_vline(xintercept=c(1850, 1901, 2010), linetype="dashed") +
+  scale_x_continuous(expand=c(0,0)) +
+  theme_bw()
+
+ggplot() + 
+  geom_path(data=met.bias.yr.mean, aes(x=Year, y=tair.min, color=dataset)) +
+  geom_vline(xintercept=c(1850, 1901, 2010), linetype="dashed") +
+  scale_x_continuous(expand=c(0,0)) +
+  theme_bw()
+
+# -----------------------------------
