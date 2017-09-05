@@ -40,14 +40,17 @@
 wd.base <- "~/Dropbox/PalEON_CR/met_ensemble"
 setwd(wd.base)
 
+
 site.name = "HARVARD"
 site.lat  = 42.5
 site.lon  = -72.18
 path.out = "~/Desktop/Research/met_ensembles/data/paleon_sites"
 
+# Path to pecan repository where functions now live
+path.pecan <- "~/Desktop/Research/pecan/"
 
 # Download NLDAS (note: this is not a pecan script & requires fill LDAS stored somewhere locally)
-source("scripts/extract_local_NLDAS.R")
+source(file.path(path.pecan, "modules/data.atmosphere/R", "extract_local_NLDAS.R"))
 ldas.type = "NLDAS"
 path.nldas = "/Volumes/Celtis/Meteorology/LDAS/NLDAS_FORA0125_H.002/netcdf/"
 extract.local.NLDAS(outfolder=file.path(path.out, site.name, "NLDAS"), in.path=path.nldas, 
@@ -55,14 +58,13 @@ extract.local.NLDAS(outfolder=file.path(path.out, site.name, "NLDAS"), in.path=p
                     site_id=site.name, lat.in=site.lat, lon.in=site.lon)
 
 # Note: This keeps breaking every 5-10 years; so I'm having to go real slow at it
-path.pecan <- "~/Desktop/Research/pecan/modules/data.atmosphere/R/"
-source(file.path(path.pecan, "download.CRUNCEP_Global.R"))
+source(file.path(path.pecan, "modules/data.atmosphere/R", "download.CRUNCEP_Global.R"))
 download.CRUNCEP(outfolder=file.path(path.out, site.name, "CRUNCEP"), 
                  start_date="2007-01-01", end_date=paste0("2010-12-31"), 
                  site_id=site.name, lat.in=site.lat, lon.in=site.lon)
 
 # Extract from the GCMs:
-source("scripts/extract_local_CMIP5.R")
+source(file.path(path.pecan, "modules/data.atmosphere/R", "extract_local_CMIP5.R"))
 path.cmip5 = "/Volumes/Celtis/Meteorology/CMIP5/"
 GCM.scenarios = c("p1000", "historical")
 GCM.list  = c("MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1", "CCSM4")

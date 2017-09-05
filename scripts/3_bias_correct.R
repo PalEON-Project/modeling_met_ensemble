@@ -14,6 +14,7 @@
 # -----------------------------------
 # General Workflow Components
 # -----------------------------------
+# 0. Set up file structure, load packages, etc
 # 1. Align Data:
 # 2. Debias & Save Met
 # -----------------------------------
@@ -62,7 +63,7 @@ seed.vec <- sample.int(1e6, size=500, replace=F)
 seed <- seed.vec[min(ens)] # This makes sure that if we add ensemble members, it gets a new, but reproducible seed
 
 # Setting up some basics for the file structure
-out.base <- "~/Desktop/Research/met_ensembles/data/met_ensembles/TEST_day"
+out.base <- "~/Desktop/Research/met_ensembles/data/met_ensembles/HARVARD.v4/day"
 raw.base <- "~/Desktop/Research/met_ensembles/data/paleon_sites/HARVARD"
 # -----------------------------------
 
@@ -74,10 +75,14 @@ source(file.path(path.pecan, "modules/data.atmosphere/R", "align_met.R"))
 source(file.path(path.pecan, "modules/data.atmosphere/R", "debias_met_regression.R"))
 
 
-GCM.list <- GCM.list[1]
+# GCM.list <- GCM.list[1]
 for(GCM in GCM.list){
-  GCM=GCM.list[1]
-  ens.ID="TEST"
+  # GCM=GCM.list[1]
+  ens.ID=GCM
+  
+  # Set up a file path our our ensemble to work with now
+  train.path <- file.path(out.base, "ensembles", GCM)
+  dir.create(train.path, recursive=T, showWarnings=F)
   
   # --------------------------
   # 1. Set up ensemble structure; copy LDAS into ensemble directories
@@ -87,7 +92,7 @@ for(GCM in GCM.list){
 
   for(i in 1:n.ens){
     # Create a directory for each ensemble member
-    path.ens <- file.path(out.base, paste(ens.ID, ens.mems[i], sep="_"))
+    path.ens <- file.path(train.path, paste(ens.ID, ens.mems[i], sep="_"))
     dir.create(path.ens, recursive=T, showWarnings=F)
     
     # Copy LDAS in there with the new name
@@ -98,6 +103,7 @@ for(GCM in GCM.list){
       system(cmd.call)
     }
   }
+  
   # --------------------------
 
   # --------------------------
@@ -105,12 +111,11 @@ for(GCM in GCM.list){
   #    - save 1901-1979 (until LDAS kicks in)
   # --------------------------
   # 1. Align CRU 6-hourly with LDAS daily
-  # train.path <- file.path(raw.base, "NLDAS_day")
-  train.path <- file.path(out.base)
   source.path <- file.path(raw.base, "CRUNCEP")
   
-  # For first round, we only want a single in & out
-  met.out <- align.met(train.path, source.path, yrs.train=1980:2010, n.ens=n.ens, seed=201708, pair.mems = FALSE)
+  # We're now pulling an ensemble because we've set up the file paths and copied LDAS over 
+  # (even though all ensemble members will be identical here)
+  met.out <- align.met(train.path, source.path, yrs.train=NULL, n.ens=n.ens, seed=201708, pair.mems = FALSE)
   
   # Calculate wind speed if it's not already there
   if(!"wind_speed" %in% names(met.out$dat.source)){
@@ -120,8 +125,8 @@ for(GCM in GCM.list){
   # 2. Pass the training & source met data into the bias-correction functions; this will get written to the ensemble
   debias.met.regression(train.data=met.out$dat.train, source.data=met.out$dat.source, n.ens=10, vars.debias=NULL, CRUNCEP=TRUE,
                         pair.anoms = TRUE, pair.ens = FALSE, uncert.prop="mean", resids = FALSE, seed=Sys.Date(),
-                        outfolder=out.base, 
-                        yrs.save=1901:1979, ens.name=ens.ID, ens.mems=ens.mems, lat.in=site.lat, lon.in=site.lon,
+                        outfolder=train.path, 
+                        yrs.save=NULL, ens.name=ens.ID, ens.mems=ens.mems, lat.in=site.lat, lon.in=site.lon,
                         save.diagnostics=TRUE, path.diagnostics=file.path(out.base, "bias_correct_qaqc_CRU"),
                         parallel = FALSE, n.cores = NULL, overwrite = TRUE, verbose = FALSE) 
   # --------------------------
@@ -130,12 +135,61 @@ for(GCM in GCM.list){
   # 3. Debias GCM historical runs (1 time series) using CRUNCEP (n.ens series)
   #    - save 1850-1901 (until CRUNCEP kicks in)
   # --------------------------
+  # 1. Align GCM daily with our current ensemble
+  source.path <- file.path(raw.base, GCM, "historical")
+  
+  # We're now pulling an ensemble because we've set up the file paths and copied LDAS over 
+  # (even though all ensemble members will be identical here)
+  # Might want to parse down the years for yrs.train... doing the full time series could maybe throw things off if they don't
+  # get the recent warming right
+  met.out <- align.met(train.path, source.path, yrs.train=1901:1920, n.ens=n.ens, seed=201708, pair.mems = FALSE)
+  
+  # Calculate wind speed if it's not already there
+  if(!"wind_speed" %in% names(met.out$dat.source)){
+    met.out$dat.source$wind_speed <- sqrt(met.out$dat.source$eastward_wind^2 + met.out$dat.source$northward_wind^2)
+  }
+  
+  # With MIROC-ESM, running into problem with NAs in 2005, so lets cut it all at 2000
+  for(v in names(met.out$dat.source)){
+    if(v=="time") next
+    met.out$dat.source[[v]] <- matrix(met.out$dat.source[[v]][which(met.out$dat.source$time$Year<=2000),], ncol=ncol(met.out$dat.source[[v]]))
+  }
+  met.out$dat.source$time <- met.out$dat.source$time[met.out$dat.source$time$Year<=2000,]
+  
+  # 2. Pass the training & source met data into the bias-correction functions; this will get written to the ensemble
+  debias.met.regression(train.data=met.out$dat.train, source.data=met.out$dat.source, n.ens=10, vars.debias=NULL, CRUNCEP=FALSE,
+                        pair.anoms = FALSE, pair.ens = FALSE, uncert.prop="mean", resids = FALSE, seed=Sys.Date(),
+                        outfolder=train.path, 
+                        yrs.save=1850:1900, ens.name=ens.ID, ens.mems=ens.mems, lat.in=site.lat, lon.in=site.lon,
+                        save.diagnostics=TRUE, path.diagnostics=file.path(out.base, paste0("bias_correct_qaqc_",GCM,"_hist")),
+                        parallel = FALSE, n.cores = NULL, overwrite = TRUE, verbose = FALSE) 
   # --------------------------
 
   # --------------------------
   # 4. Debias GCM past millennium (1 time series) using GCM Historical (n.ens series)
   #    - save 850-1849 (until GCM historical kicks in)
   # --------------------------
+  # 1. Align GCM daily with our current ensemble
+  source.path <- file.path(raw.base, GCM, "p1000")
+  
+  # We're now pulling an ensemble because we've set up the file paths and copied LDAS over 
+  # (even though all ensemble members will be identical here)
+  # Might want to parse down the years for yrs.train... doing the full time series could maybe throw things off if they don't
+  # get the recent warming right
+  met.out <- align.met(train.path, source.path, yrs.train=1850:1900, n.ens=n.ens, seed=201708, pair.mems = FALSE)
+  
+  # Calculate wind speed if it's not already there
+  if(!"wind_speed" %in% names(met.out$dat.source)){
+    met.out$dat.source$wind_speed <- sqrt(met.out$dat.source$eastward_wind^2 + met.out$dat.source$northward_wind^2)
+  }
+  
+  # 2. Pass the training & source met data into the bias-correction functions; this will get written to the ensemble
+  debias.met.regression(train.data=met.out$dat.train, source.data=met.out$dat.source, n.ens=10, vars.debias=NULL, CRUNCEP=FALSE,
+                        pair.anoms = FALSE, pair.ens = FALSE, uncert.prop="mean", resids = FALSE, seed=Sys.Date(),
+                        outfolder=train.path, 
+                        yrs.save=NULL, ens.name=ens.ID, ens.mems=ens.mems, lat.in=site.lat, lon.in=site.lon,
+                        save.diagnostics=TRUE, path.diagnostics=file.path(out.base, paste0("bias_correct_qaqc_",GCM,"_p1000")),
+                        parallel = FALSE, n.cores = NULL, overwrite = TRUE, verbose = FALSE) 
   # --------------------------
   
 }
