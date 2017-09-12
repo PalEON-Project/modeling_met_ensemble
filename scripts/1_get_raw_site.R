@@ -57,6 +57,7 @@ extract.local.NLDAS(outfolder=file.path(path.out, site.name, "NLDAS"), in.path=p
                     start_date="1980-01-01", end_date="2015-12-31", 
                     site_id=site.name, lat.in=site.lat, lon.in=site.lon)
 
+
 # Note: This keeps breaking every 5-10 years; so I'm having to go real slow at it
 source(file.path(path.pecan, "modules/data.atmosphere/R", "download.CRUNCEP_Global.R"))
 download.CRUNCEP(outfolder=file.path(path.out, site.name, "CRUNCEP"), 
@@ -90,3 +91,130 @@ for(GCM in GCM.list){
   } # end GCM.scenarios
 } # End GM lop
 
+
+
+# Graphing the output just to make sure everythign looks okay
+met.qaqc <- c("NLDAS", "CRUNCEP")
+for(met in c("NLDAS", "CRUNCEP")){
+  # Extract & print QAQC graphs for NLDAS
+  dat.qaqc <- NULL
+  files.qaqc <- dir(file.path(path.out, site.name, met))
+  for(i in 1:length(files.qaqc)){
+    y.now <- as.numeric(strsplit(files.qaqc[i], "[.]")[[1]][2])
+    nday <- ifelse(lubridate::leap_year(y.now), 366, 365)
+    
+    ncT <- ncdf4::nc_open(file.path(path.out, site.name, met, files.qaqc[i]))
+    nc.time <- ncdf4::ncvar_get(ncT, "time")/(60*60*24) 
+    day.step <- length(nc.time)/nday
+    
+    dat.temp <- data.frame(Year=y.now, DOY=rep(1:nday, each=day.step), time=1:day.step-(24/day.step/2))
+    for(v in names(ncT$var)){
+      dat.temp[,v] <- ncdf4::ncvar_get(ncT, v)
+    }
+    ncdf4::nc_close(ncT)
+    
+    if(is.null(dat.qaqc)){
+      dat.qaqc <- dat.temp
+    } else {
+      dat.qaqc <- rbind(dat.qaqc, dat.temp)
+    }
+  }
+  
+  dat.qaqc2 <- aggregate(dat.qaqc[,4:ncol(dat.qaqc)], by=dat.qaqc[,c("Year", "DOY")], FUN=mean)
+  
+  dat.yr1 <- aggregate(dat.qaqc2[,3:ncol(dat.qaqc2)], by=list(dat.qaqc2[,"Year"]), FUN=mean)
+  names(dat.yr1)[1] <- "Year"
+  dat.yr <- stack(dat.yr1[,2:ncol(dat.yr1)])
+  dat.yr$Year <- dat.yr1$Year
+  summary(dat.yr)
+  
+  library(ggplot2)
+  png(file.path(path.out, site.name, paste0("MetQAQC_", met, "_annual.png")), height=8, width=8, units="in", res=220)
+  print(
+  ggplot(data=dat.yr) + facet_wrap(~ind, scales="free_y") +
+    geom_line(aes(x=Year, y=values))
+  )
+  dev.off()
+  
+  dat.doy1 <- aggregate(dat.qaqc2[,3:ncol(dat.qaqc2)], by=list(dat.qaqc2[,"DOY"]), FUN=mean)
+  dat.doy2 <- aggregate(dat.qaqc2[,3:ncol(dat.qaqc2)], by=list(dat.qaqc2[,"DOY"]), FUN=quantile, 0.025)
+  dat.doy3 <- aggregate(dat.qaqc2[,3:ncol(dat.qaqc2)], by=list(dat.qaqc2[,"DOY"]), FUN=quantile, 0.975)
+  names(dat.doy1)[1] <- "DOY"
+  dat.doy <- stack(dat.doy1[,2:ncol(dat.doy1)])
+  dat.doy$DOY <- dat.doy1$DOY
+  dat.doy$lwr <- stack(dat.doy2[,2:ncol(dat.doy2)])[,1]
+  dat.doy$upr <- stack(dat.doy3[,2:ncol(dat.doy3)])[,1]
+  summary(dat.doy)
+  
+  png(file.path(path.out, site.name, paste0("MetQAQC_", met, "_DOY.png")), height=8, width=8, units="in", res=220)
+  print(
+  ggplot(data=dat.doy) + facet_wrap(~ind, scales="free_y") +
+    geom_ribbon(aes(x=DOY, ymin=lwr, ymax=upr), alpha=0.5) +
+    geom_line(aes(x=DOY, y=values))
+  )
+  dev.off()
+}
+
+GCM.list  = c("MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1", "CCSM4")
+for(GCM in GCM.list){
+  for(scenario in c("historical", "p1000")){    
+    # Extract & print QAQC graphs for NLDAS
+    dat.qaqc <- NULL
+    files.qaqc <- dir(file.path(path.out, site.name, GCM, scenario))
+    for(i in 1:length(files.qaqc)){
+      y.now <- strsplit(files.qaqc[i], "[.]")[[1]]
+      y.now <- as.numeric(y.now[length(y.now)-1])
+      nday <- ifelse(lubridate::leap_year(y.now), 366, 365)
+      
+      ncT <- ncdf4::nc_open(file.path(path.out, site.name, GCM, scenario, files.qaqc[i]))
+      nc.time <- ncdf4::ncvar_get(ncT, "time")/(60*60*24) 
+      day.step <- length(nc.time)/nday
+      
+      dat.temp <- data.frame(Year=y.now, DOY=rep(1:nday, each=day.step), time=1:day.step-(24/day.step/2))
+      for(v in names(ncT$var)){
+        dat.temp[,v] <- ncdf4::ncvar_get(ncT, v)
+      }
+      ncdf4::nc_close(ncT)
+      
+      if(is.null(dat.qaqc)){
+        dat.qaqc <- dat.temp
+      } else {
+        dat.qaqc <- rbind(dat.qaqc, dat.temp)
+      }
+    }
+    
+    dat.qaqc2 <- aggregate(dat.qaqc[,4:ncol(dat.qaqc)], by=dat.qaqc[,c("Year", "DOY")], FUN=mean)
+    
+    dat.yr1 <- aggregate(dat.qaqc2[,3:ncol(dat.qaqc2)], by=list(dat.qaqc2[,"Year"]), FUN=mean)
+    names(dat.yr1)[1] <- "Year"
+    dat.yr <- stack(dat.yr1[,2:ncol(dat.yr1)])
+    dat.yr$Year <- dat.yr1$Year
+    summary(dat.yr)
+    
+    library(ggplot2)
+    png(file.path(path.out, site.name, paste0("MetQAQC_", GCM, "_", scenario, "_annual.png")), height=8, width=8, units="in", res=220)
+    print(
+      ggplot(data=dat.yr) + facet_wrap(~ind, scales="free_y") +
+        geom_line(aes(x=Year, y=values))
+    )
+    dev.off()
+    
+    dat.doy1 <- aggregate(dat.qaqc2[,3:ncol(dat.qaqc2)], by=list(dat.qaqc2[,"DOY"]), FUN=mean, na.rm=T)
+    dat.doy2 <- aggregate(dat.qaqc2[,3:ncol(dat.qaqc2)], by=list(dat.qaqc2[,"DOY"]), FUN=quantile, 0.025, na.rm=T)
+    dat.doy3 <- aggregate(dat.qaqc2[,3:ncol(dat.qaqc2)], by=list(dat.qaqc2[,"DOY"]), FUN=quantile, 0.975, na.rm=T)
+    names(dat.doy1)[1] <- "DOY"
+    dat.doy <- stack(dat.doy1[,2:ncol(dat.doy1)])
+    dat.doy$DOY <- dat.doy1$DOY
+    dat.doy$lwr <- stack(dat.doy2[,2:ncol(dat.doy2)])[,1]
+    dat.doy$upr <- stack(dat.doy3[,2:ncol(dat.doy3)])[,1]
+    summary(dat.doy)
+    
+    png(file.path(path.out, site.name, paste0("MetQAQC_", GCM, "_", scenario, "_DOY.png")), height=8, width=8, units="in", res=220)
+    print(
+      ggplot(data=dat.doy) + facet_wrap(~ind, scales="free_y") +
+        geom_ribbon(aes(x=DOY, ymin=lwr, ymax=upr), alpha=0.5) +
+        geom_line(aes(x=DOY, y=values))
+    )
+    dev.off()
+  }
+}

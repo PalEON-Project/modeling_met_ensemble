@@ -115,7 +115,7 @@ for(GCM in GCM.list){
   
   # We're now pulling an ensemble because we've set up the file paths and copied LDAS over 
   # (even though all ensemble members will be identical here)
-  met.out <- align.met(train.path, source.path, yrs.train=NULL, n.ens=n.ens, seed=201708, pair.mems = FALSE)
+  met.out <- align.met(train.path, source.path, yrs.train=NULL, yrs.source=NULL, n.ens=n.ens, seed=201708, pair.mems = FALSE)
   
   # Calculate wind speed if it's not already there
   if(!"wind_speed" %in% names(met.out$dat.source)){

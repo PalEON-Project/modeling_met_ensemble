@@ -17,6 +17,7 @@
 #    1.2. Bias-corrected (summarize)
 # 2. QAQC graphing
 # -----------------------------------
+rm(list=ls())
 
 # -----------------------------------
 # 0. Set up file structure, load packages, etc
@@ -26,11 +27,17 @@ library(ggplot2)
 
 # Ensemble directories
 path.raw.base <- "~/Desktop/Research/met_ensembles/data/paleon_sites/HARVARD/"
-path.day.base <- "~/Desktop/Research/met_ensembles/data/met_ensembles/HARVARD/day/ensembles/"
+path.day.base <- "~/Desktop/Research/met_ensembles/data/met_ensembles/HARVARD.v4/day/ensembles/"
 
 path.pecan <- "~/Desktop/Research/pecan/"
 
 GCM.list <- c("bcc-csm1-1", "CCSM4", "MIROC-ESM", "MPI-ESM-P")
+# GCM.list <- c("MIROC-ESM", "MPI-ESM-P") # bcc & CCSM4 p1000 runs have something odd
+# GCM.list <- "MIROC-ESM"
+
+vars.CF <- c("air_temperature_minimum", "air_temperature_maximum", "precipitation_flux", "surface_downwelling_shortwave_flux_in_air", "surface_downwelling_longwave_flux_in_air", "air_pressure", "specific_humidity", "wind_speed")
+vars.short <- c("tair.min", "tair.max", "precip", "swdown", "lwdown", "press", "qair", "wind")
+
 # -----------------------------------
 
 
@@ -76,7 +83,7 @@ met.raw <- rbind(met.raw, met.tmp)
 # Loop through the GCMs to extract
 for(GCM in GCM.list){
   for(experiment in c("historical", "p1000")){
-    met.base <- align.met(train.path=file.path(path.raw.base, "NLDAS_day"), source.path = file.path(path.day.base, GCM), n.ens=10, seed=20170905, pair.mems = FALSE)
+    met.base <- align.met(train.path=file.path(path.raw.base, "NLDAS_day"), source.path = file.path(path.raw.base, GCM, experiment), n.ens=1, seed=20170905, pair.mems = FALSE)
     
     met.tmp <- data.frame(met.base$dat.source$time)
     met.tmp$dataset <- paste(GCM, experiment, sep=".")
@@ -102,8 +109,6 @@ for(GCM in GCM.list){
 # ---------
 # 1.2. Bias-Corrected data
 # ---------
-vars.CF <- c("air_temperature_minimum", "air_temperature_maximum", "precipitation_flux", "surface_downwelling_shortwave_flux_in_air", "surface_downwelling_longwave_flux_in_air", "air_pressure", "specific_humidity", "wind_speed")
-vars.short <- c("tair.min", "tair.max", "precip", "swdown", "lwdown", "press", "qair", "wind")
 
 met.bias <- list()
 for(GCM in GCM.list){
@@ -167,26 +172,94 @@ met.bias.yr.lwr  <- aggregate(met.bias$lwr [,vars.short], by=met.bias$lwr [,c("Y
 met.bias.yr.upr  <- aggregate(met.bias$upr [,vars.short], by=met.bias$upr [,c("Year", "dataset")], FUN=mean)
 summary(met.bias.yr.mean)
 
-# met
-met.raw.yr <- aggregate(met.raw[,vars.short], by=met.raw[,c("Year", "dataset")], FUN=mean)
-met.raw.yr$dataset2 <- as.factor(met.raw.yr$dataset)
-for(i in 1:nrow(met.raw.yr)){
-  met.raw.yr[i,"dataset"] <- stringr::str_split(met.raw.yr[i,"dataset2"], "[.]")[[1]][1]
+# Stacking everything together
+met.bias.yr <- stack(met.bias.yr.mean[,vars.short])
+names(met.bias.yr) <- c("mean", "met.var")
+met.bias.yr[,c("Year", "dataset")] <- met.bias.yr.mean[,c("Year", "dataset")]
+met.bias.yr$lwr <- stack(met.bias.yr.lwr[,vars.short])[,1]
+met.bias.yr$upr <- stack(met.bias.yr.upr[,vars.short])[,1]
+summary(met.bias.yr)
+
+# Raw met
+met.raw.yr1 <- aggregate(met.raw[,vars.short], by=met.raw[,c("Year", "dataset")], FUN=mean)
+met.raw.yr1$dataset2 <- as.factor(met.raw.yr1$dataset)
+for(i in 1:nrow(met.raw.yr1)){
+  met.raw.yr1[i,"dataset"] <- stringr::str_split(met.raw.yr1[i,"dataset2"], "[.]")[[1]][1]
 }
-met.raw.yr$dataset <- as.factor(met.raw.yr$dataset)
+met.raw.yr1$dataset <- as.factor(met.raw.yr1$dataset)
+summary(met.raw.yr1)
+
+met.raw.yr <- stack(met.raw.yr1[,vars.short])
+names(met.raw.yr) <- c("raw", "met.var")
+met.raw.yr[,c("Year", "dataset", "dataset2")] <- met.raw.yr1[,c("Year", "dataset", "dataset2")]
 summary(met.raw.yr)
 
 library(ggplot2)
-ggplot(data=met.raw.yr) + 
-  geom_path(aes(x=Year, y=tair.min, color=dataset, group=dataset2)) +
+png(file.path(path.day.base, "Raw_Annual.png"), height=8, width=10, units="in", res=220)
+ggplot(data=met.raw.yr[,]) + facet_wrap(~met.var, scales="free_y") +
+  geom_path(aes(x=Year, y=raw, color=dataset, group=dataset2), size=0.5) +
   geom_vline(xintercept=c(1850, 1901, 2010), linetype="dashed") +
   scale_x_continuous(expand=c(0,0)) +
   theme_bw()
+dev.off()
 
-ggplot() + 
-  geom_path(data=met.bias.yr.mean, aes(x=Year, y=tair.min, color=dataset)) +
+png(file.path(path.day.base, "Debias_Annual.png"), height=8, width=10, units="in", res=220)
+ggplot(data=met.bias.yr[, ]) + facet_wrap(~met.var, scales="free_y") +
+  geom_ribbon(aes(x=Year, ymin=lwr, ymax=upr, fill=dataset), alpha=0.5) +
+  geom_path(aes(x=Year, y=mean, color=dataset), size=0.5) +
   geom_vline(xintercept=c(1850, 1901, 2010), linetype="dashed") +
   scale_x_continuous(expand=c(0,0)) +
   theme_bw()
+dev.off()
 
+# Looking at the seasonal cycle
+met.bias.doy.mean <- aggregate(met.bias$mean[,vars.short], by=met.bias$mean[,c("DOY", "dataset")], FUN=mean, na.rm=T)
+met.bias.doy.lwr  <- aggregate(met.bias$lwr [,vars.short], by=met.bias$lwr [,c("DOY", "dataset")], FUN=mean, na.rm=T)
+met.bias.doy.upr  <- aggregate(met.bias$upr [,vars.short], by=met.bias$upr [,c("DOY", "dataset")], FUN=mean, na.rm=T)
+summary(met.bias.doy.mean)
+
+# Stacking everything together
+met.bias.doy <- stack(met.bias.doy.mean[,vars.short])
+names(met.bias.doy) <- c("mean", "met.var")
+met.bias.doy[,c("DOY", "dataset")] <- met.bias.doy.mean[,c("DOY", "dataset")]
+met.bias.doy$lwr <- stack(met.bias.doy.lwr[,vars.short])[,1]
+met.bias.doy$upr <- stack(met.bias.doy.upr[,vars.short])[,1]
+summary(met.bias.doy)
+
+
+# met.raw$dataset <- as.character(met.raw$dataset2)
+met.raw.doy1 <- aggregate(met.raw[,vars.short], by=met.raw[,c("DOY", "dataset")], FUN=mean, na.rm=T)
+met.raw.doy1$dataset2 <- as.factor(met.raw.doy1$dataset)
+for(i in 1:nrow(met.raw.doy1)){
+  met.raw.doy1[i,"dataset"] <- stringr::str_split(met.raw.doy1[i,"dataset2"], "[.]")[[1]][1]
+}
+met.raw.doy1$dataset <- as.factor(met.raw.doy1$dataset)
+
+met.raw.doy <- stack(met.raw.doy1[,vars.short])
+names(met.raw.doy) <- c("raw", "met.var")
+met.raw.doy[,c("DOY", "dataset", "dataset2")] <- met.raw.doy1[,c("DOY", "dataset", "dataset2")]
+summary(met.raw.doy)
+
+
+summary(met.raw.doy1)
+summary(met.bias.doy.mean)
+
+library(ggplot2)
+png(file.path(path.day.base, "Raw_DOY.png"), height=8, width=10, units="in", res=220)
+ggplot(data=met.raw.doy[,]) + facet_wrap(~met.var, scales="free_y") +
+  geom_path(data=met.raw.doy[met.raw.doy$dataset=="NLDAS",], aes(x=DOY, y=raw), color="black", size=1) +
+  geom_path(data=met.raw.doy[met.raw.doy$dataset!="NLDAS",], aes(x=DOY, y=raw, color=dataset, group=dataset2), size=0.5) +
+  scale_x_continuous(expand=c(0,0)) +
+  theme_bw()
+dev.off()
+
+png(file.path(path.day.base, "Debias_DOY.png"), height=8, width=10, units="in", res=220)
+ggplot(data=met.bias.doy[, ]) + facet_wrap(~met.var, scales="free_y") +
+  geom_path(data=met.raw.doy[met.raw.doy$dataset=="NLDAS",], aes(x=DOY, y=raw), color="black", size=1) +
+  geom_ribbon(aes(x=DOY, ymin=lwr, ymax=upr, fill=dataset), alpha=0.5) +
+  geom_path(aes(x=DOY, y=mean, color=dataset), size=0.5) +
+  # geom_vline(xintercept=c(1850, 1901, 2010), linetype="dashed") +
+  scale_x_continuous(expand=c(0,0)) +
+  theme_bw()
+dev.off()
 # -----------------------------------
