@@ -54,9 +54,9 @@ site.lat=42.54
 site.lon=-72.18
 GCM.list=c("MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1", "CCSM4")
 # GCM.list=c("CCSM4", "MIROC-ESM")
-ens=1:10
+ens=11:20
 n.ens=length(ens)
-ens.mems=str_pad(1:10, 3, "left", pad=0)
+ens.mems=str_pad(ens, 3, "left", pad=0)
 
 # Set up the appropriate seeds to use when adding ensembles
 set.seed(1159)
