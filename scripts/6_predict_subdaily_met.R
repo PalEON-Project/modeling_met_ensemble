@@ -67,8 +67,8 @@ site.lon=-72.18
 # 
 # GCM.list = c("CCSM4", "MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1")
 GCM.list = "MIROC-ESM"
-ens.hr  <- 3 # Number of hourly ensemble members to create
-n.day <- 10 # Number of daily ensemble members to process
+ens.hr  <- 5 # Number of hourly ensemble members to create
+n.day <- 5 # Number of daily ensemble members to process
 yrs.plot <- c(2015, 1985, 1920, 1875, 1800, 1000, 850)
 timestep="1hr"
 # years.sim=2015:1900
@@ -102,11 +102,13 @@ for(GCM in GCM.list){
   
   # Doing this one ensemble member at at time
   gcm.members <- dir(path.gcm)
-  for(ens.now in gcm.members){
+  gcm.now <- gcm.members[sample(1:length(gcm.members), min(n.day, length(gcm.members)))]
+  
+  for(ens.now in gcm.now){
     predict_subdaily_met(outfolder=out.ens, in.path=file.path(path.in, GCM, ens.now), 
                          in.prefix=ens.now, lm.models.base=path.lm, 
                          path.train=path.train, direction.filter="backwards", yrs.predict=1900:2015, cores.max = 12, 
-                         ens.labs = 1:3, resids = FALSE, parallel = FALSE, n.cores = NULL, 
+                         ens.labs = str_pad(1:ens.hr, width=2, pad="0"), resids = FALSE, parallel = FALSE, n.cores = NULL, 
                          overwrite = FALSE, seed=seed.vec[1], print.progress = TRUE)
   }
   # dat.day <- dir(path.gcm, ".Rdata")

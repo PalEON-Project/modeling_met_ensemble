@@ -37,6 +37,8 @@
 #  -- Function will check to see if each type of data has been done yet before processing
 #  -- See get_point_raw.R for internal workflow & more details
 # -----------------------------------
+rm(list=ls())
+
 wd.base <- "~/Dropbox/PalEON_CR/met_ensemble"
 setwd(wd.base)
 
@@ -61,14 +63,14 @@ extract.local.NLDAS(outfolder=file.path(path.out, site.name, "NLDAS"), in.path=p
 # Note: This keeps breaking every 5-10 years; so I'm having to go real slow at it
 source(file.path(path.pecan, "modules/data.atmosphere/R", "download.CRUNCEP_Global.R"))
 download.CRUNCEP(outfolder=file.path(path.out, site.name, "CRUNCEP"), 
-                 start_date="2007-01-01", end_date=paste0("2010-12-31"), 
+                 start_date="1901-01-01", end_date=paste0("2010-12-31"), 
                  site_id=site.name, lat.in=site.lat, lon.in=site.lon)
 
 # Extract from the GCMs:
 source(file.path(path.pecan, "modules/data.atmosphere/R", "extract_local_CMIP5.R"))
 path.cmip5 = "/Volumes/Celtis/Meteorology/CMIP5/"
 GCM.scenarios = c("p1000", "historical")
-GCM.list  = c("MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1", "CCSM4")
+GCM.list  = c("CCSM4", "bcc-csm1-1", "MIROC-ESM", "MPI-ESM-P")
 # GCM.list="CCSM4"
 for(GCM in GCM.list){
   for(scenario in GCM.scenarios){

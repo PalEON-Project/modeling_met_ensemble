@@ -53,6 +53,7 @@ site.name="HARVARD"
 site.lat=42.54
 site.lon=-72.18
 GCM.list=c("MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1", "CCSM4")
+# GCM.list=c("CCSM4", "MIROC-ESM")
 ens=1:10
 n.ens=length(ens)
 ens.mems=str_pad(1:10, 3, "left", pad=0)
@@ -63,7 +64,7 @@ seed.vec <- sample.int(1e6, size=500, replace=F)
 seed <- seed.vec[min(ens)] # This makes sure that if we add ensemble members, it gets a new, but reproducible seed
 
 # Setting up some basics for the file structure
-out.base <- "~/Desktop/Research/met_ensembles/data/met_ensembles/HARVARD.v4/day"
+out.base <- "~/Desktop/Research/met_ensembles/data/met_ensembles/HARVARD/day"
 raw.base <- "~/Desktop/Research/met_ensembles/data/paleon_sites/HARVARD"
 # -----------------------------------
 

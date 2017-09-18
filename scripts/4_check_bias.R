@@ -27,7 +27,7 @@ library(ggplot2)
 
 # Ensemble directories
 path.raw.base <- "~/Desktop/Research/met_ensembles/data/paleon_sites/HARVARD/"
-path.day.base <- "~/Desktop/Research/met_ensembles/data/met_ensembles/HARVARD.v4/day/ensembles/"
+path.day.base <- "~/Desktop/Research/met_ensembles/data/met_ensembles/HARVARD/day/"
 
 path.pecan <- "~/Desktop/Research/pecan/"
 
@@ -113,7 +113,7 @@ for(GCM in GCM.list){
 met.bias <- list()
 for(GCM in GCM.list){
   print(GCM)
-  met.base <- align.met(train.path=file.path(path.raw.base, "NLDAS_day"), source.path = file.path(path.day.base, GCM), n.ens=10, pair.mems=FALSE, seed=201709)
+  met.base <- align.met(train.path=file.path(path.raw.base, "NLDAS_day"), source.path = file.path(path.day.base, "ensembles", GCM), n.ens=10, pair.mems=FALSE, seed=201709)
   
   met.tmp <- list()
   met.tmp$mean <- data.frame(met.base$dat.source$time)

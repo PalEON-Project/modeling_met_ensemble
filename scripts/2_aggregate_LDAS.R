@@ -111,11 +111,11 @@ for(i in 1:length(files.train)){
   
   var.list = list()
   for(v in names(dat.day)){
-    var.list[[v]] = ncvar_def(name=v, units=as.character(nc.info[nc.info$CF.name==v, "units"]), dim=nc.dim, missval=-999, verbose=verbose)
+    var.list[[v]] = ncvar_def(name=v, units=as.character(nc.info[nc.info$CF.name==v, "units"]), dim=nc.dim, missval=-999, verbose=F)
   }
   
   loc.file <- file.path(outfolder, paste("NLDAS_day", str_pad(yr.now, width=4, side="left",  pad="0"), "nc", sep = "."))
-  loc <- nc_create(filename = loc.file, vars = var.list, verbose = verbose)
+  loc <- nc_create(filename = loc.file, vars = var.list, verbose = F)
   
   for (v in names(dat.day)) {
     ncvar_put(nc = loc, varid = as.character(v), vals = dat.day[[v]])
