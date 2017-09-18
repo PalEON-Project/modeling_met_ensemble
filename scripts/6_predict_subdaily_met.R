@@ -48,27 +48,28 @@ library(parallel)
 # library(tictoc)
 rm(list=ls())
 
-# wd.base <- "~/met_ensemble/"
+wd.base <- "/home/crollinson/met_ensemble/"
 # wd.base <- "~/Desktop/Research/PalEON_CR/met_ensemble/"
-# setwd(wd.base)
+setwd(wd.base)
 
-dat.base <- "~/Desktop/Research/met_ensembles/data"
-path.pecan <- "~/Desktop/Research/pecan"
-
-path.train <- file.path(dat.base, "paleon_sites/HARVARD/NLDAS")
-path.lm <- file.path(dat.base, "met_ensembles/HARVARD.v4/1hr/mods.tdm")
-path.in <- file.path(dat.base, "met_ensembles/HARVARD.v4/day/ensembles")
-path.out <- file.path(dat.base, "met_ensembles/HARVARD.v4/1hr/ensembles")
+dat.base <- file.path(wd.base, "data")
+path.pecan <- "/home/crollinson/pecan"
 
 # Hard-coding numbers for Harvard
-# site.name="TEST"
+site.name="HARVARD"
 site.lat=42.54
 site.lon=-72.18
 # 
-# GCM.list = c("CCSM4", "MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1")
-GCM.list = "MIROC-ESM"
-ens.hr  <- 5 # Number of hourly ensemble members to create
-n.day <- 5 # Number of daily ensemble members to process
+
+path.train <- file.path(dat.base, "paleon_sites", site.name, "NLDAS")
+path.lm <- file.path(dat.base, "met_ensembles", site.name, "1hr/mods.tdm")
+path.in <- file.path(dat.base, "met_ensembles", site.name, "day/ensembles")
+path.out <- file.path(dat.base, "met_ensembles", site.name, "1hr/ensembles")
+
+GCM.list = c("CCSM4", "MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1")
+# GCM.list = "MIROC-ESM"
+ens.hr  <- 3 # Number of hourly ensemble members to create
+n.day <- 10 # Number of daily ensemble members to process
 yrs.plot <- c(2015, 1985, 1920, 1875, 1800, 1000, 850)
 timestep="1hr"
 # years.sim=2015:1900
@@ -107,7 +108,7 @@ for(GCM in GCM.list){
   for(ens.now in gcm.now){
     predict_subdaily_met(outfolder=out.ens, in.path=file.path(path.in, GCM, ens.now), 
                          in.prefix=ens.now, lm.models.base=path.lm, 
-                         path.train=path.train, direction.filter="backwards", yrs.predict=1900:2015, cores.max = 12, 
+                         path.train=path.train, direction.filter="backwards", yrs.predict=NULL, cores.max = 12, 
                          ens.labs = str_pad(1:ens.hr, width=2, pad="0"), resids = FALSE, parallel = FALSE, n.cores = NULL, 
                          overwrite = FALSE, seed=seed.vec[1], print.progress = TRUE)
   }

@@ -26,15 +26,18 @@ library(ncdf4)
 library(ggplot2)
 
 # Ensemble directories
-path.raw.base <- "~/Desktop/Research/met_ensembles/data/paleon_sites/HARVARD/"
-path.day.base <- "~/Desktop/Research/met_ensembles/data/met_ensembles/HARVARD/day/"
+wd.base <- "/home/crollinson/met_ensemble"
+path.pecan <- "/home/crollinson/pecan/"
 
-path.pecan <- "~/Desktop/Research/pecan/"
-
+# Site name for indexing
+site.name <- "HARVARD"
 GCM.list <- c("bcc-csm1-1", "CCSM4", "MIROC-ESM", "MPI-ESM-P")
-# GCM.list <- c("MIROC-ESM", "MPI-ESM-P") # bcc & CCSM4 p1000 runs have something odd
-# GCM.list <- "MIROC-ESM"
 
+# Setting up some file paths, etc
+path.raw.base <- file.path(wd.base, "data/paleon_sites", site.name)
+path.day.base <- file.path(wd.base, "data/met_ensembles", site.name, "day")
+
+# defining some variable names
 vars.CF <- c("air_temperature_minimum", "air_temperature_maximum", "precipitation_flux", "surface_downwelling_shortwave_flux_in_air", "surface_downwelling_longwave_flux_in_air", "air_pressure", "specific_humidity", "wind_speed")
 vars.short <- c("tair.min", "tair.max", "precip", "swdown", "lwdown", "press", "qair", "wind")
 

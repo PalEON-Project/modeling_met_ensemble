@@ -46,14 +46,16 @@ library(ggplot2)
 # library(tictoc)
 rm(list=ls())
 
-wd.base <- "~/Dropbox/PalEON_CR/met_ensemble/"
+wd.base <- "/home/crollinson/met_ensemble/"
 setwd(wd.base)
 
-path.train <- "~/Desktop/Research/met_ensembles/data/paleon_sites/HARVARD/NLDAS"
+site.name <- "HARVARD"
+
+path.train <- file.path(wd.base, "data/paleon_sites", site.name, "NLDAS")
 yrs.train=NULL
 
-path.out <- "~/Desktop/Research/met_ensembles/data/met_ensembles/HARVARD.v4/1hr/mods.tdm"
-path.pecan <- "~/Desktop/Research/pecan/modules/data.atmosphere/R/"
+path.out <- file.path(wd.base, "data/met_ensembles", site.name, "1hr/mods.tdm")
+path.pecan <- "/home/crollinson/pecan"
 
 fig.dir <- file.path(path.out, "model_qaqc")
 
@@ -67,13 +69,13 @@ if(!dir.exists(fig.dir)) dir.create(fig.dir, recursive = T)
 # Name of dat.train file in netcdf format meeting CF standards
 # dat.trian.nc <- ()
 scripts.tdm <- dir(path.pecan, "tdm")
-source(file.path(path.pecan, "tdm_generate_subdaily_models.R"))
-source(file.path(path.pecan, "tdm_temporal_downscale_functions.R"))
-source(file.path(path.pecan, "tdm_model_train.R"))
-source(file.path(path.pecan, "align_met.R"))
+source(file.path(path.pecan, "modules/data.atmosphere/R", "tdm_generate_subdaily_models.R"))
+source(file.path(path.pecan, "modules/data.atmosphere/R", "tdm_temporal_downscale_functions.R"))
+source(file.path(path.pecan, "modules/data.atmosphere/R", "tdm_model_train.R"))
+source(file.path(path.pecan, "modules/data.atmosphere/R", "align_met.R"))
 
 gen.subdaily.models(outfolder=path.out, path.train=path.train,
-                    yrs.train=NULL, direction.filter="backwards", in.prefix="HARVARD.v4",
+                    yrs.train=NULL, direction.filter="backwards", in.prefix=site.name,
                     n.beta=500, day.window=7, seed=1026, resids = FALSE, 
                     parallel = FALSE, n.cores = NULL, overwrite = TRUE, verbose = FALSE, print.progress=T) 
 # ------------------------------------------
