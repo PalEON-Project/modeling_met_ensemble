@@ -26,22 +26,22 @@ library(stringr)
 library(lubridate)
 
 # Set the working directory
-wd.base <- "/home/crollinson/met_ensemble"
-out.base <- wd.base
+wd.base <- "~/Dropbox/PalEON_CR/met_ensemble/"
+out.base <- "~/Desktop/Research/met_ensembles"
 setwd(wd.base)
 
 # Setting some important file paths
-path.pecan <- "/home/crollinson/pecan"
+path.pecan <- "~/Desktop/Research/pecan"
 
 # Defining a site name -- this can go into a function later
 site.name="HARVARD"
 site.lat=42.54
 site.lon=-72.18
 
-path.ldas <- file.path(wd.base, "data/paleon_sites/HARVARD/NLDAS/")
+path.ldas <- file.path(out.base, "data/paleon_sites", site.name, "NLDAS/")
 files.train <- dir(path.ldas)
 
-outfolder <- file.path(out.base, "data/paleon_sites/HARVARD/NLDAS_day/")
+outfolder <- file.path(out.base, "data/paleon_sites", site.name, "NLDAS_day/")
 dir.create(outfolder, recursive=T)
 # -----------------------------------
 

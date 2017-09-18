@@ -48,12 +48,12 @@ library(parallel)
 # library(tictoc)
 rm(list=ls())
 
-wd.base <- "/home/crollinson/met_ensemble/"
-# wd.base <- "~/Desktop/Research/PalEON_CR/met_ensemble/"
+# wd.base <- "/home/crollinson/met_ensemble/"
+wd.base <- "~/Desktop/Research/met_ensembles/"
 setwd(wd.base)
 
 dat.base <- file.path(wd.base, "data")
-path.pecan <- "/home/crollinson/pecan"
+path.pecan <- "~/Desktop/Research/pecan/"
 
 # Hard-coding numbers for Harvard
 site.name="HARVARD"

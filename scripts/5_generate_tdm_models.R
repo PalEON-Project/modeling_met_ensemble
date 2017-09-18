@@ -46,7 +46,7 @@ library(ggplot2)
 # library(tictoc)
 rm(list=ls())
 
-wd.base <- "/home/crollinson/met_ensemble/"
+wd.base <- "~/Desktop/Research/met_ensembles/"
 setwd(wd.base)
 
 site.name <- "HARVARD"
@@ -55,7 +55,7 @@ path.train <- file.path(wd.base, "data/paleon_sites", site.name, "NLDAS")
 yrs.train=NULL
 
 path.out <- file.path(wd.base, "data/met_ensembles", site.name, "1hr/mods.tdm")
-path.pecan <- "/home/crollinson/pecan"
+path.pecan <- "~/Desktop/Research/pecan/"
 
 fig.dir <- file.path(path.out, "model_qaqc")
 

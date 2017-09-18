@@ -26,7 +26,7 @@ library(ncdf4)
 library(ggplot2)
 
 # Ensemble directories
-wd.base <- "/home/crollinson/met_ensemble"
+wd.base <- "~/Desktop/Research/met_ensembles/"
 site.name <- "HARVARD"
 
 path.dat <- file.path(wd.base, "data/met_ensembles", site.name, "1hr/ensembles/")

@@ -26,8 +26,8 @@ library(ncdf4)
 library(ggplot2)
 
 # Ensemble directories
-wd.base <- "/home/crollinson/met_ensemble"
-path.pecan <- "/home/crollinson/pecan/"
+wd.base <- "~/Desktop/Research/met_ensembles/"
+path.pecan <- "~/Desktop/Research/pecan/"
 
 # Site name for indexing
 site.name <- "HARVARD"
