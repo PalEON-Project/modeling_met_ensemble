@@ -41,12 +41,12 @@ library(stringr)
 library(lubridate)
 
 # Set the working directory
-wd.base <- "~/Dropbox/PalEON_CR/met_ensemble/"
-out.base <- "~/Desktop/met_ensembles/"
+wd.base <- "/home/crollinson/met_ensemble/"
+out.base <- wd.base
 setwd(wd.base)
 
 # Setting some important file paths
-path.pecan <- "~/Desktop/Research/pecan"
+path.pecan <- "/home/crollinson/pecan"
 
 # Defining a site name -- this can go into a function later
 site.name="HARVARD"
@@ -54,9 +54,9 @@ site.lat=42.54
 site.lon=-72.18
 GCM.list=c("MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1", "CCSM4")
 # GCM.list=c("CCSM4", "MIROC-ESM")
-ens=1:10
+ens=11:20
 n.ens=length(ens)
-ens.mems=str_pad(1:10, 3, "left", pad=0)
+ens.mems=str_pad(ens, 3, "left", pad=0)
 
 # Set up the appropriate seeds to use when adding ensembles
 set.seed(1159)
@@ -64,8 +64,8 @@ seed.vec <- sample.int(1e6, size=500, replace=F)
 seed <- seed.vec[min(ens)] # This makes sure that if we add ensemble members, it gets a new, but reproducible seed
 
 # Setting up some basics for the file structure
-out.base <- "~/Desktop/Research/met_ensembles/data/met_ensembles/HARVARD/day"
-raw.base <- "~/Desktop/Research/met_ensembles/data/paleon_sites/HARVARD"
+out.base <- file.path(wd.base, "data/met_ensembles", site.name, "day")
+raw.base <- file.path(wd.base, "data/paleon_sites", site.name)
 # -----------------------------------
 
 # -----------------------------------

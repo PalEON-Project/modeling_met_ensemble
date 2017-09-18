@@ -26,16 +26,17 @@ library(ncdf4)
 library(ggplot2)
 
 # Ensemble directories
-path.dat <- "~/Desktop/Research/met_ensembles/data/met_ensembles/HARVARD.v4/1hr/ensembles/"
-path.out <- "~/Desktop/Research/met_ensembles/data/met_ensembles/HARVARD.v4/1hr/figures_qaqc"
+wd.base <- "/home/crollinson/met_ensemble"
+site.name <- "HARVARD"
+
+path.dat <- file.path(wd.base, "data/met_ensembles", site.name, "1hr/ensembles/")
+path.out <- file.path(wd.base, "data/met_ensembles", site.name, "1hr/figures_qaqc")
 
 dir.create(path.out, recursive=T)
-# GCM.list <- c("bcc-csm1-1", "CCSM4", "MIROC-ESM", "MPI-ESM-P")
-# GCM.list <- c("MIROC-ESM", "MPI-ESM-P") # bcc & CCSM4 p1000 runs have something odd
-GCM.list <- "MIROC-ESM"
+GCM.list <- c("bcc-csm1-1", "CCSM4", "MIROC-ESM", "MPI-ESM-P")
 
-n.day <- 3 # How many parent ensembles we want to graph
-n.hr <- 3 # How many independent hourly ensembles we want to show
+n.day <- 5 # How many parent ensembles we want to graph
+n.hr <- 2 # How many independent hourly ensembles we want to show
 
 yrs.check <- c(2015, 1990, 1950, 1900)
 # yrs.check <- 2015
