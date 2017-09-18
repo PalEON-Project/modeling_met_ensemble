@@ -38,10 +38,10 @@ site.name="HARVARD"
 site.lat=42.54
 site.lon=-72.18
 
-path.ldas <- file.path(wd.base, "data/paleon_sites/HARVARD/NLDAS/")
+path.ldas <- file.path(wd.base, "data/paleon_sites", site.name, "NLDAS/")
 files.train <- dir(path.ldas)
 
-outfolder <- file.path(out.base, "data/paleon_sites/HARVARD/NLDAS_day/")
+outfolder <- file.path(out.base, "data/paleon_sites", site.name, "NLDAS_day/")
 dir.create(outfolder, recursive=T)
 # -----------------------------------
 
