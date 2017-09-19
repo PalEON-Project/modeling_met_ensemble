@@ -73,7 +73,7 @@ n.day <- 10 # Number of daily ensemble members to process
 yrs.plot <- c(2015, 1985, 1920, 1875, 1800, 1000, 850)
 timestep="1hr"
 # years.sim=2015:1900
-yrs.sim=NULL
+years.sim=NULL
 
 # Setting up parallelization
 parallel=TRUE
