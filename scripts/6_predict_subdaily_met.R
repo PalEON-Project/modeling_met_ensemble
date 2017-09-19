@@ -128,7 +128,7 @@ for(GCM in GCM.list){
                            in.prefix=ens.now, lm.models.base=path.lm,
                            path.train=path.train, direction.filter="backward", yrs.predict=yrs.sim,
                            ens.labs = str_pad(1:ens.hr, width=2, pad="0"), resids = FALSE,
-                           overwrite = FALSE, seed=seed.vec[1], print.progress = TRUE)
+                           overwrite = FALSE, seed=seed.vec[length(ens.done)], print.progress = TRUE)
     }
   }
 }
