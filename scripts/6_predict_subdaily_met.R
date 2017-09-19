@@ -107,12 +107,12 @@ for(GCM in GCM.list){
   # Doing this one ensemble member at at time
   # Figure out what's been done already
   ens.done <- str_split(dir(out.ens), "[.]")
-  ens.done <- unique(matrix(unlist(ens.done), ncol=length(ens.done[[1]]), byrow = T)[,1])
+  if(length(ens.done>0)) ens.done <- unique(matrix(unlist(ens.done), ncol=length(ens.done[[1]]), byrow = T)[,1])
   
   # Figure out what we can pull from
   gcm.members <- dir(path.gcm)
-  if(length(ens.done)>0) gcm.members <- gcm.members[!gcm.members %in% ens.done]
-  
+  if(length(ens.done>0)) gcm.members <- gcm.members[!gcm.members %in% ens.done]
+
   gcm.now <- sample(gcm.members, min(n.day, length(gcm.members)))
 
   if(parallel==TRUE){
