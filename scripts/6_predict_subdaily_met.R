@@ -111,7 +111,7 @@ for(GCM in GCM.list){
   
   # Figure out what we can pull from
   gcm.members <- dir(path.gcm)
-  gcm.members <- gcm.members[!gcm.members %in% ens.done]
+  if(length(ens.done)>0) gcm.members <- gcm.members[!gcm.members %in% ens.done]
   
   gcm.now <- sample(gcm.members, min(n.day, length(gcm.members)))
 
