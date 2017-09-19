@@ -74,7 +74,10 @@ yrs.plot <- c(2015, 1985, 1920, 1875, 1800, 1000, 850)
 timestep="1hr"
 # years.sim=2015:1900
 years.sim=NULL
-cores.max = 2
+
+# Setting up parallelization
+parallel=TRUE
+cores.max = 20
 
 # Set up the appropriate seed
 set.seed(0017)
@@ -102,18 +105,31 @@ for(GCM in GCM.list){
   out.ens <- file.path(path.out, GCM)
   
   # Doing this one ensemble member at at time
+  # Figure out what's been done already
+  ens.done <- str_split(dir(out.ens), "[.]")
+  ens.done <- unique(matrix(unlist(ens.done), ncol=length(ens.done[[1]]), byrow = T)[,1])
+  
+  # Figure out what we can pull from
   gcm.members <- dir(path.gcm)
-  gcm.now <- gcm.members[sample(1:length(gcm.members), min(n.day, length(gcm.members)))]
+  gcm.members <- gcm.members[!gcm.members %in% ens.done]
   
-  for(ens.now in gcm.now){
-    predict_subdaily_met(outfolder=out.ens, in.path=file.path(path.in, GCM, ens.now), 
-                         in.prefix=ens.now, lm.models.base=path.lm, 
-                         path.train=path.train, direction.filter="backwards", yrs.predict=NULL, cores.max = 12, 
-                         ens.labs = str_pad(1:ens.hr, width=2, pad="0"), resids = FALSE, parallel = FALSE, n.cores = NULL, 
-                         overwrite = FALSE, seed=seed.vec[1], print.progress = TRUE)
+  gcm.now <- sample(gcm.members, min(n.day, length(gcm.members)))
+
+  if(parallel==TRUE){
+    mclapply(gcm.now, predict_subdaily_met, mc.cores=min(length(gcm.now), cores.max),
+             outfolder=out.ens, in.path=file.path(path.in, GCM), 
+             lm.models.base=path.lm, path.train=path.train, direction.filter="backward",
+             yrs.predict=yrs.sim, ens.labs=str_pad(1:ens.hr, width=2, pad="0"),
+             resids=F, overwrite=F,
+             seed=seed.vec[1], print.progress=F)
+  } else {
+    for(ens.now in gcm.now){
+      predict_subdaily_met(outfolder=out.ens, in.path=file.path(path.in, GCM),
+                           in.prefix=ens.now, lm.models.base=path.lm,
+                           path.train=path.train, direction.filter="backward", yrs.predict=yrs.sim,
+                           ens.labs = str_pad(1:ens.hr, width=2, pad="0"), resids = FALSE,
+                           overwrite = FALSE, seed=seed.vec[1], print.progress = TRUE)
+    }
   }
-  # dat.day <- dir(path.gcm, ".Rdata")
-  # load(file.path(path.gcm, dat.day)) # Loads dat.out.full
-  
 }
 # -----------------------------------
