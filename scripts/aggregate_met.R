@@ -10,7 +10,7 @@
 # Parameters
 # -----------------------------------
 ##' @param path.in File path to where the .nc files should be housed
-##' @param years.agg number of betas to pull from
+##' @param years.agg number of betas to pull from; if NULL (default) does ALL files
 ##' @param save.day [TRUE]/FALSE, whether to save daily data
 ##' @param save.month [TRUE]/FALSE whether to calculate/save daily data
 ##' @param out.base root file path for where you want to write data
@@ -27,7 +27,7 @@
 #----------------------------------------------------------------------
 # Begin Function
 #----------------------------------------------------------------------
-aggregate.met <- function(path.in, years.agg, save.day=T, save.month=T, 
+aggregate.met <- function(path.in, years.agg=NULL, save.day=T, save.month=T, 
                           out.base, day.dir="day", mo.dir="month", 
                           add.vars=c("daylength", "air_temperature_maximum", "air_temperature_minimum"),
                           parallel=F, n.cores=NULL, 
