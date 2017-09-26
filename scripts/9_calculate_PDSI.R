@@ -30,6 +30,7 @@ site.lon <- -72.18
 # -----------------------------------
 # 1. Extract & calculate our soil water values
 # -----------------------------------
+source("calc_pdsi.R")
 source("calc.awc.R")
 source("pdsi1.R")
 source("pdsix.R")
