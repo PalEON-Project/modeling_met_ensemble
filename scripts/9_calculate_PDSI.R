@@ -1,18 +1,35 @@
-##' @param path.in File path to where the CF-standard .nc files should be housed
-##' @param years.pdsi - which years to calculate PDSI for; if NULL (default), all available years will be used
-##' @param years.calib - years to calibrate the PDSI against;
-##' @param watcap - vector of length 2 indicating the water holding capacity of the upper and lower layers of the soil
-##' @return list with data frame layers for temperature, precipitaiton, daylength, and PDSI with dims=c(years, months)
+# -----------------------------------
+# Script Information
+# -----------------------------------
+# Purpose: Calculate PDSI from our ensemble of met drivers
+# Creator: Christy ROllinson
+# Contact: crollinson@mortonarb.org
+# -----------------------------------
+# Description
+# -----------------------------------
+# This script calls code adapted from Ben Cook (LDEO) to calculate PDSI
+# so that it can then be compared to
+# -----------------------------------
+# General Workflow Components
+# -----------------------------------
+# 0. Set up file structure, load packages, etc
+# 1. 
+# -----------------------------------
 
-path.in = "~/Desktop/Research/met_ensembles/data/met_ensembles/HARVARD/aggregated/month/CCSM4/CCSM4_001.01"
+# -----------------------------------
+# 0. define file paths and some info about the site
+# -----------------------------------
+in.base = "~/Desktop/Research/met_ensembles/data/met_ensembles/HARVARD/aggregated/month/"
 years.pdsi = NULL
 years.calib = c(1931, 1990)
 site.lat <- 42.54
 site.lon <- -72.18
+# ----------
 
-# ----------
-# Extract & calculate our soil water values
-# ----------
+
+# -----------------------------------
+# 1. Extract & calculate our soil water values
+# -----------------------------------
 source("calc.awc.R")
 source("pdsi1.R")
 source("pdsix.R")
@@ -47,3 +64,97 @@ wcap1 <- awc1*ifelse(depth2>30, 30, depth2-1) * 1/2.54 # 30 cm top depth * 1 in 
 wcap2 <- awc2*ifelse(depth2>30, depth2-30, 1) * 1/2.54 # remaining depth * 1 in / 2.54 cm
 
 watcap <- c(wcap1, wcap2)
+# -----------------------------------
+
+
+# -----------------------------------
+# Loop through and perform the calculation
+# -----------------------------------
+# in.base = "~/Desktop/Research/met_ensembles/data/met_ensembles/HARVARD/aggregated/month/CCSM4/CCSM4_001.01"
+
+out.save <- NULL
+GCM.list <- dir(in.base)
+for(GCM in GCM.list){
+  print(GCM)
+  
+  gcm.ens <- dir(file.path(in.base, GCM))
+  pb <- txtProgressBar(min=0, max=length(gcm.ens), style=3)
+  pb.ind=1
+  for(ens in gcm.ens){
+    ens.out <- calc.pdsi(path.in=file.path(in.base, GCM, ens), 
+                         years.pdsi=NULL, years.calib=years.calib, 
+                         watcap=watcap)
+    
+    if(is.null(out.save)){
+      out.save <- list()
+      out.save$Temp   <- data.frame(ens=as.vector(t(ens.out$T)))
+      out.save$Precip <- data.frame(ens=as.vector(t(ens.out$P)))
+      out.save$PDSI   <- data.frame(ens=as.vector(t(ens.out$X)))
+      
+      names(out.save$Temp) <- names(out.save$Precip) <- names(out.save$PDSI) <- ens
+      row.labs <- paste(rep(row.names(pdsi.out$T), each=ncol(pdsi.out$T)), stringr::str_pad(1:ncol(pdsi.out$T), 2, pad="0"), sep="-")
+      row.names(out.save$Temp) <- row.names(out.save$Precip) <- row.names(out.save$Precip) <- row.labs 
+      
+      temp.array   <- array(ens.out$T, dim=c(dim(ens.out$T), 1))
+      precip.array <- array(ens.out$P, dim=c(dim(ens.out$P), 1))
+      pdsi.array   <- array(ens.out$X, dim=c(dim(ens.out$X), 1))
+    } else {
+      out.save$Temp  [,ens] <- as.vector(t(ens.out$T))
+      out.save$Precip[,ens] <- as.vector(t(ens.out$P))
+      out.save$PDSI  [,ens] <- as.vector(t(ens.out$X))
+      
+      temp.array   <- abind::abind(temp.array, ens.out$T, along=3)
+      precip.array <- abind::abind(precip.array, ens.out$P, along=3)
+      pdsi.array   <- abind::abind(pdsi.array, ens.out$X, along=3)
+    }
+    
+    setTxtProgressBar(pb, pb.ind)
+    pb.ind=pb.ind+1
+  } # End ensemble member loop
+} # End GCM Loop
+
+# Save the Output
+write.csv(out.save$Temp, file.path(in.base, "Temperature_AllMembers.csv"), row.names=T)
+write.csv(out.save$Precip, file.path(in.base, "Precipitation_AllMembers.csv"), row.names=T)
+write.csv(out.save$PDSI, file.path(in.base, "PDSI_AllMembers.csv"), row.names=T)
+
+# -----------------------------------
+
+
+# -----------------------------------
+# Do some graphing
+# -----------------------------------
+tair.ann <- data.frame(apply(temp.array, c(1,3), mean, na.rm=T))
+precip.ann <- data.frame(apply(precip.array, c(1,3), sum, na.rm=T))
+pdsi.ann <- data.frame(apply(pdsi.array, c(1,3), mean, na.rm=T))
+
+
+tair.summ <- data.frame(var="Temperature", 
+                        year=850:2015, 
+                        median=apply(tair.ann, 1, median, na.rm=T),
+                        lwr =apply(tair.ann, 1, quantile, 0.025, na.rm=T),
+                        upr =apply(tair.ann, 1, quantile, 0.975, na.rm=T))
+precip.summ <- data.frame(var="Precipitation",
+                          year=850:2015, 
+                          median=apply(precip.ann, 1, median, na.rm=T),
+                          lwr =apply(precip.ann, 1, quantile, 0.025, na.rm=T),
+                          upr =apply(precip.ann, 1, quantile, 0.975, na.rm=T))
+pdsi.summ <- data.frame(var="PDSI",
+                        year=850:2015, 
+                        median=apply(pdsi.ann, 1, median, na.rm=T),
+                        lwr =apply(pdsi.ann, 1, quantile, 0.025, na.rm=T),
+                        upr =apply(pdsi.ann, 1, quantile, 0.975, na.rm=T))
+
+met.all <- rbind(tair.summ, precip.summ, pdsi.summ)
+
+library(ggplot2)
+png(file.path(in.base, "Met_Summary_Annual.png"), height=8.5, width=11, unit="in", res=220)
+ggplot(data=met.all) + facet_grid(var~., scales="free_y") +
+  geom_ribbon(aes(x=year, ymin=lwr, ymax=upr, fill=var), alpha=0.5) +
+  geom_line(aes(x=year, y=median, color=var)) + 
+  scale_fill_manual(values=c("red", "blue2", "green3")) +
+  scale_color_manual(values=c("red", "blue2", "green3")) +
+  theme_bw() +
+  theme(legend.position="top")
+dev.off()
+# -----------------------------------

@@ -13,11 +13,21 @@
 ##' @param years.pdsi - which years to calculate PDSI for; if NULL (default), all available years will be used
 ##' @param years.calib - years to calibrate the PDSI against;
 ##' @param watcap - vector of length 2 indicating the water holding capacity of the upper and lower layers of the soil
-##' @return list with data frame layers for temperature, precipitaiton, daylength, and PDSI with dims=c(years, months)
-##'          Units: temperature - degrees C
-##'                 precipitation - mm/mo
-##'                 daylength - hours/day
-##'                 PDSI - unitless
+##' @return list everything used to calculate PDSI
+##'           1. Z  = Z-index (unitless); matrix; dim=c(nyr, 12)
+##'           2. X  = PDSI value (unitless); matrix; dim=c(nyr, 12)
+##'           3. XM = modified PDSI value (unitless); matrix; dim=c(nyr, 12)
+##'           4. XH =  PDHI; defined as x4[t] = 0.897*x4[t-1] + Z/3
+##'                    circumvents probability of switching between three 
+##'                    alternative version of the index
+##'           5. PE = potential evapotranspiration (in/mo); matrix; dim=c(nyr, 12)
+##'           6. W  = calcualted average soil moisture (inches); matrix; dim=c(nyr, 12)
+##'           7. R  = calculated monthly recharge (inches); matrix; dim=c(nyr, 12)
+##'           8. RO = calculated monthly runoff (inches); matrix; dim=c(nyr, 12)
+##'           9. S1 = effective preciptiation (inches); array; dim=c(nyr, 12, 10); max(0, p-f*pe)
+##'          10. P  = precipitation input (inches); matrix; dim=c(nyr, 12)
+##'          11. T  = temperature input; matrix; dim=c(nyr, 12)
+##'          12. D  = daylength adjustment factor; matrix; dim=c(nyr, 12)
 ##' @export
 # -----------------------------------
 
@@ -91,6 +101,8 @@ calc.pdsi <- function(path.in, years.pdsi, years.calib, watcap){
   datother$dayfact   <- dayfact
   
   # Run the actual PDSI calculation
-  pdsi.out <- pdsi1(datmet, datother, metric=F, siteID, method.PE="Thornthwaite", snow=NULL, snowopts=NULL, penopts=NULL, datpen=NULL)
+  pdsi.out <- pdsi1(datmet, datother, metric=F, method.PE="Thornthwaite", snow=NULL, snowopts=NULL, penopts=NULL, datpen=NULL)
+  pdsi.out$D <- dayfact
   
+  return(pdsi.out)
 }
