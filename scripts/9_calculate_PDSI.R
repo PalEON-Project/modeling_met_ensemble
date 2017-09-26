@@ -19,7 +19,7 @@
 # -----------------------------------
 # 0. define file paths and some info about the site
 # -----------------------------------
-in.base = "~/Desktop/Research/met_ensembles/data/met_ensembles/HARVARD/aggregated/month/"
+in.base = "/home/crollinson/met_ensemble/data/met_ensembles/HARVARD/aggregated/month/"
 years.pdsi = NULL
 years.calib = c(1931, 1990)
 site.lat <- 42.54
@@ -36,8 +36,8 @@ source("pdsix.R")
 source("PE.thornthwaite.R")
 source("soilmoi1.R")
 
-# path.soil <- "~/PalEON_CR/ED_PalEON/MIP2_Region/phase2_env_drivers_v2/soil/"
-path.soil <- "~/Dropbox/PalEON_CR/env_regional/phase2_env_drivers_v2/soil" 
+path.soil <- "~/ED_PalEON/MIP2_Region/phase2_env_drivers_v2/soil/"
+# path.soil <- "~/Dropbox/PalEON_CR/env_regional/phase2_env_drivers_v2/soil" 
 
 sand.t <- ncdf4::nc_open(file.path(path.soil, "paleon_soil_t_sand.nc"))
 sand.s <- ncdf4::nc_open(file.path(path.soil, "paleon_soil_s_sand.nc"))
