@@ -141,7 +141,7 @@ aggregate.file <- function(f.agg, path.in, save.day, save.month, out.base, day.d
     
     loc <- ncdf4::nc_create(filename = file.path(out.base, mo.dir, f.agg), vars = var.list, verbose = verbose)
     
-    for (j in vars.file) {
+    for (j in names(var.list)) {
       ncdf4::ncvar_put(nc = loc, varid = as.character(j), vals = dat.mo[,j])
     }
     ncdf4::nc_close(loc)
