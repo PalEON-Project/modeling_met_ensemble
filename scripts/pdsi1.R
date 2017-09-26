@@ -48,7 +48,6 @@
 #     5. yrs.calib = window for normals & calibrations
 #     6. dayz = lookup table for percentage of possible sunshine
 #     7. daylength = provided values of day length (in hours); alternative to using dayz
-#  4. siteID: character string; site ID
 #  5. method.PE = method of potential evapotranspiration
 #     - "Thornthwaite" (default)
 #     - "Penman-Monteith" (not implemented)
@@ -132,7 +131,7 @@
 # --------------
 
 
-pdsi1 <- function(datmet, datother, metric=F, siteID, method.PE="Thornthwaite", snow=NULL, snowopts=NULL, penopts=NULL, datpen=NULL){
+pdsi1 <- function(datmet, datother, metric=F, method.PE="Thornthwaite", snow=NULL, snowopts=NULL, penopts=NULL, datpen=NULL){
 
   # ------------------------------------------
   #  1. Check input, calculate AWC if needed, unit conversions, make pointers
@@ -142,13 +141,6 @@ pdsi1 <- function(datmet, datother, metric=F, siteID, method.PE="Thornthwaite", 
   if(method.PE!="Thornthwaite") stop("invalid method.PE! Only Thornthwaite available currently")
   if(!is.null(snow)) stop("Snow redistribution not implemented yet. Please set to NULL for now")
   if(any(dim(datmet$Temp) != dim(datmet$Precip))) stop("Temperature & Precipitation time series do not align!")
-
-  # Sourcing scripts we'll need
-  pdsi.fun <- datother$pdsi.fun
-  # source(file.path(pdsi.fun, "dayfact.R"))
-  # source(file.path(pdsi.fun, "soilmoi1.R"))
-  # source(file.path(pdsi.fun, "pdsix.R"))
-  
   
   # Extract some constants from datother
   Temp <- as.matrix(datmet$Temp)
@@ -188,11 +180,11 @@ pdsi1 <- function(datmet, datother, metric=F, siteID, method.PE="Thornthwaite", 
     if(is.null(dayfact)) dayz <- R.matlab::readMat("PDSI_fromBenCook/PDSICODE/daylennh.mat")$dayz
     # dayl <- NULL
     
-    source(file.path(pdsi.fun, "PE.thornthwaite.R"))
+    # source(file.path(pdsi.fun, "PE.thornthwaite.R"))
     if(ncol(Temp)==12) timestep = "monthly"
     # dayfact = calc.dayfact(timestep=timestep, daylength=dayl, lat=lat, dayz=dayz)
     # dayfact = calc.dayfact(timestep="daily", daylength=dayl, lat=lat, dayz=dayz)
-    PE = PE.thorn(Temp, yrs.calib, lat, dayz=dayz, dayfact=dayfact, celcius=F)
+    PE <- PE.thorn(Temp, yrs.calib, lat, dayz=dayz, dayfact=dayfact, celcius=F)
   }
   row.names(PE) <- row.names(Temp)
   # ------------------------------------------
