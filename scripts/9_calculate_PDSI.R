@@ -93,7 +93,7 @@ for(GCM in GCM.list){
       out.save$PDSI   <- data.frame(ens=as.vector(t(ens.out$X)))
       
       names(out.save$Temp) <- names(out.save$Precip) <- names(out.save$PDSI) <- ens
-      row.labs <- paste(rep(row.names(pdsi.out$T), each=ncol(pdsi.out$T)), stringr::str_pad(1:ncol(pdsi.out$T), 2, pad="0"), sep="-")
+      row.labs <- paste(rep(row.names(ens.out$T), each=ncol(ens.out$T)), stringr::str_pad(1:ncol(ens.out$T), 2, pad="0"), sep="-")
       row.names(out.save$Temp) <- row.names(out.save$Precip) <- row.names(out.save$Precip) <- row.labs 
       
       temp.array   <- array(ens.out$T, dim=c(dim(ens.out$T), 1))
@@ -112,6 +112,7 @@ for(GCM in GCM.list){
     setTxtProgressBar(pb, pb.ind)
     pb.ind=pb.ind+1
   } # End ensemble member loop
+  print("")
 } # End GCM Loop
 
 # Save the Output
