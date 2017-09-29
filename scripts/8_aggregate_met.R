@@ -15,6 +15,7 @@
 # 1. 
 # -----------------------------------
 # rm(list=ls())
+library(parallel)
 source("aggregate_met.R")
 source("aggregate_file.R")
 
@@ -23,6 +24,7 @@ out.base = "/home/crollinson/met_ensemble/data/met_ensembles/HARVARD/aggregated"
 
 GCM.list <- dir(in.base)
 for(GCM in GCM.list){
+  print(GCM)
   gcm.ens <- dir(file.path(in.base, GCM))
   pb <- txtProgressBar(min=0, max=length(gcm.ens), style=3)
   pb.ind=1
@@ -37,4 +39,5 @@ for(GCM in GCM.list){
     setTxtProgressBar(pb, pb.ind)
     pb.ind=pb.ind+1
   }
+  print("")
 }

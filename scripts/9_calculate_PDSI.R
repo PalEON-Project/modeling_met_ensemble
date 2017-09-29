@@ -74,11 +74,11 @@ watcap <- c(wcap1, wcap2)
 # in.base = "~/Desktop/Research/met_ensembles/data/met_ensembles/HARVARD/aggregated/month/CCSM4/CCSM4_001.01"
 
 out.save <- NULL
-GCM.list <- dir(in.base)
+GCM.list <- list.dirs(in.base, recursive=F, full.names = F)
 for(GCM in GCM.list){
   print(GCM)
   
-  gcm.ens <- dir(file.path(in.base, GCM))
+  gcm.ens <- list.dirs(file.path(in.base, GCM), full.names=F, recursive=F)
   pb <- txtProgressBar(min=0, max=length(gcm.ens), style=3)
   pb.ind=1
   for(ens in gcm.ens){
@@ -156,6 +156,20 @@ ggplot(data=met.all) + facet_grid(var~., scales="free_y") +
   geom_line(aes(x=year, y=median, color=var)) + 
   scale_fill_manual(values=c("red", "blue2", "green3")) +
   scale_color_manual(values=c("red", "blue2", "green3")) +
+  theme_bw() +
+  theme(legend.position="top")
+dev.off()
+
+# Tricking the PDSI CI into not being ridiculous
+met.all[met.all$var=="PDSI" & met.all$lwr < -15, "lwr"] <- -15
+met.all[met.all$var=="PDSI" & met.all$upr > 15, "upr"] <- 15
+png(file.path(in.base, "Met_Summary_Annual2.png"), height=8.5, width=11, unit="in", res=220)
+ggplot(data=met.all) + facet_grid(var~., scales="free_y") +
+  geom_ribbon(aes(x=year, ymin=lwr, ymax=upr, fill=var), alpha=0.5) +
+  geom_line(aes(x=year, y=median, color=var)) + 
+  scale_fill_manual(values=c("red", "blue2", "green3")) +
+  scale_color_manual(values=c("red", "blue2", "green3")) +
+  # coord_cartesian(ylim=c(-15,15)) +
   theme_bw() +
   theme(legend.position="top")
 dev.off()
