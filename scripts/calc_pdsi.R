@@ -26,7 +26,7 @@
 ##'           8. RO = calculated monthly runoff (inches); matrix; dim=c(nyr, 12)
 ##'           9. S1 = effective preciptiation (inches); array; dim=c(nyr, 12, 10); max(0, p-f*pe)
 ##'          10. P  = precipitation input (inches); matrix; dim=c(nyr, 12)
-##'          11. T  = temperature input; matrix; dim=c(nyr, 12)
+##'          11. T  = temperature input (F); matrix; dim=c(nyr, 12)
 ##'          12. D  = daylength adjustment factor; matrix; dim=c(nyr, 12)
 ##' @export
 # -----------------------------------
