@@ -125,8 +125,8 @@ GCM="MIROC-ESM"
   }
   
   # 2. Pass the training & source met data into the bias-correction functions; this will get written to the ensemble
-  debias.met.regression(train.data=met.out$dat.train, source.data=met.out$dat.source, n.ens=10, vars.debias=NULL, CRUNCEP=TRUE,
-                        pair.anoms = TRUE, pair.ens = FALSE, uncert.prop="mean", resids = FALSE, seed=Sys.Date(),
+  debias.met.regression(train.data=met.out$dat.train, source.data=met.out$dat.source, n.ens, vars.debias=NULL, CRUNCEP=TRUE,
+                        pair.anoms = TRUE, pair.ens = FALSE, uncert.prop="mean", resids = FALSE, seed=seed,
                         outfolder=train.path, 
                         yrs.save=NULL, ens.name=ens.ID, ens.mems=ens.mems, lat.in=site.lat, lon.in=site.lon,
                         save.diagnostics=TRUE, path.diagnostics=file.path(out.base, "bias_correct_qaqc_CRU"),
@@ -159,8 +159,8 @@ GCM="MIROC-ESM"
   met.out$dat.source$time <- met.out$dat.source$time[met.out$dat.source$time$Year<=2000,]
   
   # 2. Pass the training & source met data into the bias-correction functions; this will get written to the ensemble
-  debias.met.regression(train.data=met.out$dat.train, source.data=met.out$dat.source, n.ens=10, vars.debias=NULL, CRUNCEP=FALSE,
-                        pair.anoms = FALSE, pair.ens = FALSE, uncert.prop="mean", resids = FALSE, seed=Sys.Date(),
+  debias.met.regression(train.data=met.out$dat.train, source.data=met.out$dat.source, n.ens, vars.debias=NULL, CRUNCEP=FALSE,
+                        pair.anoms = FALSE, pair.ens = FALSE, uncert.prop="mean", resids = FALSE, seed=seed,
                         outfolder=train.path, 
                         yrs.save=1850:1900, ens.name=ens.ID, ens.mems=ens.mems, lat.in=site.lat, lon.in=site.lon,
                         save.diagnostics=TRUE, path.diagnostics=file.path(out.base, paste0("bias_correct_qaqc_",GCM,"_hist")),
@@ -186,8 +186,8 @@ GCM="MIROC-ESM"
   }
   
   # 2. Pass the training & source met data into the bias-correction functions; this will get written to the ensemble
-  debias.met.regression(train.data=met.out$dat.train, source.data=met.out$dat.source, n.ens=10, vars.debias=NULL, CRUNCEP=FALSE,
-                        pair.anoms = FALSE, pair.ens = FALSE, uncert.prop="mean", resids = FALSE, seed=Sys.Date(),
+  debias.met.regression(train.data=met.out$dat.train, source.data=met.out$dat.source, n.ens, vars.debias=NULL, CRUNCEP=FALSE,
+                        pair.anoms = FALSE, pair.ens = FALSE, uncert.prop="mean", resids = FALSE, seed=seed,
                         outfolder=train.path, 
                         yrs.save=NULL, ens.name=ens.ID, ens.mems=ens.mems, lat.in=site.lat, lon.in=site.lon,
                         save.diagnostics=TRUE, path.diagnostics=file.path(out.base, paste0("bias_correct_qaqc_",GCM,"_p1000")),
