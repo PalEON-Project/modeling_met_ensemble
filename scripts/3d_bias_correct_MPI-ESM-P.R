@@ -128,7 +128,8 @@ GCM="MPI-ESM-P"
   debias.met.regression(train.data=met.out$dat.train, source.data=met.out$dat.source, n.ens=n.ens, vars.debias=NULL, CRUNCEP=TRUE,
                         pair.anoms = TRUE, pair.ens = FALSE, uncert.prop="mean", resids = FALSE, seed=seed,
                         outfolder=train.path, 
-                        yrs.save=NULL, ens.name=ens.ID, ens.mems=ens.mems, lat.in=site.lat, lon.in=site.lon,
+                        yrs.save=NULL, ens.name=ens.ID, ens.mems=ens.mems, sanity.tries=100, 
+                        lat.in=site.lat, lon.in=site.lon,
                         save.diagnostics=TRUE, path.diagnostics=file.path(out.base, "bias_correct_qaqc_CRU"),
                         parallel = FALSE, n.cores = NULL, overwrite = TRUE, verbose = FALSE) 
   # --------------------------
@@ -162,7 +163,8 @@ GCM="MPI-ESM-P"
   debias.met.regression(train.data=met.out$dat.train, source.data=met.out$dat.source, n.ens=n.ens, vars.debias=NULL, CRUNCEP=FALSE,
                         pair.anoms = FALSE, pair.ens = FALSE, uncert.prop="mean", resids = FALSE, seed=seed,
                         outfolder=train.path, 
-                        yrs.save=1850:1900, ens.name=ens.ID, ens.mems=ens.mems, lat.in=site.lat, lon.in=site.lon,
+                        yrs.save=1850:1900, ens.name=ens.ID, ens.mems=ens.mems, sanity.tries=100, 
+                        lat.in=site.lat, lon.in=site.lon,
                         save.diagnostics=TRUE, path.diagnostics=file.path(out.base, paste0("bias_correct_qaqc_",GCM,"_hist")),
                         parallel = FALSE, n.cores = NULL, overwrite = TRUE, verbose = FALSE) 
   # --------------------------
@@ -189,7 +191,8 @@ GCM="MPI-ESM-P"
   debias.met.regression(train.data=met.out$dat.train, source.data=met.out$dat.source, n.ens=n.ens, vars.debias=NULL, CRUNCEP=FALSE,
                         pair.anoms = FALSE, pair.ens = FALSE, uncert.prop="mean", resids = FALSE, seed=seed,
                         outfolder=train.path, 
-                        yrs.save=NULL, ens.name=ens.ID, ens.mems=ens.mems, lat.in=site.lat, lon.in=site.lon,
+                        yrs.save=NULL, ens.name=ens.ID, ens.mems=ens.mems, sanity.tries=100, 
+                        lat.in=site.lat, lon.in=site.lon,
                         save.diagnostics=TRUE, path.diagnostics=file.path(out.base, paste0("bias_correct_qaqc_",GCM,"_p1000")),
                         parallel = FALSE, n.cores = NULL, overwrite = TRUE, verbose = FALSE) 
   # --------------------------
