@@ -75,7 +75,7 @@ source(file.path(path.pecan, "modules/data.atmosphere/R", "tdm_model_train.R"))
 source(file.path(path.pecan, "modules/data.atmosphere/R", "align_met.R"))
 
 gen.subdaily.models(outfolder=path.out, path.train=path.train,
-                    yrs.train=NULL, direction.filter="backwards", in.prefix=site.name,
+                    yrs.train=NULL, direction.filter="backward", in.prefix=site.name,
                     n.beta=500, day.window=7, seed=1026, resids = FALSE, 
                     parallel = FALSE, n.cores = NULL, overwrite = TRUE, verbose = FALSE, print.progress=T) 
 # ------------------------------------------
