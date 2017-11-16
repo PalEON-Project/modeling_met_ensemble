@@ -25,8 +25,10 @@
 # 0. Set up file paths, etc.
 # -----------------------------------
 # Path to the ensemble we want to check
-path.dat <- "~/Desktop/Research/met_ensembles/data/met_ensembles/HARVARD/day/ensembles/"
+path.dat <- "/home/crollinson/met_ensemble/data/met_ensembles/HARVARD/day/ensembles/"
+path.bad <- "/home/crollinson/met_ensemble/data/met_ensembles/HARVARD/day/rejected/"
 
+if(!dir.exists(path.bad)) dir.create(path.bad, recursive = T)
 # -----------------------------------
 
 # -----------------------------------
@@ -87,3 +89,44 @@ for(GCM in 1:length(GCM.list)){
 }
 # -----------------------------------
 
+# -----------------------------------
+# Filter and identify outliers
+# -----------------------------------
+ens.bad <- array(dim=c(n.files, length(ens.mems)))
+dimnames(ens.bad)[[1]] <- dimnames(dat.summary)[[1]]
+dimnames(ens.bad)[[2]] <- dimnames(dat.summary)[[4]]
+
+sum.means <- apply(dat.summary[,,,], c(1, 2, 3), FUN=mean)
+sum.sd    <- apply(dat.summary[,,,], c(1, 2, 3), FUN=sd)
+
+
+for(i in 1:nrow(ens.bad)){
+  for(j in 1:ncol(ens.bad)){
+    vars.bad <- dat.summary[i,,1,j] < sum.means[i,,1] - 6*sum.sd[i,,1] | dat.summary[i,,2,j] > sum.means[i,,2] + 6*sum.sd[i,,2]
+    if(any(vars.bad)){
+      ens.bad[i,j] <- length(which(vars.bad==T))
+    }
+  }
+}
+
+# Summarizing bad ensembles 
+yrs.bad <- apply(ens.bad, 1, sum, na.rm=T)
+summary(yrs)
+
+mems.bad <- apply(ens.bad, 2, sum, na.rm=T)
+length(which(mems.bad==0))/length(mems.bad)
+summary(mems.bad)
+
+quantile(mems.bad, 0.90)
+
+# -----------------------------------
+# Move the bad ensemble members
+# -----------------------------------
+mems.bad[mems.bad>0]
+
+for(mem in names(mems.bad[mems.bad>0])){
+  GCM <- stringr::str_split(mem, "_")[[1]][1]
+  system(paste("mv", file.path(path.dat, GCM, mem), file.path(path.bad, mem), sep=" "))
+}
+
+# -----------------------------------
