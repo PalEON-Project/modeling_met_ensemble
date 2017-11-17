@@ -108,11 +108,11 @@ GCM="MIROC-ESM"
   # Doing this one ensemble member at at time
   # Figure out what's been done already
   ens.done <- str_split(dir(out.ens), "[.]")
-  if(length(ens.done>0)) ens.done <- unique(matrix(unlist(ens.done), ncol=length(ens.done[[1]]), byrow = T)[,1])
+  if(length(ens.done)>0) ens.done <- unique(matrix(unlist(ens.done), ncol=length(ens.done[[1]]), byrow = T)[,1])
   
   # Figure out what we can pull from
   gcm.members <- dir(path.gcm)
-  if(length(ens.done>0)) gcm.members <- gcm.members[!gcm.members %in% ens.done]
+  if(length(ens.done)>0) gcm.members <- gcm.members[!gcm.members %in% ens.done]
   
   gcm.now <- sample(gcm.members, min(n.day, length(gcm.members)))
 
@@ -122,14 +122,14 @@ GCM="MIROC-ESM"
              lm.models.base=path.lm, path.train=path.train, direction.filter="backward",
              yrs.predict=yrs.sim, ens.labs=str_pad(1:ens.hr, width=2, pad="0"),
              resids=F, overwrite=F,
-             seed=seed.vec[1], print.progress=F)
+             seed=seed.vec[length(ens.done)+1], print.progress=F)
   } else {
     for(ens.now in gcm.now){
       predict_subdaily_met(outfolder=out.ens, in.path=file.path(path.in, GCM),
                            in.prefix=ens.now, lm.models.base=path.lm,
                            path.train=path.train, direction.filter="backward", yrs.predict=yrs.sim,
                            ens.labs = str_pad(1:ens.hr, width=2, pad="0"), resids = FALSE,
-                           overwrite = FALSE, seed=seed.vec[length(ens.done)], print.progress = TRUE)
+                           overwrite = FALSE, seed=seed.vec[length(ens.done)+1], print.progress = TRUE)
     }
   }
 # }
