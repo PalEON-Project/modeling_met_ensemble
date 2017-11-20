@@ -111,7 +111,7 @@ for(i in 1:nrow(ens.bad)){
 
 # Summarizing bad ensembles 
 yrs.bad <- apply(ens.bad, 1, sum, na.rm=T)
-summary(yrs)
+summary(yrs.bad)
 
 mems.bad <- apply(ens.bad, 2, sum, na.rm=T)
 length(which(mems.bad==0))/length(mems.bad)

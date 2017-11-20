@@ -199,20 +199,24 @@ summary(met.raw.yr)
 
 library(ggplot2)
 png(file.path(path.day.base, "Raw_Annual.png"), height=8, width=10, units="in", res=220)
-ggplot(data=met.raw.yr[,]) + facet_wrap(~met.var, scales="free_y") +
-  geom_path(aes(x=Year, y=raw, color=dataset, group=dataset2), size=0.5) +
-  geom_vline(xintercept=c(1850, 1901, 2010), linetype="dashed") +
-  scale_x_continuous(expand=c(0,0)) +
-  theme_bw()
+print(
+  ggplot(data=met.raw.yr[,]) + facet_wrap(~met.var, scales="free_y") +
+    geom_path(aes(x=Year, y=raw, color=dataset, group=dataset2), size=0.5) +
+    geom_vline(xintercept=c(1850, 1901, 2010), linetype="dashed") +
+    scale_x_continuous(expand=c(0,0)) +
+    theme_bw()
+)
 dev.off()
 
 png(file.path(path.day.base, "Debias_Annual.png"), height=8, width=10, units="in", res=220)
-ggplot(data=met.bias.yr[, ]) + facet_wrap(~met.var, scales="free_y") +
-  geom_ribbon(aes(x=Year, ymin=lwr, ymax=upr, fill=dataset), alpha=0.5) +
-  geom_path(aes(x=Year, y=mean, color=dataset), size=0.5) +
-  geom_vline(xintercept=c(1850, 1901, 2010), linetype="dashed") +
-  scale_x_continuous(expand=c(0,0)) +
-  theme_bw()
+print(
+  ggplot(data=met.bias.yr[, ]) + facet_wrap(~met.var, scales="free_y") +
+    geom_ribbon(aes(x=Year, ymin=lwr, ymax=upr, fill=dataset), alpha=0.5) +
+    geom_path(aes(x=Year, y=mean, color=dataset), size=0.5) +
+    geom_vline(xintercept=c(1850, 1901, 2010), linetype="dashed") +
+    scale_x_continuous(expand=c(0,0)) +
+    theme_bw()
+)
 dev.off()
 
 # Looking at the seasonal cycle
@@ -249,20 +253,24 @@ summary(met.bias.doy.mean)
 
 library(ggplot2)
 png(file.path(path.day.base, "Raw_DOY.png"), height=8, width=10, units="in", res=220)
-ggplot(data=met.raw.doy[,]) + facet_wrap(~met.var, scales="free_y") +
-  geom_path(data=met.raw.doy[met.raw.doy$dataset=="NLDAS",], aes(x=DOY, y=raw), color="black", size=1) +
-  geom_path(data=met.raw.doy[met.raw.doy$dataset!="NLDAS",], aes(x=DOY, y=raw, color=dataset, group=dataset2), size=0.5) +
-  scale_x_continuous(expand=c(0,0)) +
-  theme_bw()
+print(
+  ggplot(data=met.raw.doy[,]) + facet_wrap(~met.var, scales="free_y") +
+    geom_path(data=met.raw.doy[met.raw.doy$dataset=="NLDAS",], aes(x=DOY, y=raw), color="black", size=1) +
+    geom_path(data=met.raw.doy[met.raw.doy$dataset!="NLDAS",], aes(x=DOY, y=raw, color=dataset, group=dataset2), size=0.5) +
+    scale_x_continuous(expand=c(0,0)) +
+    theme_bw()
+)
 dev.off()
 
 png(file.path(path.day.base, "Debias_DOY.png"), height=8, width=10, units="in", res=220)
-ggplot(data=met.bias.doy[, ]) + facet_wrap(~met.var, scales="free_y") +
-  geom_path(data=met.raw.doy[met.raw.doy$dataset=="NLDAS",], aes(x=DOY, y=raw), color="black", size=1) +
-  geom_ribbon(aes(x=DOY, ymin=lwr, ymax=upr, fill=dataset), alpha=0.5) +
-  geom_path(aes(x=DOY, y=mean, color=dataset), size=0.5) +
-  # geom_vline(xintercept=c(1850, 1901, 2010), linetype="dashed") +
-  scale_x_continuous(expand=c(0,0)) +
-  theme_bw()
+print(
+  ggplot(data=met.bias.doy[, ]) + facet_wrap(~met.var, scales="free_y") +
+    geom_path(data=met.raw.doy[met.raw.doy$dataset=="NLDAS",], aes(x=DOY, y=raw), color="black", size=1) +
+    geom_ribbon(aes(x=DOY, ymin=lwr, ymax=upr, fill=dataset), alpha=0.5) +
+    geom_path(aes(x=DOY, y=mean, color=dataset), size=0.5) +
+    # geom_vline(xintercept=c(1850, 1901, 2010), linetype="dashed") +
+    scale_x_continuous(expand=c(0,0)) +
+    theme_bw()
+)
 dev.off()
 # -----------------------------------

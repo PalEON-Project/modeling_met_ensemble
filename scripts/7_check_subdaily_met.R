@@ -24,6 +24,7 @@
 # -----------------------------------
 library(ncdf4)
 library(ggplot2)
+library(stringr)
 
 # Ensemble directories
 wd.base <- "/home/crollinson/met_ensemble"
