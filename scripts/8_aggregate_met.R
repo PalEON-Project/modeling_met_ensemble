@@ -33,7 +33,7 @@ for(GCM in GCM.list){
                   years.agg=NULL, save.day=T, save.month=T, 
                   out.base=out.base, day.dir=file.path("day", GCM, ens), mo.dir=file.path("month", GCM, ens), 
                   add.vars=c("daylength", "air_temperature_maximum", "air_temperature_minimum"),
-                  parallel=T, n.cores=8, 
+                  parallel=F, n.cores=8, 
                   print.progress=F, verbose=FALSE)
     
     setTxtProgressBar(pb, pb.ind)
