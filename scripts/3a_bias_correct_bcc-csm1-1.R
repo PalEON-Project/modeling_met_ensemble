@@ -129,7 +129,7 @@ GCM="bcc-csm1-1"
   
   # 2. Pass the training & source met data into the bias-correction functions; this will get written to the ensemble
   debias.met.regression(train.data=met.out$dat.train, source.data=met.out$dat.source, n.ens=n.ens, vars.debias=NULL, CRUNCEP=TRUE,
-                        pair.anoms = TRUE, pair.ens = FALSE, uncert.prop="mean", resids = FALSE, seed=seed,
+                        pair.anoms = TRUE, pair.ens = FALSE, uncert.prop="random", resids = FALSE, seed=seed,
                         outfolder=train.path, 
                         yrs.save=NULL, ens.name=ens.ID, ens.mems=ens.mems, sanity.tries=100,
                         lat.in=site.lat, lon.in=site.lon,
@@ -164,7 +164,7 @@ GCM="bcc-csm1-1"
   
   # 2. Pass the training & source met data into the bias-correction functions; this will get written to the ensemble
   debias.met.regression(train.data=met.out$dat.train, source.data=met.out$dat.source, n.ens=n.ens, vars.debias=NULL, CRUNCEP=FALSE,
-                        pair.anoms = FALSE, pair.ens = FALSE, uncert.prop="mean", resids = FALSE, seed=seed,
+                        pair.anoms = FALSE, pair.ens = FALSE, uncert.prop="random", resids = FALSE, seed=seed,
                         outfolder=train.path, 
                         yrs.save=1850:1900, ens.name=ens.ID, ens.mems=ens.mems, sanity.tries=100,
                         lat.in=site.lat, lon.in=site.lon,
@@ -192,7 +192,7 @@ GCM="bcc-csm1-1"
   
   # 2. Pass the training & source met data into the bias-correction functions; this will get written to the ensemble
   debias.met.regression(train.data=met.out$dat.train, source.data=met.out$dat.source, n.ens=n.ens, vars.debias=NULL, CRUNCEP=FALSE,
-                        pair.anoms = FALSE, pair.ens = FALSE, uncert.prop="mean", resids = FALSE, seed=seed,
+                        pair.anoms = FALSE, pair.ens = FALSE, uncert.prop="random", resids = FALSE, seed=seed,
                         outfolder=train.path, 
                         yrs.save=NULL, ens.name=ens.ID, ens.mems=ens.mems, sanity.tries=100,
                         lat.in=site.lat, lon.in=site.lon,
