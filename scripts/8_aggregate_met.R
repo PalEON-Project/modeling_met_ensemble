@@ -19,8 +19,12 @@ library(parallel)
 source("aggregate_met.R")
 source("aggregate_file.R")
 
-in.base = "/home/crollinson/met_ensemble/data/met_ensembles/HARVARD/1hr/ensembles/"
-out.base = "/home/crollinson/met_ensemble/data/met_ensembles/HARVARD/aggregated"
+wd.base <- "/home/crollinson/met_ensemble"
+site.name <- "HARVARD"
+vers <- ".v5"
+
+in.base = file.path(wd.base, "data/met_ensembles", paste0(site.name, vers), "1hr/ensembles/")
+out.base = file.path(wd.base, "/data/met_ensembles", paste0(site.name, vers) ,"aggregated")
 
 GCM.list <- dir(in.base)
 for(GCM in GCM.list){

@@ -31,11 +31,12 @@ path.pecan <- "/home/crollinson/pecan/"
 
 # Site name for indexing
 site.name <- "HARVARD"
+vers=".v5"
 GCM.list <- c("bcc-csm1-1", "CCSM4", "MIROC-ESM", "MPI-ESM-P")
 
 # Setting up some file paths, etc
 path.raw.base <- file.path(wd.base, "data/paleon_sites", site.name)
-path.day.base <- file.path(wd.base, "data/met_ensembles", site.name, "day")
+path.day.base <- file.path(wd.base, "data/met_ensembles", paste0(site.name, vers), "day")
 
 # defining some variable names
 vars.CF <- c("air_temperature_minimum", "air_temperature_maximum", "precipitation_flux", "surface_downwelling_shortwave_flux_in_air", "surface_downwelling_longwave_flux_in_air", "air_pressure", "specific_humidity", "wind_speed")

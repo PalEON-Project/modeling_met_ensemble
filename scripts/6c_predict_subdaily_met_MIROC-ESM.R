@@ -57,14 +57,15 @@ path.pecan <- "/home/crollinson/pecan"
 
 # Hard-coding numbers for Harvard
 site.name="HARVARD"
+vers <- ".v5"
 site.lat=42.54
 site.lon=-72.18
 # 
 
 path.train <- file.path(dat.base, "paleon_sites", site.name, "NLDAS")
-path.lm <- file.path(dat.base, "met_ensembles", site.name, "1hr/mods.tdm")
-path.in <- file.path(dat.base, "met_ensembles", site.name, "day/ensembles")
-path.out <- file.path(dat.base, "met_ensembles", site.name, "1hr/ensembles")
+path.lm <- file.path(dat.base, "met_ensembles", paste0(site.name, vers), "1hr/mods.tdm")
+path.in <- file.path(dat.base, "met_ensembles", paste0(site.name, vers), "day/ensembles")
+path.out <- file.path(dat.base, "met_ensembles", paste0(site.name, vers), "1hr/ensembles")
 
 # GCM.list = c("CCSM4", "MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1")
 # GCM.list = "MIROC-ESM"

@@ -19,7 +19,11 @@
 # -----------------------------------
 # 0. define file paths and some info about the site
 # -----------------------------------
-in.base = "/home/crollinson/met_ensemble/data/met_ensembles/HARVARD/aggregated/month/"
+wd.base <- "/home/crollinson/met_ensemble"
+site.name <- "HARVARD"
+vers <- ".v5"
+
+in.base = file.path(wd.base, "data/met_ensembles", paste0(site.name, vers), "aggregated/month/")
 years.pdsi = NULL
 years.calib = c(1931, 1990)
 site.lat <- 42.54

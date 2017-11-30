@@ -29,9 +29,10 @@ library(stringr)
 # Ensemble directories
 wd.base <- "/home/crollinson/met_ensemble"
 site.name <- "HARVARD"
+vers <- ".v5"
 
-path.dat <- file.path(wd.base, "data/met_ensembles", site.name, "1hr/ensembles/")
-path.out <- file.path(wd.base, "data/met_ensembles", site.name, "1hr/figures_qaqc")
+path.dat <- file.path(wd.base, "data/met_ensembles", paste0(site.name, vers), "1hr/ensembles/")
+path.out <- file.path(wd.base, "data/met_ensembles", paste0(site.name, vers), "1hr/figures_qaqc")
 
 dir.create(path.out, recursive=T, showWarnings = F)
 GCM.list <- c("bcc-csm1-1", "CCSM4", "MIROC-ESM", "MPI-ESM-P")

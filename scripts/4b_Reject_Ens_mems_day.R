@@ -25,8 +25,12 @@
 # 0. Set up file paths, etc.
 # -----------------------------------
 # Path to the ensemble we want to check
-path.dat <- "/home/crollinson/met_ensemble/data/met_ensembles/HARVARD.v4/day/ensembles/"
-path.bad <- "/home/crollinson/met_ensemble/data/met_ensembles/HARVARD.v4/day/rejected/"
+wd.base <- "/home/crollinson/met_ensemble"
+site.name <- "HARVARD"
+vers <- ".v5"
+
+path.dat <- file.path(wd.base, "data/met_ensembles", paste0(site.name, vers), "day/ensembles/")
+path.bad <- file.path(wd.base, "data/met_ensembles", paste0(site.name, vers), "day/rejected/")
 
 if(!dir.exists(path.bad)) dir.create(path.bad, recursive = T)
 # -----------------------------------
