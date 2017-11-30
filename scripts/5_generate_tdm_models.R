@@ -55,7 +55,7 @@ vers <- ".v5"
 path.train <- file.path(wd.base, "data/paleon_sites", site.name, "NLDAS")
 yrs.train=NULL
 
-path.out <- file.path(wd.base, "data/met_ensembles", paste0(site.name, "vers"), "1hr/mods.tdm")
+path.out <- file.path(wd.base, "data/met_ensembles", paste0(site.name, vers), "1hr/mods.tdm")
 path.pecan <- "/home/crollinson/pecan"
 
 fig.dir <- file.path(path.out, "model_qaqc")
