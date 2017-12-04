@@ -122,14 +122,14 @@ GCM="MPI-ESM-P"
              outfolder=out.ens, in.path=file.path(path.in, GCM), 
              lm.models.base=path.lm, path.train=path.train, direction.filter="backward",
              yrs.predict=yrs.sim, ens.labs=str_pad(1:ens.hr, width=2, pad="0"),
-             resids=F, overwrite=F,
+             resids=F, force.sanity=TRUE, sanity.attempts=5, overwrite=F,
              seed=seed.vec[length(ens.done)+1], print.progress=F)
   } else {
     for(ens.now in gcm.now){
       predict_subdaily_met(outfolder=out.ens, in.path=file.path(path.in, GCM),
                            in.prefix=ens.now, lm.models.base=path.lm,
                            path.train=path.train, direction.filter="backward", yrs.predict=yrs.sim,
-                           ens.labs = str_pad(1:ens.hr, width=2, pad="0"), resids = FALSE,
+                           ens.labs = str_pad(1:ens.hr, width=2, pad="0"), resids = FALSE, force.sanity=TRUE, sanity.attempts=5,
                            overwrite = FALSE, seed=seed.vec[length(ens.done)+1], print.progress = TRUE)
     }
   }
