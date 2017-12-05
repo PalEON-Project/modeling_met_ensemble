@@ -34,7 +34,7 @@ for(GCM in GCM.list){
   pb.ind=1
   for(ens in gcm.ens){
     aggregate.met(path.in=file.path(in.base, GCM, ens), 
-                  years.agg=NULL, save.day=T, save.month=T, 
+                  years.agg=NULL, save.day=F, save.month=T, 
                   out.base=out.base, day.dir=file.path("day", GCM, ens), mo.dir=file.path("month", GCM, ens), 
                   # add.vars=c("daylength", "air_temperature_maximum", "air_temperature_minimum"),
                   add.vars=NULL,
