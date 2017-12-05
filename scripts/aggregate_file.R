@@ -34,7 +34,7 @@ aggregate.file <- function(f.agg, path.in, save.day, save.month, out.base, day.d
   nc.time <- ncdf4::ncvar_get(ncT, "time")
   
   # Calculate the timestep
-  dt <- length(nc.time)/nday # Time step in days
+  dt <- nday/length(nc.time) # Time step in days
   nc.time <- seq(dt/2, length.out=length(nc.time), by=dt)
   
   lat.in <- ncdf4::ncvar_get(ncT, "latitude")
