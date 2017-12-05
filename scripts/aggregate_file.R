@@ -21,7 +21,7 @@
 ##' @return Automatically saved files withthe same naming structure as previously, just in a different location (this is dangerous!)
 ##' @export
 # -----------------------------------
-aggregate.file <- function(f.agg, path.in, save.day, save.month, out.base, day.dir, mo.dir, add.vars, ...){
+aggregate.file <- function(f.agg, path.in, save.day, save.month, out.base, day.dir, mo.dir, add.vars, verbose=FALSE, ...){
   yr.now <- strsplit(f.agg, "[.]")[[1]]
   yr.now <- as.numeric(yr.now[length(yr.now)-1])
   nday <- ifelse(lubridate::leap_year(yr.now), 366, 365)
