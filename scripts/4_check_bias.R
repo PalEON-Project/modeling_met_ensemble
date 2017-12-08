@@ -198,6 +198,7 @@ names(met.raw.yr) <- c("raw", "met.var")
 met.raw.yr[,c("Year", "dataset", "dataset2")] <- met.raw.yr1[,c("Year", "dataset", "dataset2")]
 summary(met.raw.yr)
 
+
 library(ggplot2)
 png(file.path(path.day.base, "Raw_Annual.png"), height=8, width=10, units="in", res=220)
 print(
@@ -219,6 +220,10 @@ print(
     theme_bw()
 )
 dev.off()
+
+# Save the summaries of the raw and bias-corrected data to quickly make some customized graphs elsewhere
+write.csv(met.raw.yr , file.path(path.day.base, "Met_Raw_Annual.csv"      ), row.names=F)
+write.csv(met.bias.yr, file.path(path.day.base, "Met_Corrected_Annual.csv"), row.names=F)
 
 # Looking at the seasonal cycle
 met.bias.doy.mean <- aggregate(met.bias$mean[,vars.short], by=met.bias$mean[,c("DOY", "dataset")], FUN=mean, na.rm=T)
@@ -274,4 +279,10 @@ print(
     theme_bw()
 )
 dev.off()
+
+
+# Save the summaries of the raw and bias-corrected data to quickly make some customized graphs elsewhere
+write.csv(met.raw.doy , file.path(path.day.base, "Met_Raw_DOY.csv"      ), row.names=F)
+write.csv(met.bias.doy, file.path(path.day.base, "Met_Corrected_DOY.csv"), row.names=F)
+
 # -----------------------------------
