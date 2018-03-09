@@ -20,14 +20,14 @@
 # 0. define file paths and some info about the site
 # -----------------------------------
 wd.base <- "/home/crollinson/met_ensemble"
-site.name <- "HARVARD"
-vers <- ".v5"
+site.name = "HEMLOCK"
+vers=".v1"
+site.lat  = 45.33333
+site.lon  = -90.08333
 
 in.base = file.path(wd.base, "data/met_ensembles", paste0(site.name, vers), "aggregated/month/")
 years.pdsi = NULL
 years.calib = c(1931, 1990)
-site.lat <- 42.54
-site.lon <- -72.18
 # ----------
 
 
@@ -155,26 +155,34 @@ met.all <- rbind(tair.summ, precip.summ, pdsi.summ)
 
 library(ggplot2)
 png(file.path(in.base, "Met_Summary_Annual.png"), height=8.5, width=11, unit="in", res=220)
-ggplot(data=met.all) + facet_grid(var~., scales="free_y") +
-  geom_ribbon(aes(x=year, ymin=lwr, ymax=upr, fill=var), alpha=0.5) +
-  geom_line(aes(x=year, y=median, color=var)) + 
-  scale_fill_manual(values=c("red", "blue2", "green3")) +
-  scale_color_manual(values=c("red", "blue2", "green3")) +
-  theme_bw() +
-  theme(legend.position="top")
+print(
+  ggplot(data=met.all) + facet_grid(var~., scales="free_y") +
+    geom_ribbon(aes(x=year, ymin=lwr, ymax=upr, fill=var), alpha=0.5) +
+    geom_line(aes(x=year, y=median, color=var)) + 
+    geom_vline(xintercept=c(2010, 1900, 1849), linetype="dashed", size=0.5) +
+    scale_fill_manual(values=c("red", "blue2", "green3")) +
+    scale_color_manual(values=c("red", "blue2", "green3")) +
+    theme_bw() +
+    theme(legend.position="top")
+)
 dev.off()
 
 # Tricking the PDSI CI into not being ridiculous
-met.all[met.all$var=="PDSI" & met.all$lwr < -15, "lwr"] <- -15
-met.all[met.all$var=="PDSI" & met.all$upr > 15, "upr"] <- 15
+met.all[met.all$var=="PDSI" & met.all$lwr < -5, "lwr"] <- -5
+met.all[met.all$var=="PDSI" & met.all$upr > 7.5, "upr"] <- 7.5
 png(file.path(in.base, "Met_Summary_Annual2.png"), height=8.5, width=11, unit="in", res=220)
-ggplot(data=met.all) + facet_grid(var~., scales="free_y") +
-  geom_ribbon(aes(x=year, ymin=lwr, ymax=upr, fill=var), alpha=0.5) +
-  geom_line(aes(x=year, y=median, color=var)) + 
-  scale_fill_manual(values=c("red", "blue2", "green3")) +
-  scale_color_manual(values=c("red", "blue2", "green3")) +
-  # coord_cartesian(ylim=c(-15,15)) +
-  theme_bw() +
-  theme(legend.position="top")
+print(
+  ggplot(data=met.all) + facet_grid(var~., scales="free_y") +
+    geom_ribbon(aes(x=year, ymin=lwr, ymax=upr, fill=var), alpha=0.5) +
+    geom_line(aes(x=year, y=median, color=var)) + 
+    geom_vline(xintercept=c(2010, 1900, 1849), linetype="dashed", size=0.5) +
+    scale_fill_manual(values=c("red", "blue2", "green3")) +
+    scale_color_manual(values=c("red", "blue2", "green3")) +
+    # scale_x_continuous(expand=c(0,0)) +
+    scale_y_continuous((expand=c(0,0))) +
+    # coord_cartesian(ylim=c(-15,15)) +
+    theme_bw() +
+    theme(legend.position="top")
+)
 dev.off()
 # -----------------------------------

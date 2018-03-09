@@ -49,10 +49,10 @@ setwd(wd.base)
 path.pecan <- "/home/crollinson/pecan"
 
 # Defining a site name -- this can go into a function later
-site.name="HARVARD"
-vers=".v5"
-site.lat=42.54
-site.lon=-72.18
+site.name = "HEMLOCK"
+vers=".v1"
+site.lat  = 45.33333
+site.lon  = -90.08333
 GCM.list=c("MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1", "CCSM4")
 # GCM.list=c("CCSM4", "MIROC-ESM")
 ens=1:3

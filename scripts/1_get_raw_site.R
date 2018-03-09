@@ -43,9 +43,9 @@ wd.base <- "~/Dropbox/PalEON_CR/met_ensemble"
 setwd(wd.base)
 
 
-site.name = "HARVARD"
-site.lat  = 42.5
-site.lon  = -72.18
+site.name = "HEMLOCK"
+site.lat  = 45.33333
+site.lon  = -90.08333
 path.out = "~/Desktop/Research/met_ensembles/data/paleon_sites"
 
 # Path to pecan repository where functions now live

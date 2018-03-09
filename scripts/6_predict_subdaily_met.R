@@ -49,17 +49,18 @@ library(parallel)
 rm(list=ls())
 
 wd.base <- "/home/crollinson/met_ensemble/"
-# wd.base <- "~/Desktop/Research/PalEON_CR/met_ensemble/"
+# wd.base <- "~/Desktop/Research/met_ensembles/"
 setwd(wd.base)
 
 dat.base <- file.path(wd.base, "data")
 path.pecan <- "/home/crollinson/pecan"
+# path.pecan <- "~/Desktop/Research/pecan"
 
 # Hard-coding numbers for Harvard
-site.name="HARVARD"
-vers <- ".v5"
-site.lat=42.54
-site.lon=-72.18
+site.name = "HEMLOCK"
+vers=".v1"
+site.lat  = 45.33333
+site.lon  = -90.08333
 # 
 
 path.train <- file.path(dat.base, "paleon_sites", site.name, "NLDAS")
@@ -70,14 +71,14 @@ path.out <- file.path(dat.base, "met_ensembles", paste0(site.name, vers), "1hr/e
 GCM.list = c("CCSM4", "MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1")
 # GCM.list = "MIROC-ESM"
 ens.hr  <- 3 # Number of hourly ensemble members to create
-n.day <- 10 # Number of daily ensemble members to process
+n.day <- 1 # Number of daily ensemble members to process
 yrs.plot <- c(2015, 1985, 1920, 1875, 1800, 1000, 850)
 timestep="1hr"
 # years.sim=2015:1900
 yrs.sim=NULL
 
 # Setting up parallelization
-parallel=TRUE
+parallel=FALSE
 cores.max = 20
 
 # Set up the appropriate seed
@@ -116,7 +117,7 @@ for(GCM in GCM.list){
   
   gcm.now <- sample(gcm.members, min(n.day, length(gcm.members)))
 
-  if(parallel==TRUE){
+  if(parallel==TRUE & length(gcm.now)>1){
     mclapply(gcm.now, predict_subdaily_met, mc.cores=min(length(gcm.now), cores.max),
              outfolder=out.ens, in.path=file.path(path.in, GCM), 
              lm.models.base=path.lm, path.train=path.train, direction.filter="backward",

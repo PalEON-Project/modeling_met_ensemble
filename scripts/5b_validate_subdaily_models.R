@@ -47,7 +47,7 @@ library(tictoc)
 rm(list=ls())
 
 # mod.out <- "/projectnb/dietzelab/paleon/met_ensemble/data/met_ensembles/HARVARD/subday_models"
-mod.out <- "~/Desktop/met_ensembles/HARVARD/subday_models"
+mod.out <- "~/met_ensemble/HEMLOCK/subday_models"
 fig.dir <- file.path(mod.out, "model_qaqc")
 
 if(!dir.exists(mod.out)) dir.create(mod.out, recursive = T)

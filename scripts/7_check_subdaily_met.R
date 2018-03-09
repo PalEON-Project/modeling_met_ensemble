@@ -27,20 +27,24 @@ library(ggplot2)
 library(stringr)
 
 # Ensemble directories
-wd.base <- "/home/crollinson/met_ensemble"
-site.name <- "HARVARD"
-vers <- ".v5"
+# wd.base <- "/home/crollinson/met_ensemble"
+wd.base <- "~/Desktop/Research/met_ensembles/"
+site.name = "HEMLOCK"
+vers=".v1"
+site.lat  = 45.33333
+site.lon  = -90.08333
 
 path.dat <- file.path(wd.base, "data/met_ensembles", paste0(site.name, vers), "1hr/ensembles/")
 path.out <- file.path(wd.base, "data/met_ensembles", paste0(site.name, vers), "1hr/figures_qaqc")
 
 dir.create(path.out, recursive=T, showWarnings = F)
-GCM.list <- c("bcc-csm1-1", "CCSM4", "MIROC-ESM", "MPI-ESM-P")
+# GCM.list <- c("bcc-csm1-1", "CCSM4", "MIROC-ESM", "MPI-ESM-P")
+GCM.list <- c("bcc-csm1-1", "CCSM4", "MIROC-ESM")
 
-n.day <- 5 # How many parent ensembles we want to graph
-n.hr <- 2 # How many independent hourly ensembles we want to show
+n.day <- 1 # How many parent ensembles we want to graph
+n.hr <- 3 # How many independent hourly ensembles we want to show
 
-yrs.check <- c(2015, 1990, 1950, 1900, 1800, 1000)
+yrs.check <- c(2015, 1990, 1900, 1850, 1800, 1300, 1000)
 # yrs.check <- 2015
 days.graph <- data.frame(winter=(45-3):(45+3), spring=(135-3):(135+3), summer=(225-3):(225+3), fall=(315-3):(315+3))
 
