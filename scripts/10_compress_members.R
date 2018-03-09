@@ -16,8 +16,8 @@
 # 1. 
 # -----------------------------------
 # rm(list=ls())
-in.base = "/home/crollinson/met_ensemble/data/met_ensembles/HARVARD/1hr/ensembles/"
-out.base = "/home/crollinson/met_ensemble/data/met_ensembles/HARVARD/1hr/ensembles_compressed"
+in.base = "/home/crollinson/met_ensemble/data/met_ensembles/HEMLOCK/1hr/ensembles/"
+out.base = "/home/crollinson/met_ensemble/data/met_ensembles/HEMLOCK/1hr/ensembles_compressed"
 
 dir.create(out.base, recursive = T, showWarnings = F)
 

@@ -34,9 +34,9 @@ setwd(wd.base)
 path.pecan <- "~/Desktop/Research/pecan"
 
 # Defining a site name -- this can go into a function later
-site.name="HARVARD"
-site.lat=42.54
-site.lon=-72.18
+site.name = "HEMLOCK"
+site.lat  = 45.33333
+site.lon  = -90.08333
 
 path.ldas <- file.path(out.base, "data/paleon_sites", site.name, "NLDAS/")
 files.train <- dir(path.ldas)

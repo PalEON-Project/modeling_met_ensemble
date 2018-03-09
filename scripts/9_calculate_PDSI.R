@@ -19,11 +19,13 @@
 # -----------------------------------
 # 0. define file paths and some info about the site
 # -----------------------------------
-in.base = "~/Desktop/Research/met_ensembles/data/met_ensembles/HARVARD/aggregated/month/"
+site.name = "HEMLOCK"
+site.lat  = 45.33333
+site.lon  = -90.08333
+
+in.base = "~/Desktop/Research/met_ensembles/data/met_ensembles/HEMLOCK/aggregated/month/"
 years.pdsi = NULL
 years.calib = c(1931, 1990)
-site.lat <- 42.54
-site.lon <- -72.18
 # ----------
 
 

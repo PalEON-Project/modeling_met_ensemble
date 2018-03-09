@@ -27,7 +27,9 @@ library(ggplot2)
 
 # Ensemble directories
 wd.base <- "~/Desktop/Research/met_ensembles/"
-site.name <- "HARVARD"
+site.name = "HEMLOCK"
+site.lat  = 45.33333
+site.lon  = -90.08333
 
 path.dat <- file.path(wd.base, "data/met_ensembles", site.name, "1hr/ensembles/")
 path.out <- file.path(wd.base, "data/met_ensembles", site.name, "1hr/figures_qaqc")

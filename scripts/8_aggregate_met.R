@@ -18,8 +18,8 @@
 source("aggregate_met.R")
 source("aggregate_file.R")
 
-in.base = "~/Desktop/Research/met_ensembles/data/met_ensembles/HARVARD/1hr/ensembles/"
-out.base = "~/Desktop/Research/met_ensembles/data/met_ensembles/HARVARD/aggregated"
+in.base = "~/Desktop/Research/met_ensembles/data/met_ensembles/HEMLOCK/1hr/ensembles/"
+out.base = "~/Desktop/Research/met_ensembles/data/met_ensembles/HEMLOCK/aggregated"
 
 GCM.list <- dir(in.base)
 for(GCM in GCM.list){
