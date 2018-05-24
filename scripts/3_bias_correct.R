@@ -49,9 +49,11 @@ setwd(wd.base)
 path.pecan <- "/home/crollinson/pecan"
 
 # Defining a site name -- this can go into a function later
-site.name = "HEMLOCK"
-site.lat  = 45.33333
-site.lon  = -90.08333
+site.name = "TENSIONZONE"
+vers=".v1"
+site.lat  = 47.1950765
+site.lon  = -95.1648107
+
 GCM.list=c("MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1", "CCSM4")
 # GCM.list=c("CCSM4", "MIROC-ESM")
 ens=1:10
@@ -64,7 +66,7 @@ seed.vec <- sample.int(1e6, size=500, replace=F)
 seed <- seed.vec[min(ens)] # This makes sure that if we add ensemble members, it gets a new, but reproducible seed
 
 # Setting up some basics for the file structure
-out.base <- file.path(wd.base, "data/met_ensembles", site.name, "day")
+out.base <- file.path(wd.base, "data/met_ensembles", paste0(site.name, vers), "day")
 raw.base <- file.path(wd.base, "data/paleon_sites", site.name)
 # -----------------------------------
 

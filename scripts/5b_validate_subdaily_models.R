@@ -1,3 +1,7 @@
+# NOTE: THIS SCRIPT DOES NOT CURRENTLY WORK --> NEED TO CHANGE THE INPUT FORMATTING!
+#
+#
+#
 # -----------------------------------
 # Script Information
 # -----------------------------------
@@ -47,7 +51,12 @@ library(tictoc)
 rm(list=ls())
 
 # mod.out <- "/projectnb/dietzelab/paleon/met_ensemble/data/met_ensembles/HARVARD/subday_models"
-mod.out <- "~/met_ensemble/HEMLOCK/subday_models"
+site.name = "TENSIONZONE"
+vers=".v1"
+site.lat  = 47.1950765
+site.lon  = -95.1648107
+
+mod.out <- file.path("~/met_ensemble/data/met_ensembles", paste0(site.name, vers), "1hr/mods.tdm")
 fig.dir <- file.path(mod.out, "model_qaqc")
 
 if(!dir.exists(mod.out)) dir.create(mod.out, recursive = T)
@@ -63,7 +72,7 @@ if(!dir.exists(fig.dir)) dir.create(fig.dir, recursive = T)
 # ----------
 {
   # Load the data
-  dat.train <- read.csv("../data/paleon_sites/HARVARD/NLDAS_1980-2015.csv")
+  dat.train <- read.csv(file.path("../data/paleon_sites", paste0(site.name, vers), "NLDAS_1980-2015.csv"))
   # dat.train$doy <- as.ordered(dat.train$doy)
   
   # order the data just o make life easier
