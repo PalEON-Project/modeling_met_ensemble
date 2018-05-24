@@ -65,7 +65,7 @@ seed.vec <- sample.int(1e6, size=500, replace=F)
 seed <- seed.vec[min(ens)] # This makes sure that if we add ensemble members, it gets a new, but reproducible seed
 
 # Setting up some basics for the file structure
-out.base <- file.path(wd.base, "data/met_ensembles", paste0(site.name, ".v5"), "day")
+out.base <- file.path(wd.base, "data/met_ensembles", paste0(site.name, vers), "day")
 raw.base <- file.path(wd.base, "data/paleon_sites", site.name)
 # -----------------------------------
 
