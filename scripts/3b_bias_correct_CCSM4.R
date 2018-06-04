@@ -56,7 +56,7 @@ site.lon  = -73.287425
 
 GCM.list=c("MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1", "CCSM4")
 # GCM.list=c("CCSM4", "MIROC-ESM")
-ens=4:10
+ens=1:10
 n.ens=length(ens)
 ens.mems=str_pad(ens, 3, "left", pad=0)
 
