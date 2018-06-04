@@ -73,7 +73,7 @@ GCM.list = c("CCSM4", "MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1")
 ens.hr  <- 2 # Number of hourly ensemble members to create
 n.day <- 10 # Number of daily ensemble members to process
 # yrs.plot <- c(2015, 1985, 1920, 1875, 1800, 1000, 850)
-yrs.plot <- c(2015, 1985, 1920, 1875, 1800)
+yrs.plot <- c(2015, 1985, 1920, 1875, 1600)
 timestep="1hr"
 # years.sim=2015:1900
 yrs.sim=NULL

@@ -59,7 +59,7 @@ for(GCM in GCM.list){
 
 # Set up a blank array to store everything in
 dat.summary <- array(dim=c(n.files, length(var.names), 2, length(ens.mems))) # dim[3] == 2 so we can store min/max
-dimnames(dat.summary)[[1]] <- seq(2015, 850, by=-1)
+dimnames(dat.summary)[[1]] <- seq(2015, 1600, by=-1)
 dimnames(dat.summary)[[2]] <- var.names
 dimnames(dat.summary)[[3]] <- c("yr.min", "yr.max")
 dimnames(dat.summary)[[4]] <- ens.mems

@@ -136,17 +136,17 @@ pdsi.ann <- data.frame(apply(pdsi.array, c(1,3), mean, na.rm=T))
 
 
 tair.summ <- data.frame(var="Temperature", 
-                        year=850:2015, 
+                        year=1600:2015, 
                         median=apply(tair.ann, 1, median, na.rm=T),
                         lwr =apply(tair.ann, 1, quantile, 0.025, na.rm=T),
                         upr =apply(tair.ann, 1, quantile, 0.975, na.rm=T))
 precip.summ <- data.frame(var="Precipitation",
-                          year=850:2015, 
+                          year=1600:2015, 
                           median=apply(precip.ann, 1, median, na.rm=T),
                           lwr =apply(precip.ann, 1, quantile, 0.025, na.rm=T),
                           upr =apply(precip.ann, 1, quantile, 0.975, na.rm=T))
 pdsi.summ <- data.frame(var="PDSI",
-                        year=850:2015, 
+                        year=1600:2015, 
                         median=apply(pdsi.ann, 1, median, na.rm=T),
                         lwr =apply(pdsi.ann, 1, quantile, 0.025, na.rm=T),
                         upr =apply(pdsi.ann, 1, quantile, 0.975, na.rm=T))
