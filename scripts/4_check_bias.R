@@ -30,10 +30,10 @@ wd.base <- "/home/crollinson/met_ensemble"
 path.pecan <- "/home/crollinson/pecan/"
 
 # Site name for indexing
-site.name = "GOOSE"
+site.name = "ROOSTER"
 vers=".v1"
-site.lat  = 43.068496
-site.lon  = -73.287425
+site.lat  = 43.2309
+site.lon  = -74.5267
 
 GCM.list <- c("bcc-csm1-1", "CCSM4", "MIROC-ESM", "MPI-ESM-P")
 

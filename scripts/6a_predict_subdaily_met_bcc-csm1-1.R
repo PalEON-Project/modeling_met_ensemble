@@ -57,10 +57,10 @@ path.pecan <- "/home/crollinson/pecan"
 # path.pecan <- "~/Desktop/Research/pecan"
 
 # Hard-coding numbers for Harvard
-site.name = "GOOSE"
+site.name = "ROOSTER"
 vers=".v1"
-site.lat  = 43.068496
-site.lon  = -73.287425
+site.lat  = 43.2309
+site.lon  = -74.5267
 # 
 
 path.train <- file.path(dat.base, "paleon_sites", site.name, "NLDAS")
