@@ -21,7 +21,11 @@
 ##' @return Automatically saved files withthe same naming structure as previously, just in a different location (this is dangerous!)
 ##' @export
 # -----------------------------------
+<<<<<<< HEAD
 aggregate.file <- function(f.agg, path.in, save.day, save.month, out.base, day.dir, mo.dir, add.vars, ...){
+=======
+aggregate.file <- function(f.agg, path.in, save.day, save.month, out.base, day.dir, mo.dir, add.vars, verbose=FALSE, ...){
+>>>>>>> Ulmus
   yr.now <- strsplit(f.agg, "[.]")[[1]]
   yr.now <- as.numeric(yr.now[length(yr.now)-1])
   nday <- ifelse(lubridate::leap_year(yr.now), 366, 365)
@@ -32,6 +36,14 @@ aggregate.file <- function(f.agg, path.in, save.day, save.month, out.base, day.d
   # Extract some useful info
   vars.file <- names(ncT$var)
   nc.time <- ncdf4::ncvar_get(ncT, "time")
+<<<<<<< HEAD
+=======
+  
+  # Calculate the timestep
+  dt <- nday/length(nc.time) # Time step in days
+  nc.time <- seq(dt/2, length.out=length(nc.time), by=dt)
+  
+>>>>>>> Ulmus
   lat.in <- ncdf4::ncvar_get(ncT, "latitude")
   lon.in <- ncdf4::ncvar_get(ncT, "longitude")
   

@@ -25,7 +25,7 @@ vers=".v1"
 site.lat  = 45.54127
 site.lon  = -95.5313
 
-in.base = file.path(wd.base, "data/met_ensembles", paste0(site.name, vers), "1hr/ensembles/")
+in.base = file.path(wd.base, "data/met_ensembles", paste0(site.name, vers), "day/ensembles/")
 out.base = file.path(wd.base, "/data/met_ensembles", paste0(site.name, vers) ,"aggregated")
 
 GCM.list <- dir(in.base)
@@ -36,9 +36,10 @@ for(GCM in GCM.list){
   pb.ind=1
   for(ens in gcm.ens){
     aggregate.met(path.in=file.path(in.base, GCM, ens), 
-                  years.agg=NULL, save.day=T, save.month=T, 
+                  years.agg=NULL, save.day=F, save.month=T, 
                   out.base=out.base, day.dir=file.path("day", GCM, ens), mo.dir=file.path("month", GCM, ens), 
-                  add.vars=c("daylength", "air_temperature_maximum", "air_temperature_minimum"),
+                  # add.vars=c("daylength", "air_temperature_maximum", "air_temperature_minimum"),
+                  add.vars=NULL,
                   parallel=F, n.cores=8, 
                   print.progress=F, verbose=FALSE)
     

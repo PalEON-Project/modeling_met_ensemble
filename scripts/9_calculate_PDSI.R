@@ -19,11 +19,13 @@
 # -----------------------------------
 # 0. define file paths and some info about the site
 # -----------------------------------
-site.name = "HEMLOCK"
-site.lat  = 45.33333
-site.lon  = -90.08333
+wd.base <- "/home/crollinson/met_ensemble"
+site.name = "GLSP"
+vers=".v1"
+site.lat  = 45.54127
+site.lon  = -95.5313
 
-in.base = "~/Desktop/Research/met_ensembles/data/met_ensembles/HEMLOCK/aggregated/month/"
+in.base = file.path(wd.base, "data/met_ensembles", paste0(site.name, vers), "aggregated/month/")
 years.pdsi = NULL
 years.calib = c(1931, 1990)
 # ----------
@@ -32,14 +34,15 @@ years.calib = c(1931, 1990)
 # -----------------------------------
 # 1. Extract & calculate our soil water values
 # -----------------------------------
+source("calc_pdsi.R")
 source("calc.awc.R")
 source("pdsi1.R")
 source("pdsix.R")
 source("PE.thornthwaite.R")
 source("soilmoi1.R")
 
-# path.soil <- "~/PalEON_CR/ED_PalEON/MIP2_Region/phase2_env_drivers_v2/soil/"
-path.soil <- "~/Dropbox/PalEON_CR/env_regional/phase2_env_drivers_v2/soil" 
+path.soil <- "~/ED_PalEON/MIP2_Region/phase2_env_drivers_v2/soil/"
+# path.soil <- "~/Dropbox/PalEON_CR/env_regional/phase2_env_drivers_v2/soil" 
 
 sand.t <- ncdf4::nc_open(file.path(path.soil, "paleon_soil_t_sand.nc"))
 sand.s <- ncdf4::nc_open(file.path(path.soil, "paleon_soil_s_sand.nc"))
@@ -75,11 +78,11 @@ watcap <- c(wcap1, wcap2)
 # in.base = "~/Desktop/Research/met_ensembles/data/met_ensembles/HARVARD/aggregated/month/CCSM4/CCSM4_001.01"
 
 out.save <- NULL
-GCM.list <- dir(in.base)
+GCM.list <- list.dirs(in.base, recursive=F, full.names = F)
 for(GCM in GCM.list){
   print(GCM)
   
-  gcm.ens <- dir(file.path(in.base, GCM))
+  gcm.ens <- list.dirs(file.path(in.base, GCM), full.names=F, recursive=F)
   pb <- txtProgressBar(min=0, max=length(gcm.ens), style=3)
   pb.ind=1
   for(ens in gcm.ens){
@@ -94,7 +97,7 @@ for(GCM in GCM.list){
       out.save$PDSI   <- data.frame(ens=as.vector(t(ens.out$X)))
       
       names(out.save$Temp) <- names(out.save$Precip) <- names(out.save$PDSI) <- ens
-      row.labs <- paste(rep(row.names(pdsi.out$T), each=ncol(pdsi.out$T)), stringr::str_pad(1:ncol(pdsi.out$T), 2, pad="0"), sep="-")
+      row.labs <- paste(rep(row.names(ens.out$T), each=ncol(ens.out$T)), stringr::str_pad(1:ncol(ens.out$T), 2, pad="0"), sep="-")
       row.names(out.save$Temp) <- row.names(out.save$Precip) <- row.names(out.save$Precip) <- row.labs 
       
       temp.array   <- array(ens.out$T, dim=c(dim(ens.out$T), 1))
@@ -113,6 +116,7 @@ for(GCM in GCM.list){
     setTxtProgressBar(pb, pb.ind)
     pb.ind=pb.ind+1
   } # End ensemble member loop
+  print("")
 } # End GCM Loop
 
 # Save the Output
@@ -132,17 +136,17 @@ pdsi.ann <- data.frame(apply(pdsi.array, c(1,3), mean, na.rm=T))
 
 
 tair.summ <- data.frame(var="Temperature", 
-                        year=850:2015, 
+                        year=1800:2015, 
                         median=apply(tair.ann, 1, median, na.rm=T),
                         lwr =apply(tair.ann, 1, quantile, 0.025, na.rm=T),
                         upr =apply(tair.ann, 1, quantile, 0.975, na.rm=T))
 precip.summ <- data.frame(var="Precipitation",
-                          year=850:2015, 
+                          year=1800:2015, 
                           median=apply(precip.ann, 1, median, na.rm=T),
                           lwr =apply(precip.ann, 1, quantile, 0.025, na.rm=T),
                           upr =apply(precip.ann, 1, quantile, 0.975, na.rm=T))
 pdsi.summ <- data.frame(var="PDSI",
-                        year=850:2015, 
+                        year=1800:2015, 
                         median=apply(pdsi.ann, 1, median, na.rm=T),
                         lwr =apply(pdsi.ann, 1, quantile, 0.025, na.rm=T),
                         upr =apply(pdsi.ann, 1, quantile, 0.975, na.rm=T))
@@ -151,12 +155,34 @@ met.all <- rbind(tair.summ, precip.summ, pdsi.summ)
 
 library(ggplot2)
 png(file.path(in.base, "Met_Summary_Annual.png"), height=8.5, width=11, unit="in", res=220)
-ggplot(data=met.all) + facet_grid(var~., scales="free_y") +
-  geom_ribbon(aes(x=year, ymin=lwr, ymax=upr, fill=var), alpha=0.5) +
-  geom_line(aes(x=year, y=median, color=var)) + 
-  scale_fill_manual(values=c("red", "blue2", "green3")) +
-  scale_color_manual(values=c("red", "blue2", "green3")) +
-  theme_bw() +
-  theme(legend.position="top")
+print(
+  ggplot(data=met.all) + facet_grid(var~., scales="free_y") +
+    geom_ribbon(aes(x=year, ymin=lwr, ymax=upr, fill=var), alpha=0.5) +
+    geom_line(aes(x=year, y=median, color=var)) + 
+    geom_vline(xintercept=c(2010, 1900, 1849), linetype="dashed", size=0.5) +
+    scale_fill_manual(values=c("red", "blue2", "green3")) +
+    scale_color_manual(values=c("red", "blue2", "green3")) +
+    theme_bw() +
+    theme(legend.position="top")
+)
+dev.off()
+
+# Tricking the PDSI CI into not being ridiculous
+met.all[met.all$var=="PDSI" & met.all$lwr < -5, "lwr"] <- -5
+met.all[met.all$var=="PDSI" & met.all$upr > 7.5, "upr"] <- 7.5
+png(file.path(in.base, "Met_Summary_Annual2.png"), height=8.5, width=11, unit="in", res=220)
+print(
+  ggplot(data=met.all) + facet_grid(var~., scales="free_y") +
+    geom_ribbon(aes(x=year, ymin=lwr, ymax=upr, fill=var), alpha=0.5) +
+    geom_line(aes(x=year, y=median, color=var)) + 
+    geom_vline(xintercept=c(2010, 1900, 1849), linetype="dashed", size=0.5) +
+    scale_fill_manual(values=c("red", "blue2", "green3")) +
+    scale_color_manual(values=c("red", "blue2", "green3")) +
+    # scale_x_continuous(expand=c(0,0)) +
+    scale_y_continuous((expand=c(0,0))) +
+    # coord_cartesian(ylim=c(-15,15)) +
+    theme_bw() +
+    theme(legend.position="top")
+)
 dev.off()
 # -----------------------------------

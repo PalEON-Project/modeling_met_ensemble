@@ -49,7 +49,7 @@ library(parallel)
 rm(list=ls())
 
 wd.base <- "/home/crollinson/met_ensemble/"
-# wd.base <- "~/Desktop/Research/met_ensembles/"
+# wd.base <- "~/Desktop/Research/met_ensembles"
 setwd(wd.base)
 
 dat.base <- file.path(wd.base, "data")
@@ -68,7 +68,7 @@ path.lm <- file.path(dat.base, "met_ensembles", paste0(site.name, vers), "1hr/mo
 path.in <- file.path(dat.base, "met_ensembles", paste0(site.name, vers), "day/ensembles")
 path.out <- file.path(dat.base, "met_ensembles", paste0(site.name, vers), "1hr/ensembles")
 
-GCM.list = c("CCSM4", "MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1")
+# GCM.list = c("CCSM4", "MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1")
 # GCM.list = "MIROC-ESM"
 ens.hr  <- 2 # Number of hourly ensemble members to create
 n.day <- 10 # Number of daily ensemble members to process
@@ -79,8 +79,8 @@ timestep="1hr"
 yrs.sim=NULL
 
 # Setting up parallelization
-parallel=FALSE
-cores.max = 20
+parallel=TRUE
+cores.max = 10
 
 # Set up the appropriate seed
 set.seed(0017)
@@ -99,7 +99,8 @@ source(file.path(path.pecan, "modules/data.atmosphere/R", "tdm_subdaily_pred.R")
 # Set & create the output directory
 if(!dir.exists(path.out)) dir.create(path.out, recursive=T)
 
-for(GCM in GCM.list){
+GCM="bcc-csm1-1"
+# for(GCM in GCM.list){
   # GCM="Ameriflux"
   # tic()
   # Set the directory where the output is & load the file
@@ -118,21 +119,21 @@ for(GCM in GCM.list){
   
   gcm.now <- sample(gcm.members, min(n.day, length(gcm.members)))
 
-  if(parallel==TRUE & length(gcm.now)>1){
+  if(parallel==TRUE){
     mclapply(gcm.now, predict_subdaily_met, mc.cores=min(length(gcm.now), cores.max),
              outfolder=out.ens, in.path=file.path(path.in, GCM), 
              lm.models.base=path.lm, path.train=path.train, direction.filter="backward",
              yrs.predict=yrs.sim, ens.labs=str_pad(1:ens.hr, width=2, pad="0"),
-             resids=F, overwrite=F,
+             resids=F, force.sanity=TRUE, sanity.attempts=5, overwrite=F,
              seed=seed.vec[length(ens.done)+1], print.progress=F)
   } else {
     for(ens.now in gcm.now){
       predict_subdaily_met(outfolder=out.ens, in.path=file.path(path.in, GCM),
                            in.prefix=ens.now, lm.models.base=path.lm,
                            path.train=path.train, direction.filter="backward", yrs.predict=yrs.sim,
-                           ens.labs = str_pad(1:ens.hr, width=2, pad="0"), resids = FALSE,
+                           ens.labs = str_pad(1:ens.hr, width=2, pad="0"), resids = FALSE, force.sanity=TRUE, sanity.attempts=5,
                            overwrite = FALSE, seed=seed.vec[length(ens.done)+1], print.progress = TRUE)
     }
   }
-}
+# }
 # -----------------------------------

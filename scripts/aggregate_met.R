@@ -59,14 +59,22 @@ aggregate.met <- function(path.in, years.agg=NULL, save.day=T, save.month=T,
                               path.in=path.in, 
                               save.day=save.day, save.month=save.month, 
                               out.base=out.base, day.dir=day.dir, mo.dir=mo.dir, 
+<<<<<<< HEAD
                               add.vars=add.vars)
+=======
+                              add.vars=add.vars, verbose=verbose)
+>>>>>>> Ulmus
   } else {
     if(print.progress==T) pb <- txtProgressBar(min=0, max=length(files.agg), style=3)
     for(i in 1:length(files.agg)){
       out[[i]] <- aggregate.file(f.agg=files.agg[i], path.in=path.in, 
                                  save.day=save.day, save.month=save.month, 
                                  out.base=out.base, day.dir=day.dir, mo.dir=mo.dir, 
+<<<<<<< HEAD
                                  add.vars=add.vars)
+=======
+                                 add.vars=add.vars, verbose=verbose)
+>>>>>>> Ulmus
       if(print.progress==T) setTxtProgressBar(pb, i)
     }
   }

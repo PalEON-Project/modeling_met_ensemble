@@ -384,7 +384,14 @@ pdsi1 <- function(datmet, datother, metric=F, method.PE="Thornthwaite", snow=NUL
   Dbar[Dbar==0] <- 1e-6 # replace 0 with a tiny, tiny number
   
   # 7.1 Compute K' for each time step (eqn 26)
+<<<<<<< HEAD
   Kprime <- 1.5*log10((((PEbar+Rbar+RObar)/(Pbar+LOSSbar)) + 2.80) / Dbar) + 0.50
+=======
+  # IFF For some reason PE, R, and RO are all 0, we need to make it a tiny number
+  bar.denom <- (Pbar+LOSSbar)
+  bar.denom[bar.denom==0] <- 1e-6
+  Kprime <- 1.5*log10((((PEbar+Rbar+RObar)/bar.denom) + 2.80) / Dbar) + 0.50
+>>>>>>> Ulmus
   
   # 7.2 Calculate weighted departures for each month and its sum
   DKprime <- Dbar * Kprime

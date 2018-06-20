@@ -30,14 +30,16 @@ wd.base <- "~/Desktop/Research/met_ensembles/"
 path.pecan <- "~/Desktop/Research/pecan/"
 
 # Site name for indexing
-site.name = "HEMLOCK"
-site.lat  = 45.33333
-site.lon  = -90.08333
+site.name = "GLSP"
+vers=".v1"
+site.lat  = 45.54127
+site.lon  = -95.5313
+
 GCM.list <- c("bcc-csm1-1", "CCSM4", "MIROC-ESM", "MPI-ESM-P")
 
 # Setting up some file paths, etc
 path.raw.base <- file.path(wd.base, "data/paleon_sites", site.name)
-path.day.base <- file.path(wd.base, "data/met_ensembles", site.name, "day")
+path.day.base <- file.path(wd.base, "data/met_ensembles", paste0(site.name, vers), "day")
 
 # defining some variable names
 vars.CF <- c("air_temperature_minimum", "air_temperature_maximum", "precipitation_flux", "surface_downwelling_shortwave_flux_in_air", "surface_downwelling_longwave_flux_in_air", "air_pressure", "specific_humidity", "wind_speed")
@@ -88,8 +90,13 @@ met.raw <- rbind(met.raw, met.tmp)
 # Loop through the GCMs to extract
 for(GCM in GCM.list){
   for(experiment in c("historical", "p1000")){
-    met.base <- align.met(train.path=file.path(path.raw.base, "NLDAS_day"), source.path = file.path(path.raw.base, GCM, experiment), n.ens=1, seed=20170905, pair.mems = FALSE)
-    
+    # met.base <- align.met(train.path=file.path(path.raw.base, "NLDAS_day"), source.path = file.path(path.raw.base, GCM, experiment), n.ens=1, seed=20170905, pair.mems = FALSE)
+    if(experiment == "p1000"){
+      met.base <- align.met(train.path=file.path(path.raw.base, "NLDAS_day"), source.path = file.path(path.raw.base, GCM, experiment), yrs.source=1800:1849, n.ens=1, seed=20170905, pair.mems = FALSE)
+    } else {
+      met.base <- align.met(train.path=file.path(path.raw.base, "NLDAS_day"), source.path = file.path(path.raw.base, GCM, experiment), yrs.source=NULL, n.ens=1, seed=20170905, pair.mems = FALSE)
+    }
+
     met.tmp <- data.frame(met.base$dat.source$time)
     met.tmp$dataset <- paste(GCM, experiment, sep=".")
     met.tmp$tair.min <- met.base$dat.source$air_temperature_minimum[,1]
@@ -199,23 +206,32 @@ names(met.raw.yr) <- c("raw", "met.var")
 met.raw.yr[,c("Year", "dataset", "dataset2")] <- met.raw.yr1[,c("Year", "dataset", "dataset2")]
 summary(met.raw.yr)
 
+
 library(ggplot2)
 png(file.path(path.day.base, "Raw_Annual.png"), height=8, width=10, units="in", res=220)
-ggplot(data=met.raw.yr[,]) + facet_wrap(~met.var, scales="free_y") +
-  geom_path(aes(x=Year, y=raw, color=dataset, group=dataset2), size=0.5) +
-  geom_vline(xintercept=c(1850, 1901, 2010), linetype="dashed") +
-  scale_x_continuous(expand=c(0,0)) +
-  theme_bw()
+print(
+  ggplot(data=met.raw.yr[,]) + facet_wrap(~met.var, scales="free_y") +
+    geom_path(aes(x=Year, y=raw, color=dataset, group=dataset2), size=0.5) +
+    geom_vline(xintercept=c(1850, 1901, 2010), linetype="dashed") +
+    scale_x_continuous(expand=c(0,0)) +
+    theme_bw()
+)
 dev.off()
 
 png(file.path(path.day.base, "Debias_Annual.png"), height=8, width=10, units="in", res=220)
-ggplot(data=met.bias.yr[, ]) + facet_wrap(~met.var, scales="free_y") +
-  geom_ribbon(aes(x=Year, ymin=lwr, ymax=upr, fill=dataset), alpha=0.5) +
-  geom_path(aes(x=Year, y=mean, color=dataset), size=0.5) +
-  geom_vline(xintercept=c(1850, 1901, 2010), linetype="dashed") +
-  scale_x_continuous(expand=c(0,0)) +
-  theme_bw()
+print(
+  ggplot(data=met.bias.yr[, ]) + facet_wrap(~met.var, scales="free_y") +
+    geom_ribbon(aes(x=Year, ymin=lwr, ymax=upr, fill=dataset), alpha=0.5) +
+    geom_path(aes(x=Year, y=mean, color=dataset), size=0.5) +
+    geom_vline(xintercept=c(1850, 1901, 2010), linetype="dashed") +
+    scale_x_continuous(expand=c(0,0)) +
+    theme_bw()
+)
 dev.off()
+
+# Save the summaries of the raw and bias-corrected data to quickly make some customized graphs elsewhere
+write.csv(met.raw.yr , file.path(path.day.base, "Met_Raw_Annual.csv"      ), row.names=F)
+write.csv(met.bias.yr, file.path(path.day.base, "Met_Corrected_Annual.csv"), row.names=F)
 
 # Looking at the seasonal cycle
 met.bias.doy.mean <- aggregate(met.bias$mean[,vars.short], by=met.bias$mean[,c("DOY", "dataset")], FUN=mean, na.rm=T)
@@ -251,20 +267,30 @@ summary(met.bias.doy.mean)
 
 library(ggplot2)
 png(file.path(path.day.base, "Raw_DOY.png"), height=8, width=10, units="in", res=220)
-ggplot(data=met.raw.doy[,]) + facet_wrap(~met.var, scales="free_y") +
-  geom_path(data=met.raw.doy[met.raw.doy$dataset=="NLDAS",], aes(x=DOY, y=raw), color="black", size=1) +
-  geom_path(data=met.raw.doy[met.raw.doy$dataset!="NLDAS",], aes(x=DOY, y=raw, color=dataset, group=dataset2), size=0.5) +
-  scale_x_continuous(expand=c(0,0)) +
-  theme_bw()
+print(
+  ggplot(data=met.raw.doy[,]) + facet_wrap(~met.var, scales="free_y") +
+    geom_path(data=met.raw.doy[met.raw.doy$dataset=="NLDAS",], aes(x=DOY, y=raw), color="black", size=1) +
+    geom_path(data=met.raw.doy[met.raw.doy$dataset!="NLDAS",], aes(x=DOY, y=raw, color=dataset, group=dataset2), size=0.5) +
+    scale_x_continuous(expand=c(0,0)) +
+    theme_bw()
+)
 dev.off()
 
 png(file.path(path.day.base, "Debias_DOY.png"), height=8, width=10, units="in", res=220)
-ggplot(data=met.bias.doy[, ]) + facet_wrap(~met.var, scales="free_y") +
-  geom_path(data=met.raw.doy[met.raw.doy$dataset=="NLDAS",], aes(x=DOY, y=raw), color="black", size=1) +
-  geom_ribbon(aes(x=DOY, ymin=lwr, ymax=upr, fill=dataset), alpha=0.5) +
-  geom_path(aes(x=DOY, y=mean, color=dataset), size=0.5) +
-  # geom_vline(xintercept=c(1850, 1901, 2010), linetype="dashed") +
-  scale_x_continuous(expand=c(0,0)) +
-  theme_bw()
+print(
+  ggplot(data=met.bias.doy[, ]) + facet_wrap(~met.var, scales="free_y") +
+    geom_path(data=met.raw.doy[met.raw.doy$dataset=="NLDAS",], aes(x=DOY, y=raw), color="black", size=1) +
+    geom_ribbon(aes(x=DOY, ymin=lwr, ymax=upr, fill=dataset), alpha=0.5) +
+    geom_path(aes(x=DOY, y=mean, color=dataset), size=0.5) +
+    # geom_vline(xintercept=c(1850, 1901, 2010), linetype="dashed") +
+    scale_x_continuous(expand=c(0,0)) +
+    theme_bw()
+)
 dev.off()
+
+
+# Save the summaries of the raw and bias-corrected data to quickly make some customized graphs elsewhere
+write.csv(met.raw.doy , file.path(path.day.base, "Met_Raw_DOY.csv"      ), row.names=F)
+write.csv(met.bias.doy, file.path(path.day.base, "Met_Corrected_DOY.csv"), row.names=F)
+
 # -----------------------------------

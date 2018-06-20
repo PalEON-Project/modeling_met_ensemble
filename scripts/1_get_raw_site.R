@@ -43,10 +43,9 @@ library(ggplot2)
 wd.base <- "~/Dropbox/PalEON_CR/met_ensemble"
 setwd(wd.base)
 
-
-site.name = "HEMLOCK"
-site.lat  = 45.33333
-site.lon  = -90.08333
+site.name = "SYLVANIA"
+site.lat  = 46.241944
+site.lon  = -89.347778
 path.out = "~/Desktop/Research/met_ensembles/data/paleon_sites"
 
 # Path to pecan repository where functions now live

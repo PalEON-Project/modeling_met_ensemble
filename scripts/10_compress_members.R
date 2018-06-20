@@ -16,8 +16,15 @@
 # 1. 
 # -----------------------------------
 # rm(list=ls())
-in.base = "/home/crollinson/met_ensemble/data/met_ensembles/HEMLOCK/1hr/ensembles/"
-out.base = "/home/crollinson/met_ensemble/data/met_ensembles/HEMLOCK/1hr/ensembles_compressed"
+wd.base <- "/home/crollinson/met_ensemble"
+
+site.name = "GLSP"
+vers=".v1"
+site.lat  = 45.54127
+site.lon  = -95.5313
+
+in.base = file.path(wd.base, "data/met_ensembles", paste0(site.name, vers), "1hr/ensembles/")
+out.base =  file.path(wd.base, "data/met_ensembles", paste0(site.name, vers), "1hr/ensembles_compressed/") 
 
 dir.create(out.base, recursive = T, showWarnings = F)
 

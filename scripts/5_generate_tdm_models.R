@@ -49,15 +49,16 @@ rm(list=ls())
 wd.base <- "~/Desktop/Research/met_ensembles/"
 setwd(wd.base)
 
-site.name = "HEMLOCK"
-site.lat  = 45.33333
-site.lon  = -90.08333
+site.name = "GLSP"
+vers=".v1"
+site.lat  = 45.54127
+site.lon  = -95.5313
 
 path.train <- file.path(wd.base, "data/paleon_sites", site.name, "NLDAS")
 yrs.train=NULL
 
-path.out <- file.path(wd.base, "data/met_ensembles", site.name, "1hr/mods.tdm")
-path.pecan <- "~/Desktop/Research/pecan/"
+path.out <- file.path(wd.base, "data/met_ensembles", paste0(site.name, vers), "1hr/mods.tdm")
+path.pecan <- "/home/crollinson/pecan"
 
 fig.dir <- file.path(path.out, "model_qaqc")
 
@@ -77,7 +78,7 @@ source(file.path(path.pecan, "modules/data.atmosphere/R", "tdm_model_train.R"))
 source(file.path(path.pecan, "modules/data.atmosphere/R", "align_met.R"))
 
 gen.subdaily.models(outfolder=path.out, path.train=path.train,
-                    yrs.train=NULL, direction.filter="backwards", in.prefix=site.name,
-                    n.beta=500, day.window=7, seed=1026, resids = FALSE, 
+                    yrs.train=NULL, direction.filter="backward", in.prefix=site.name,
+                    n.beta=5000, day.window=7, seed=1026, resids = FALSE, 
                     parallel = FALSE, n.cores = NULL, overwrite = TRUE, verbose = FALSE, print.progress=T) 
 # ------------------------------------------
