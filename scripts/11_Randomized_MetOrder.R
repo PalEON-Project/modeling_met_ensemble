@@ -1,9 +1,9 @@
 # Generate a randomized priority list for Forward Runs
 set.seed(1535)
-site.name = "ROOSTER"
+site.name = "GLSP"
 vers=".v1"
-site.lat  = 43.2309
-site.lon  = -74.5267
+site.lat  = 45.54127
+site.lon  = -95.5313
 
 # met.all <- read.csv(file.path("/Volumes/GoogleDrive/My Drive/PalEON_Met_Ensembles/data/", paste(site, vers, sep="."), "/aggregated/month/PDSI_AllMembers.csv"))
 met.all <- read.csv("~/met_ensemble/data/met_ensembles/", paste(site, vers, sep="."), "/aggregated/month/PDSI_AllMembers.csv")

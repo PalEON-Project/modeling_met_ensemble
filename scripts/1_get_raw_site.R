@@ -42,9 +42,9 @@ rm(list=ls())
 wd.base <- "~/Dropbox/PalEON_CR/met_ensemble"
 setwd(wd.base)
 
-site.name = "CORAL"
-site.lat  = 42.2199
-site.lon  = -88.5773
+site.name = "SYLVANIA"
+site.lat  = 46.241944
+site.lon  = -89.347778
 path.out = "~/Desktop/Research/met_ensembles/data/paleon_sites"
 
 # Path to pecan repository where functions now live

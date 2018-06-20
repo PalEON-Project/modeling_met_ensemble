@@ -29,10 +29,10 @@ library(stringr)
 # Ensemble directories
 wd.base <- "/home/crollinson/met_ensemble"
 # wd.base <- "~/Desktop/Research/met_ensembles/"
-site.name = "ROOSTER"
+site.name = "GLSP"
 vers=".v1"
-site.lat  = 43.2309
-site.lon  = -74.5267
+site.lat  = 45.54127
+site.lon  = -95.5313
 
 path.dat <- file.path(wd.base, "data/met_ensembles", paste0(site.name, vers), "1hr/ensembles/")
 path.out <- file.path(wd.base, "data/met_ensembles", paste0(site.name, vers), "1hr/figures_qaqc")

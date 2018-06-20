@@ -18,10 +18,10 @@
 # rm(list=ls())
 wd.base <- "/home/crollinson/met_ensemble"
 
-site.name = "ROOSTER"
+site.name = "GLSP"
 vers=".v1"
-site.lat  = 43.2309
-site.lon  = -74.5267
+site.lat  = 45.54127
+site.lon  = -95.5313
 
 in.base = file.path(wd.base, "data/met_ensembles", paste0(site.name, vers), "1hr/ensembles/")
 out.base =  file.path(wd.base, "data/met_ensembles", paste0(site.name, vers), "1hr/ensembles_compressed/") 

@@ -26,10 +26,10 @@
 # -----------------------------------
 # Path to the ensemble we want to check
 wd.base <- "/home/crollinson/met_ensemble"
-site.name = "ROOSTER"
+site.name = "GLSP"
 vers=".v1"
-site.lat  = 43.2309
-site.lon  = -74.5267
+site.lat  = 45.54127
+site.lon  = -95.5313
 
 path.dat <- file.path(wd.base, "data/met_ensembles", paste0(site.name, vers), "1hr/ensembles/")
 path.bad <- file.path(wd.base, "data/met_ensembles", paste0(site.name, vers), "1hr/rejected/")
