@@ -182,7 +182,7 @@ GCM="CCSM4"
   # (even though all ensemble members will be identical here)
   # Might want to parse down the years for yrs.train... doing the full time series could maybe throw things off if they don't
   # get the recent warming right
-  met.out <- align.met(train.path, source.path, yrs.train=1850:1900, yrs.source=1600:1849, n.ens=n.ens, seed=201708, pair.mems = FALSE, mems.train=paste(ens.ID, ens.mems, sep="_"))
+  met.out <- align.met(train.path, source.path, yrs.train=1850:1900, yrs.source=1800:1849, n.ens=n.ens, seed=201708, pair.mems = FALSE, mems.train=paste(ens.ID, ens.mems, sep="_"))
   
   # Calculate wind speed if it's not already there
   if(!"wind_speed" %in% names(met.out$dat.source)){

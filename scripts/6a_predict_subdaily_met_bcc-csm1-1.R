@@ -73,7 +73,7 @@ path.out <- file.path(dat.base, "met_ensembles", paste0(site.name, vers), "1hr/e
 ens.hr  <- 2 # Number of hourly ensemble members to create
 n.day <- 10 # Number of daily ensemble members to process
 # yrs.plot <- c(2015, 1985, 1920, 1875, 1800, 1000, 850)
-yrs.plot <- c(2015, 1985, 1920, 1875, 1600)
+yrs.plot <- c(2015, 1985, 1920, 1875, 1800)
 timestep="1hr"
 # years.sim=2015:1900
 yrs.sim=NULL
