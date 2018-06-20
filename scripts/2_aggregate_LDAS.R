@@ -26,7 +26,7 @@ library(stringr)
 library(lubridate)
 
 # Set the working directory
-wd.base <- "~/Dropbox/PalEON_CR/met_ensemble/"
+wd.base <- "~/Desktop/Research/met_ensembles/"
 out.base <- "~/Desktop/Research/met_ensembles"
 setwd(wd.base)
 

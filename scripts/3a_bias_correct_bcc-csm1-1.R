@@ -41,14 +41,14 @@ library(stringr)
 library(lubridate)
 
 # Set the working directory
-wd.base <- "/home/crollinson/met_ensemble/"
-# wd.base <- "~/Desktop/Research/met_ensembles/"
+# wd.base <- "/home/crollinson/met_ensemble/"
+wd.base <- "~/Desktop/Research/met_ensembles/"
 out.base <- wd.base
 setwd(wd.base)
 
 # Setting some important file paths
-path.pecan <- "/home/crollinson/pecan"
-# path.pecan <- "~/Desktop/Research/pecan"
+# path.pecan <- "/home/crollinson/pecan"
+path.pecan <- "~/Desktop/Research/pecan"
 
 # Defining a site name -- this can go into a function later
 site.name = "GLSP"
