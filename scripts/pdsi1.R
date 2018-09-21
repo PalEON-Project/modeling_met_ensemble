@@ -177,7 +177,7 @@ pdsi1 <- function(datmet, datother, metric=F, method.PE="Thornthwaite", snow=NUL
   #     Output Units: mm/time
   # ------------------------------------------
   if(method.PE=="Thornthwaite"){ 
-    if(is.null(dayfact)) dayz <- R.matlab::readMat("PDSI_fromBenCook/PDSICODE/daylennh.mat")$dayz
+    if(is.null(dayfact) & is.null(dayz)) dayz <- R.matlab::readMat("PDSI_fromBenCook/PDSICODE/daylennh.mat")$dayz
     # dayl <- NULL
     
     # source(file.path(pdsi.fun, "PE.thornthwaite.R"))
