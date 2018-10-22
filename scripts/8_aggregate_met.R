@@ -20,10 +20,10 @@ source("aggregate_met.R")
 source("aggregate_file.R")
 
 wd.base <- "/home/crollinson/met_ensemble"
-site.name = "GLSP"
+site.name = "GILL"
 vers=".v1"
-site.lat  = 45.54127
-site.lon  = -95.5313
+site.lat  = 44.123424
+site.lon  = -73.803628
 
 in.base = file.path(wd.base, "data/met_ensembles", paste0(site.name, vers), "1hr/ensembles/")
 out.base = file.path(wd.base, "/data/met_ensembles", paste0(site.name, vers) ,"aggregated")

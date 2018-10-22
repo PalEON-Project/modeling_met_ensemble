@@ -51,10 +51,10 @@ path.pecan <- "/home/crollinson/pecan"
 # path.pecan <- "~/Desktop/Research/pecan"
 
 # Defining a site name -- this can go into a function later
-site.name = "GLSP"
+site.name = "GILL"
 vers=".v1"
-site.lat  = 45.54127
-site.lon  = -95.5313
+site.lat  = 44.123424
+site.lon  = -73.803628
 
 GCM.list=c("MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1", "CCSM4")
 # GCM.list=c("CCSM4", "MIROC-ESM")
