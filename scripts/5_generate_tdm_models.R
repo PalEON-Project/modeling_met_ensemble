@@ -49,10 +49,10 @@ rm(list=ls())
 wd.base <- "/home/crollinson/met_ensemble/"
 setwd(wd.base)
 
-site.name = "GILL"
+site.name = "PALMGHATT"
 vers=".v1"
-site.lat  = 44.123424
-site.lon  = -73.803628
+site.lat  = 41.703568
+site.lon  = -74.253876
 
 path.train <- file.path(wd.base, "data/paleon_sites", site.name, "NLDAS")
 yrs.train=NULL

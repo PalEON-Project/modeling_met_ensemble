@@ -20,10 +20,10 @@
 # 0. define file paths and some info about the site
 # -----------------------------------
 wd.base <- "/home/crollinson/met_ensemble"
-site.name = "GILL"
+site.name = "PALMGHATT"
 vers=".v1"
-site.lat  = 44.123424
-site.lon  = -73.803628
+site.lat  = 41.703568
+site.lon  = -74.253876
 
 in.base = file.path(wd.base, "data/met_ensembles", paste0(site.name, vers), "aggregated/month/")
 years.pdsi = NULL

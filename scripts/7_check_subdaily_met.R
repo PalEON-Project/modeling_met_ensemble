@@ -29,10 +29,10 @@ library(stringr)
 # Ensemble directories
 wd.base <- "/home/crollinson/met_ensemble"
 # wd.base <- "~/Desktop/Research/met_ensembles/"
-site.name = "GILL"
+site.name = "PALMGHATT"
 vers=".v1"
-site.lat  = 44.123424
-site.lon  = -73.803628
+site.lat  = 41.703568
+site.lon  = -74.253876
 
 path.dat <- file.path(wd.base, "data/met_ensembles", paste0(site.name, vers), "1hr/ensembles/")
 path.out <- file.path(wd.base, "data/met_ensembles", paste0(site.name, vers), "1hr/figures_qaqc")
@@ -127,13 +127,14 @@ names(dat.ind) <- c("mean", "ind")
 dat.ind[,c("lwr", "upr")] <- NA
 dat.ind[,c("GCM", "ens.day", "ens.hr", "year", "season", "doy", "hour", "date")] <- dat.hr[,c("GCM", "ens.day", "ens.hr", "year", "season", "doy", "hour", "date")]
 dat.ind$doy2 <- dat.ind$doy+dat.ind$hour
+dat.ind$date <- as.POSIXct(dat.ind$date)
 summary(dat.ind)
 
 dat.ens <- aggregate(dat.ind[,"mean"], by=dat.ind[,c("ind", "GCM", "ens.day", "year", "season", "doy", "hour")], FUN=mean)
 names(dat.ens)[which(names(dat.ens)=="x")] <- "mean"
 dat.ens$lwr <- aggregate(dat.ind[,"mean"], by=dat.ind[,c("ind", "GCM", "ens.day", "year", "season", "doy", "hour")], FUN=quantile, 0.025)$x
 dat.ens$upr <- aggregate(dat.ind[,"mean"], by=dat.ind[,c("ind", "GCM", "ens.day", "year", "season", "doy", "hour")], FUN=quantile, 0.975)$x
-dat.ens$date <- strptime(paste(dat.ens$year, dat.ens$doy, dat.ens$hour, sep="-"), format=("%Y-%j-%H"), tz="UTC")
+dat.ens$date <- as.POSIXct(strptime(paste(dat.ens$year, dat.ens$doy, dat.ens$hour, sep="-"), format=("%Y-%j-%H"), tz="UTC"))
 summary(dat.ens)
 # dat.ind <- dat
 
