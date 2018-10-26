@@ -92,7 +92,7 @@ for(GCM in GCM.list){
   for(experiment in c("historical", "p1000")){
     # met.base <- align.met(train.path=file.path(path.raw.base, "NLDAS_day"), source.path = file.path(path.raw.base, GCM, experiment), n.ens=1, seed=20170905, pair.mems = FALSE)
     if(experiment == "p1000"){
-      met.base <- align.met(train.path=file.path(path.raw.base, "NLDAS_day"), source.path = file.path(path.raw.base, GCM, experiment), yrs.source=1800:1849, n.ens=1, seed=20170905, pair.mems = FALSE)
+      met.base <- align.met(train.path=file.path(path.raw.base, "NLDAS_day"), source.path = file.path(path.raw.base, GCM, experiment), yrs.source=1600:1849, n.ens=1, seed=20170905, pair.mems = FALSE)
     } else {
       met.base <- align.met(train.path=file.path(path.raw.base, "NLDAS_day"), source.path = file.path(path.raw.base, GCM, experiment), yrs.source=NULL, n.ens=1, seed=20170905, pair.mems = FALSE)
     }
