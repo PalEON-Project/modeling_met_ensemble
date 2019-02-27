@@ -44,8 +44,8 @@ GCM.list <- c("bcc-csm1-1", "CCSM4", "MIROC-ESM")
 n.day <- 1 # How many parent ensembles we want to graph
 n.hr <- 3 # How many independent hourly ensembles we want to show
 
-# yrs.check <- c(2015, 1990, 1900, 1850, 1800, 1300, 1000, 850)
-yrs.plot <- c(2015, 1985, 1920, 1875, 1700, 1625)
+yrs.check <- c(2015, 1990, 1900, 1850, 1800, 1300, 1000, 850)
+# yrs.plot <- c(2015, 1985, 1920, 1875, 1700, 1625)
 # yrs.check <- 2015
 days.graph <- data.frame(winter=(45-3):(45+3), spring=(135-3):(135+3), summer=(225-3):(225+3), fall=(315-3):(315+3))
 
