@@ -41,18 +41,23 @@ library(stringr)
 library(lubridate)
 
 # Set the working directory
-wd.base <- "~/Dropbox/PalEON_CR/met_ensemble/"
-out.base <- "~/Desktop/Research/met_ensembles/"
-setwd(wd.base)
+# wd.base <- "/home/crollinson/met_ensemble/"
+wd.base <- file.path(getwd(), "..")
+out.base <- wd.base
+# setwd(wd.base)
 
 # Setting some important file paths
-path.pecan <- "~/Desktop/Research/pecan/"
+# path.pecan <- "/home/crollinson/pecan"
+# path.pecan <- "~/Desktop/Research/pecan"
+path.pecan <- file.path(wd.base, "../pecan")
 
 # Defining a site name -- this can go into a function later
-site.name = "GLSP"
-vers=".v1"
-site.lat  = 45.54127
-site.lon  = -95.5313
+site.name = "HARVARD"
+vers=".v6"
+site.lat  = 42.53
+site.lon  = -72.18
+yrs.p1000  = 850:1849
+
 
 GCM.list=c("MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1", "CCSM4")
 # GCM.list=c("CCSM4", "MIROC-ESM")
@@ -68,6 +73,8 @@ seed <- seed.vec[min(ens)] # This makes sure that if we add ensemble members, it
 # Setting up some basics for the file structure
 out.base <- file.path(wd.base, "data/met_ensembles", paste0(site.name, vers), "day")
 raw.base <- file.path(wd.base, "data/paleon_sites", site.name)
+
+if(!dir.exists(out.base)) dir.create(out.base, recursive=T)
 # -----------------------------------
 
 # -----------------------------------
@@ -79,8 +86,8 @@ source(file.path(path.pecan, "modules/data.atmosphere/R", "debias_met_regression
 
 
 # GCM.list <- GCM.list[1]
+# GCM=GCM.list[1]
 for(GCM in GCM.list){
-  # GCM=GCM.list[1]
   ens.ID=GCM
   
   # Set up a file path our our ensemble to work with now
@@ -92,7 +99,7 @@ for(GCM in GCM.list){
   # --------------------------
   # get a list of all the files we're going to have to copy over from LDAS_Day
   files.ldas <- dir(file.path(raw.base, "NLDAS_day"))
-
+  
   for(i in 1:n.ens){
     # Create a directory for each ensemble member
     path.ens <- file.path(train.path, paste(ens.ID, ens.mems[i], sep="_"))
@@ -108,7 +115,7 @@ for(GCM in GCM.list){
   }
   
   # --------------------------
-
+  
   # --------------------------
   # 2. Debias CRUNCEP (1 series) using LDAS (1 series)
   #    - save 1901-1979 (until LDAS kicks in)
@@ -126,14 +133,15 @@ for(GCM in GCM.list){
   }
   
   # 2. Pass the training & source met data into the bias-correction functions; this will get written to the ensemble
-  debias.met.regression(train.data=met.out$dat.train, source.data=met.out$dat.source, n.ens=10, vars.debias=NULL, CRUNCEP=TRUE,
-                        pair.anoms = TRUE, pair.ens = FALSE, uncert.prop="mean", resids = FALSE, seed=Sys.Date(),
+  debias.met.regression(train.data=met.out$dat.train, source.data=met.out$dat.source, n.ens=n.ens, vars.debias=NULL, CRUNCEP=TRUE,
+                        pair.anoms = TRUE, pair.ens = FALSE, uncert.prop="random", resids = FALSE, seed=seed,
                         outfolder=train.path, 
-                        yrs.save=NULL, ens.name=ens.ID, ens.mems=ens.mems, lat.in=site.lat, lon.in=site.lon,
+                        yrs.save=NULL, ens.name=ens.ID, ens.mems=ens.mems, sanity.tries=100,
+                        lat.in=site.lat, lon.in=site.lon,
                         save.diagnostics=TRUE, path.diagnostics=file.path(out.base, "bias_correct_qaqc_CRU"),
                         parallel = FALSE, n.cores = NULL, overwrite = TRUE, verbose = FALSE) 
   # --------------------------
-
+  
   # --------------------------
   # 3. Debias GCM historical runs (1 time series) using CRUNCEP (n.ens series)
   #    - save 1850-1901 (until CRUNCEP kicks in)
@@ -160,14 +168,17 @@ for(GCM in GCM.list){
   met.out$dat.source$time <- met.out$dat.source$time[met.out$dat.source$time$Year<=2000,]
   
   # 2. Pass the training & source met data into the bias-correction functions; this will get written to the ensemble
-  debias.met.regression(train.data=met.out$dat.train, source.data=met.out$dat.source, n.ens=10, vars.debias=NULL, CRUNCEP=FALSE,
-                        pair.anoms = FALSE, pair.ens = FALSE, uncert.prop="mean", resids = FALSE, seed=Sys.Date(),
+  debias.met.regression(train.data=met.out$dat.train, source.data=met.out$dat.source, 
+                        n.ens=n.ens, vars.debias=NULL, CRUNCEP=FALSE,
+                        pair.anoms = FALSE, pair.ens = FALSE, uncert.prop="random", resids = FALSE, seed=seed,
                         outfolder=train.path, 
-                        yrs.save=1850:1900, ens.name=ens.ID, ens.mems=ens.mems, lat.in=site.lat, lon.in=site.lon,
+                        yrs.save=1850:1900, ens.name=ens.ID, ens.mems=ens.mems, 
+                        force.sanity=T, sanity.tries=100, sanity.sd=6,
+                        lat.in=site.lat, lon.in=site.lon,
                         save.diagnostics=TRUE, path.diagnostics=file.path(out.base, paste0("bias_correct_qaqc_",GCM,"_hist")),
                         parallel = FALSE, n.cores = NULL, overwrite = TRUE, verbose = FALSE) 
   # --------------------------
-
+  
   # --------------------------
   # 4. Debias GCM past millennium (1 time series) using GCM Historical (n.ens series)
   #    - save 850-1849 (until GCM historical kicks in)
@@ -179,7 +190,7 @@ for(GCM in GCM.list){
   # (even though all ensemble members will be identical here)
   # Might want to parse down the years for yrs.train... doing the full time series could maybe throw things off if they don't
   # get the recent warming right
-  met.out <- align.met(train.path, source.path, yrs.train=1850:1900, yrs.source=1800:1849 n.ens=n.ens, seed=201708, pair.mems = FALSE, mems.train=paste(ens.ID, ens.mems, sep="_"))
+  met.out <- align.met(train.path, source.path, yrs.train=1850:1900, yrs.source=yrs.p1000, n.ens=n.ens, seed=201708, pair.mems = FALSE, mems.train=paste(ens.ID, ens.mems, sep="_"))
   
   # Calculate wind speed if it's not already there
   if(!"wind_speed" %in% names(met.out$dat.source)){
@@ -187,14 +198,17 @@ for(GCM in GCM.list){
   }
   
   # 2. Pass the training & source met data into the bias-correction functions; this will get written to the ensemble
-  debias.met.regression(train.data=met.out$dat.train, source.data=met.out$dat.source, n.ens=10, vars.debias=NULL, CRUNCEP=FALSE,
-                        pair.anoms = FALSE, pair.ens = FALSE, uncert.prop="mean", resids = FALSE, seed=Sys.Date(),
+  debias.met.regression(train.data=met.out$dat.train, source.data=met.out$dat.source, 
+                        n.ens=n.ens, vars.debias=NULL, CRUNCEP=FALSE,
+                        pair.anoms = FALSE, pair.ens = FALSE, uncert.prop="random", resids = FALSE, seed=seed,
                         outfolder=train.path, 
-                        yrs.save=NULL, ens.name=ens.ID, ens.mems=ens.mems, lat.in=site.lat, lon.in=site.lon,
+                        yrs.save=NULL, ens.name=ens.ID, ens.mems=ens.mems, 
+                        force.sanity=T, sanity.tries=100, sanity.sd=6,
+                        lat.in=site.lat, lon.in=site.lon,
                         save.diagnostics=TRUE, path.diagnostics=file.path(out.base, paste0("bias_correct_qaqc_",GCM,"_p1000")),
                         parallel = FALSE, n.cores = NULL, overwrite = TRUE, verbose = FALSE) 
   # --------------------------
-  
+
 }
 # -----------------------------------
 
