@@ -26,14 +26,14 @@ library(ncdf4)
 library(ggplot2)
 
 # Ensemble directories
-wd.base <- "~/Desktop/Research/met_ensembles/"
-path.pecan <- "~/Desktop/Research/pecan/"
+wd.base <- file.path(getwd(), "..")
+path.pecan <- file.path(wd.base, "../pecan")
 
 # Site name for indexing
-site.name = "GLSP"
-vers=".v1"
-site.lat  = 45.54127
-site.lon  = -95.5313
+site.name= "HARVARD"
+vers=".v6"
+site.lat= 42.53
+site.lon= -72.18
 
 GCM.list <- c("bcc-csm1-1", "CCSM4", "MIROC-ESM", "MPI-ESM-P")
 
