@@ -48,19 +48,19 @@ library(parallel)
 # library(tictoc)
 rm(list=ls())
 
-wd.base <- "/home/crollinson/met_ensemble/"
-# wd.base <- "~/Desktop/Research/met_ensembles"
-setwd(wd.base)
+wd.base <- file.path(getwd(), "..")
+# wd.base <- "~/Desktop/Research/met_ensembles/"
+# setwd(wd.base)
 
 dat.base <- file.path(wd.base, "data")
-path.pecan <- "/home/crollinson/pecan"
-# path.pecan <- "~/Desktop/Research/pecan"
+# path.pecan <- "/home/crollinson/pecan"
+path.pecan <- "~/Desktop/Research/pecan"
 
 # Hard-coding numbers for Harvard
-site.name = "GLSP"
-vers=".v1"
-site.lat  = 45.54127
-site.lon  = -95.5313
+site.name = "HARVARD"
+vers=".v6"
+site.lat  = 42.53
+site.lon  = -72.18
 # 
 
 path.train <- file.path(dat.base, "paleon_sites", site.name, "NLDAS")
@@ -68,19 +68,19 @@ path.lm <- file.path(dat.base, "met_ensembles", paste0(site.name, vers), "1hr/mo
 path.in <- file.path(dat.base, "met_ensembles", paste0(site.name, vers), "day/ensembles")
 path.out <- file.path(dat.base, "met_ensembles", paste0(site.name, vers), "1hr/ensembles")
 
-# GCM.list = c("CCSM4", "MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1")
+GCM.list = c("CCSM4", "MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1")
 # GCM.list = "MIROC-ESM"
-ens.hr  <- 2 # Number of hourly ensemble members to create
+ens.hr  <- 3 # Number of hourly ensemble members to create
 n.day <- 10 # Number of daily ensemble members to process
-# yrs.plot <- c(2015, 1985, 1920, 1875, 1800, 1000, 850)
-yrs.plot <- c(2015, 1985, 1920, 1875, 1800)
+yrs.plot <- c(2015, 1985, 1920, 1875, 1800, 1000, 850)
+# yrs.plot <- c(2015, 1985, 1920, 1875, 1800)
 timestep="1hr"
 # years.sim=2015:1900
 yrs.sim=NULL
 
 # Setting up parallelization
 parallel=TRUE
-cores.max = 10
+cores.max =10
 
 # Set up the appropriate seed
 set.seed(0017)
@@ -128,10 +128,11 @@ GCM="bcc-csm1-1"
              seed=seed.vec[length(ens.done)+1], print.progress=F)
   } else {
     for(ens.now in gcm.now){
-      predict_subdaily_met(outfolder=out.ens, in.path=file.path(path.in, GCM),
+      predict_subdaily_met(outfolder=out.ens, in.path=file.path(path.in, GCM, ens.now),
                            in.prefix=ens.now, lm.models.base=path.lm,
                            path.train=path.train, direction.filter="backward", yrs.predict=yrs.sim,
-                           ens.labs = str_pad(1:ens.hr, width=2, pad="0"), resids = FALSE, force.sanity=TRUE, sanity.attempts=5,
+                           ens.labs = str_pad(1:ens.hr, width=2, pad="0"), resids = FALSE, 
+                           force.sanity=TRUE, sanity.attempts=5, sanity.sd=6,
                            overwrite = FALSE, seed=seed.vec[length(ens.done)+1], print.progress = TRUE)
     }
   }

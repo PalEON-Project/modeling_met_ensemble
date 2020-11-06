@@ -48,19 +48,19 @@ library(parallel)
 # library(tictoc)
 rm(list=ls())
 
-wd.base <- "/home/crollinson/met_ensemble/"
+wd.base <- file.path(getwd(), "..")
 # wd.base <- "~/Desktop/Research/met_ensembles/"
-setwd(wd.base)
+# setwd(wd.base)
 
 dat.base <- file.path(wd.base, "data")
-path.pecan <- "/home/crollinson/pecan"
-# path.pecan <- "~/Desktop/Research/pecan"
+# path.pecan <- "/home/crollinson/pecan"
+path.pecan <- "~/Desktop/Research/pecan"
 
 # Hard-coding numbers for Harvard
-site.name = "GLSP"
-vers=".v1"
-site.lat  = 45.54127
-site.lon  = -95.5313
+site.name = "HARVARD"
+vers=".v6"
+site.lat  = 42.53
+site.lon  = -72.18
 # 
 
 path.train <- file.path(dat.base, "paleon_sites", site.name, "NLDAS")
@@ -70,10 +70,10 @@ path.out <- file.path(dat.base, "met_ensembles", paste0(site.name, vers), "1hr/e
 
 GCM.list = c("CCSM4", "MIROC-ESM", "MPI-ESM-P", "bcc-csm1-1")
 # GCM.list = "MIROC-ESM"
-ens.hr  <- 2 # Number of hourly ensemble members to create
+ens.hr  <- 3 # Number of hourly ensemble members to create
 n.day <- 10 # Number of daily ensemble members to process
-# yrs.plot <- c(2015, 1985, 1920, 1875, 1800, 1000, 850)
-yrs.plot <- c(2015, 1985, 1920, 1875, 1800)
+yrs.plot <- c(2015, 1985, 1920, 1875, 1800, 1000, 850)
+# yrs.plot <- c(2015, 1985, 1920, 1875, 1800)
 timestep="1hr"
 # years.sim=2015:1900
 yrs.sim=NULL

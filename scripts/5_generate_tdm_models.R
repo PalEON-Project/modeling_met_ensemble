@@ -46,19 +46,25 @@ library(ggplot2)
 # library(tictoc)
 rm(list=ls())
 
-wd.base <- "~/Desktop/Research/met_ensembles/"
-setwd(wd.base)
+wd.base <- file.path(getwd(), "..")
+out.base <- wd.base
+# setwd(wd.base)
 
-site.name = "GLSP"
-vers=".v1"
-site.lat  = 45.54127
-site.lon  = -95.5313
+# Setting some important file paths
+# path.pecan <- "/home/crollinson/pecan"
+# path.pecan <- "~/Desktop/Research/pecan"
+path.pecan <- file.path(wd.base, "../pecan")
+
+site.name = "HARVARD"
+vers=".v6"
+site.lat  = 42.53
+site.lon  = -72.18
 
 path.train <- file.path(wd.base, "data/paleon_sites", site.name, "NLDAS")
 yrs.train=NULL
 
 path.out <- file.path(wd.base, "data/met_ensembles", paste0(site.name, vers), "1hr/mods.tdm")
-path.pecan <- "/home/crollinson/pecan"
+# path.pecan <- "/home/crollinson/pecan"
 
 fig.dir <- file.path(path.out, "model_qaqc")
 
